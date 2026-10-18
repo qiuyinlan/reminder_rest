@@ -40,4 +40,5 @@ public final class AppWatchService extends AccessibilityService {
 
     @Override
     public void onInterrupt() { }
+
 }

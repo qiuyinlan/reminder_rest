@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
+import android.content.ComponentName;
 import android.net.Uri;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
@@ -44,9 +45,8 @@ public final class MainActivity extends Activity {
     private static final int MUTED = Color.rgb(101, 119, 106);
     private static final int PAPER = Color.rgb(244, 248, 241);
     private LinearLayout body;
+    private ScrollView scroll;
     private boolean reopenPermissionGuide;
-    private boolean checkExactAlarmOnResume;
-    private boolean exactAlarmAllowedBeforeSettings;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -66,12 +66,6 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (body != null) {
             render();
-            if (checkExactAlarmOnResume) {
-                checkExactAlarmOnResume = false;
-                if (exactAlarmAllowedBeforeSettings != ReminderSettings.exactAlarmsAllowed(this)) {
-                    ReminderScheduler.update(this);
-                }
-            }
             if (reopenPermissionGuide) {
                 reopenPermissionGuide = false;
                 showPermissionChecklist();
@@ -80,10 +74,11 @@ public final class MainActivity extends Activity {
     }
 
     private void render() {
+        int previousScrollY = scroll == null ? 0 : scroll.getScrollY();
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackgroundColor(PAPER);
-        ScrollView scroll = new ScrollView(this);
+        scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(PAPER);
         body = new LinearLayout(this);
@@ -92,6 +87,8 @@ public final class MainActivity extends Activity {
         scroll.addView(body, new ScrollView.LayoutParams(-1, -2));
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
+        ScrollView currentScroll = scroll;
+        currentScroll.post(() -> currentScroll.scrollTo(0, previousScrollY));
 
         LinearLayout top = row();
         TextView brand = label("好好歇会", 24, INK, true);
@@ -113,14 +110,12 @@ public final class MainActivity extends Activity {
         bob.setDuration(2200);
         bob.setRepeatCount(ValueAnimator.INFINITE);
         face.post(bob::start);
-        face.setOnClickListener(v -> startActivity(new Intent(this, ReminderActivity.class)
-                .putExtra("action", ReminderSettings.nextType(this))));
         hero.addView(face, new LinearLayout.LayoutParams(dp(94), dp(94)));
         LinearLayout greeting = new LinearLayout(this);
         greeting.setOrientation(LinearLayout.VERTICAL);
         greeting.setPadding(dp(10), 0, 0, 0);
-        greeting.addView(label("忙了一陣子啦", 18, INK, true));
-        TextView sub = label("給眼睛和身體一點溫柔的空檔。", 13, MUTED, false);
+        greeting.addView(label("忙了一阵子啦", 18, INK, true));
+        TextView sub = label("给眼睛和身体一点温柔的空档。", 13, MUTED, false);
         sub.setPadding(0, dp(4), 0, 0);
         greeting.addView(sub);
         hero.addView(greeting, new LinearLayout.LayoutParams(0, -2, 1));
@@ -141,7 +136,7 @@ public final class MainActivity extends Activity {
         if (!addedBuiltIn) addEmptyMessage(schedule, "还没有提醒事项，请到事项页添加。");
         body.addView(schedule, full());
 
-        section("使用與权限");
+        section("使用与权限");
         LinearLayout usage = columnCard();
         long used = UsageAccess.todayMillis(this);
         String usageValue = UsageAccess.hasAccess(this) ? UsageAccess.format(used) : "开启使用情况访问";
@@ -228,32 +223,22 @@ public final class MainActivity extends Activity {
         foot.setPadding(0, dp(12), 0, 0);
         body.addView(foot);
 
-        LinearLayout nav = row();
-        nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(18), dp(4), dp(18), dp(4));
-        nav.setBackgroundColor(Color.WHITE);
-        TextView homeTab = label("⌂\n首页", 13, GREEN, true);
-        homeTab.setGravity(Gravity.CENTER);
-        TextView statsTab = label("◷\n统计", 13, MUTED, true);
-        statsTab.setGravity(Gravity.CENTER);
-        TextView itemsTab = label("▦\n事项", 13, MUTED, true);
-        itemsTab.setGravity(Gravity.CENTER);
-        setTabText(homeTab, "⌂", "首页"); setTabText(itemsTab, "▦", "事项"); setTabText(statsTab, "◷", "统计");
-        nav.addView(homeTab, new LinearLayout.LayoutParams(0, dp(56), 1));
-        nav.addView(itemsTab, new LinearLayout.LayoutParams(0, dp(56), 1));
-        nav.addView(statsTab, new LinearLayout.LayoutParams(0, dp(56), 1));
-        itemsTab.setOnClickListener(v -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); });
-        statsTab.setOnClickListener(v -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); });
-        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(64)));
+        LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.HOME, null,
+                () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); },
+                () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); },
+                () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); });
+        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
     }
 
     private void addPermissionBanner() {
         boolean notification = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         boolean usage = UsageAccess.hasAccess(this);
         boolean accessibility = isWatchServiceEnabled();
-        boolean fullScreen = ReminderSettings.fullScreenIntentAllowed(this);
-        boolean exactAlarm = ReminderSettings.exactAlarmsAllowed(this);
-        boolean ready = notification && usage && accessibility && fullScreen && exactAlarm;
+        boolean overlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
+        boolean batteryExempt = isIgnoringBatteryOptimizations();
+        boolean ready = notification && overlay && batteryExempt
+                && (!ReminderSettings.usageOnly(this) || usage)
+                && (!ReminderSettings.blockEnabled(this) || accessibility);
         LinearLayout banner = new LinearLayout(this);
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(14), dp(11), dp(14), dp(11));
@@ -274,15 +259,31 @@ public final class MainActivity extends Activity {
         boolean notification = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         AlertDialog guide = new AlertDialog.Builder(this).setTitle("完成系统配置")
                 .setView(list).setPositiveButton("完成", null).create();
-        TextView explanation = label("按需逐项打开系统权限；设备已解锁时，系统仍可能将全屏提醒显示为通知横幅。", 12, MUTED, false);
+        TextView explanation = label("允许悬浮窗后，屏幕亮且未锁定时会覆盖当前应用；锁屏时由系统通知提醒。", 12, MUTED, false);
         explanation.setPadding(0, 0, 0, dp(8));
         list.addView(explanation, 0);
         addPermissionRow(list, guide, "通知权限", notification, () -> { if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 91); });
-        addPermissionRow(list, guide, "精确闹钟（按设定时间提醒）", ReminderSettings.exactAlarmsAllowed(this), this::openExactAlarmSettings);
         addPermissionRow(list, guide, "使用情况访问", UsageAccess.hasAccess(this), this::openUsageSettings);
         addPermissionRow(list, guide, "无障碍服务（读取当前 App 名称）", isWatchServiceEnabled(), this::openAccessibilitySettings);
-        addPermissionRow(list, guide, "全屏提醒权限", ReminderSettings.fullScreenIntentAllowed(this), this::openFullScreenIntentSettings);
+        addPermissionRow(list, guide, "悬浮窗（其他 App 上显示提醒）", Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this), this::openOverlaySettings);
         addPermissionRow(list, guide, "限制 App 选择", !ReminderSettings.blockPackages(this).isEmpty(), () -> startActivity(new Intent(this, AppPickerActivity.class).putExtra("mode", "block")));
+        addPermissionRow(list, guide, "后台运行（忽略电池优化）", isIgnoringBatteryOptimizations(), this::openBatteryOptimizationSettings);
+        addActionRow(list, guide, "自启动管理", "打开 Vivo 自启动设置", this::openAutoStartSettings);
+        addActionRow(list, guide, "保活壁纸", isWellnessWallpaperSet() ? "已设为壁纸 · 管理壁纸" : "打开系统预览并手动设为壁纸", this::openKeepAliveWallpaper);
+        TextView vendorGuide = label("Vivo 还需在系统设置中允许自启动和后台运行，并在最近任务卡片下拉锁定；这些选项需手动开启。", 12, MUTED, false);
+        vendorGuide.setPadding(0, dp(10), 0, dp(8));
+        list.addView(vendorGuide);
+        TextView testOverlay = label("测试覆盖提醒", 15, GREEN, true);
+        testOverlay.setPadding(0, dp(14), 0, dp(14));
+        testOverlay.setOnClickListener(v -> {
+            guide.dismiss();
+            body.postDelayed(() -> {
+                if (!ReminderOverlayWindow.show(this, ReminderSettings.nextType(this))) {
+                    Toast.makeText(this, "覆盖提醒未显示，请检查悬浮窗权限并保持屏幕解锁", Toast.LENGTH_LONG).show();
+                }
+            }, 300);
+        });
+        list.addView(testOverlay);
         guide.show();
     }
 
@@ -297,27 +298,94 @@ public final class MainActivity extends Activity {
         parent.addView(row);
     }
 
-    private void openFullScreenIntentSettings() {
-        if (Build.VERSION.SDK_INT < 34) return;
+    private void addActionRow(LinearLayout parent, AlertDialog guide, String title, String detail, Runnable action) {
+        LinearLayout row = row();
+        row.setPadding(0, dp(12), 0, dp(12));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(label(title, 15, INK, true));
+        TextView subtitle = label(detail, 12, MUTED, false);
+        subtitle.setPadding(0, dp(3), 0, 0);
+        copy.addView(subtitle);
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(label("前往  ›", 13, GREEN, true));
+        row.setOnClickListener(v -> {
+            guide.dismiss();
+            reopenPermissionGuide = true;
+            action.run();
+        });
+        parent.addView(row);
+    }
+
+    private void openAutoStartSettings() {
+        ComponentName[] candidates = {
+                new ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"),
+                new ComponentName("com.iqoo.secure", "com.iqoo.secure.safeguard.PurviewTabActivity"),
+                new ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.PurviewTabActivity")
+        };
+        for (ComponentName candidate : candidates) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_MAIN).setComponent(candidate);
+                startActivity(intent);
+                return;
+            } catch (Exception ignored) { }
+        }
+        openAppDetails("未找到 Vivo 自启动管理页面，请在本应用信息中查找自启动权限");
+    }
+
+    private void openAppDetails(String fallbackMessage) {
         try {
-            startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception error) {
+            Toast.makeText(this, fallbackMessage, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private boolean isWellnessWallpaperSet() {
+        android.app.WallpaperInfo info = android.app.WallpaperManager.getInstance(this).getWallpaperInfo();
+        return info != null && getPackageName().equals(info.getPackageName());
+    }
+
+    private void openKeepAliveWallpaper() {
+        ComponentName wallpaper = new ComponentName(this, WellnessWallpaperService.class);
+        Intent preview = new Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                .putExtra(android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, wallpaper);
+        try {
+            startActivity(preview);
+        } catch (Exception unavailable) {
+            try {
+                startActivity(new Intent(android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+            } catch (Exception error) {
+                Toast.makeText(this, "无法打开系统壁纸设置", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void openOverlaySettings() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception error) {
+            Toast.makeText(this, "无法打开悬浮窗设置", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean isIgnoringBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+        android.os.PowerManager manager = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        return manager != null && manager.isIgnoringBatteryOptimizations(getPackageName());
+    }
+
+    private void openBatteryOptimizationSettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        try {
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                     Uri.parse("package:" + getPackageName())));
         } catch (Exception ignored) {
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
-        }
-    }
-
-    private void openExactAlarmSettings() {
-        if (Build.VERSION.SDK_INT < 31) return;
-        exactAlarmAllowedBeforeSettings = ReminderSettings.exactAlarmsAllowed(this);
-        checkExactAlarmOnResume = true;
-        try {
-            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                    Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
-        } catch (Exception error) {
-            Toast.makeText(this, "无法打开精确闹钟设置", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -361,10 +429,37 @@ public final class MainActivity extends Activity {
         TextView countdown = label(nextText, 12, done >= rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget);
         copy.addView(countdown);
         if (ticking) startCountdown(countdown, nextAt, done >= rule.dailyTarget);
-        TextView complete = label(done >= rule.dailyTarget ? "✓ 已完成" : "完成一次", 12, done >= rule.dailyTarget ? GREEN : 0xff547b5e, true);
-        complete.setPadding(0, dp(5), 0, 0);
-        complete.setOnClickListener(v -> { if (ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget)) ReminderScheduler.update(this); render(); });
-        copy.addView(complete);
+        LinearLayout completionActions = row();
+        TextView complete = new TextView(this);
+        complete.setText("提前完成一次");
+        complete.setTextSize(12);
+        complete.setTextColor(0xff39734e);
+        complete.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        complete.setAllCaps(false);
+        complete.setGravity(Gravity.CENTER);
+        complete.setPadding(dp(12), dp(5), dp(12), dp(5));
+        complete.setMinHeight(dp(30));
+        complete.setIncludeFontPadding(false);
+        complete.setBackground(round(0xffe5f1e2, 16));
+        complete.setOnClickListener(v -> {
+            long now = System.currentTimeMillis();
+            ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
+            String recordId = java.util.UUID.randomUUID().toString();
+            ReminderRecord.finish(this, recordId, rule.title, ReminderRecord.KIND_DONE,
+                    now, now, "提前完成");
+            ReminderScheduler.update(this);
+            render();
+        });
+        LinearLayout.LayoutParams completeParams = new LinearLayout.LayoutParams(-2, -2);
+        completeParams.topMargin = dp(7);
+        completeParams.bottomMargin = dp(2);
+        completionActions.addView(complete, completeParams);
+        if (done >= rule.dailyTarget) {
+            TextView completedMark = label("✓ 已完成", 12, GREEN, true);
+            completedMark.setPadding(dp(10), dp(7), 0, 0);
+            completionActions.addView(completedMark);
+        }
+        copy.addView(completionActions);
         item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         Switch active = new Switch(this);
         active.setChecked(rule.enabled);
@@ -651,12 +746,6 @@ public final class MainActivity extends Activity {
         divider.setBackgroundColor(0xffe9eee8);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(1));
         parent.addView(divider, params);
-    }
-
-    private void setTabText(TextView tab, String icon, String title) {
-        android.text.SpannableString value = new android.text.SpannableString(icon + "\n" + title);
-        value.setSpan(new android.text.style.RelativeSizeSpan(icon.equals("◷") ? 2f : 1.65f), 0, icon.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        tab.setText(value);
     }
 
     private LinearLayout row() {

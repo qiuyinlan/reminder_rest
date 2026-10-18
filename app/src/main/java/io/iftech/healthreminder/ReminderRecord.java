@@ -13,6 +13,7 @@ import java.util.List;
 final class ReminderRecord {
     static final String KIND_DONE = "done";
     static final String KIND_MISSED = "missed";
+    static final String KIND_COMPANION = "companion";
     final String id;
     final String action;
     final String kind;
@@ -51,7 +52,16 @@ final class ReminderRecord {
             if (!record.id.equals(id)) records.put(record.toJson());
         }
         records.put(new ReminderRecord(id, action, kind, startedAt, endedAt, reason).toJson());
-        prefs(context).edit().putString("records", records.toString()).remove("pending").apply();
+        android.content.SharedPreferences preferences = prefs(context);
+        JSONObject active = pending(context);
+        android.content.SharedPreferences.Editor editor = preferences.edit().putString("records", records.toString());
+        if (id.equals(active.optString("id", ""))) editor.remove("pending");
+        editor.apply();
+    }
+
+    static void recordSnoozed(Context context, String action, long timestamp) {
+        String id = "snoozed-" + java.util.UUID.randomUUID();
+        finish(context, id, action, KIND_MISSED, timestamp, timestamp, "稍后提醒");
     }
 
     static List<ReminderRecord> all(Context context) {

@@ -1,30 +1,54 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.OutputStream;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public final class StatsActivity extends Activity {
     private static final int GREEN = 0xff277049;
     private static final int INK = 0xff23342a;
     private static final int MUTED = 0xff65776a;
     private static final int PAPER = 0xfff4f8f1;
+    private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
     private String filter = ReminderRecord.KIND_DONE;
@@ -33,6 +57,9 @@ public final class StatsActivity extends Activity {
     private float touchX;
     private float touchY;
     private long lastMonthLabelTap;
+    private Bitmap previewBitmap;
+    private boolean previewVisible;
+    private boolean pendingShareAfterPermission;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -52,8 +79,18 @@ public final class StatsActivity extends Activity {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
 
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("每日记录", 24, INK, true);
-        content.addView(title);
+        titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        ImageButton saveImage = new ImageButton(this);
+        saveImage.setImageResource(android.R.drawable.ic_menu_share);
+        saveImage.setColorFilter(GREEN);
+        saveImage.setContentDescription("保存今日分享图");
+        saveImage.setBackgroundColor(Color.TRANSPARENT);
+        saveImage.setOnClickListener(v -> openSharePreview());
+        titleRow.addView(saveImage, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        content.addView(titleRow);
         TextView help = text("看看自己每天照顾身体的時刻", 13, MUTED, false);
         help.setPadding(0, dp(3), 0, dp(16));
         content.addView(help);
@@ -99,7 +136,7 @@ public final class StatsActivity extends Activity {
         dayHeading.setPadding(0, dp(20), 0, dp(12));
         content.addView(dayHeading);
         int[] totals = totalsForDay(selected);
-        TextView summary = text("完成 " + totals[0] + " 次    未完成 " + totals[1] + " 次", 13, MUTED, false);
+        TextView summary = text("完成 " + totals[0] + " 次    未完成 " + totals[1] + " 次    陪伴 " + totals[2] + " 次", 13, MUTED, false);
         summary.setPadding(0, 0, 0, dp(12));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
@@ -107,13 +144,332 @@ public final class StatsActivity extends Activity {
         pills.setBackground(round(0xffe4ece2, 24));
         TextView done = pill("做了", ReminderRecord.KIND_DONE.equals(filter));
         TextView missed = pill("没做", ReminderRecord.KIND_MISSED.equals(filter));
+        TextView companion = pill("陪伴", ReminderRecord.KIND_COMPANION.equals(filter));
         done.setOnClickListener(v -> { filter = ReminderRecord.KIND_DONE; render(); });
         missed.setOnClickListener(v -> { filter = ReminderRecord.KIND_MISSED; render(); });
+        companion.setOnClickListener(v -> { filter = ReminderRecord.KIND_COMPANION; render(); });
         pills.addView(done, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(missed, new LinearLayout.LayoutParams(0, dp(40), 1));
+        pills.addView(companion, new LinearLayout.LayoutParams(0, dp(40), 1));
         content.addView(pills);
         showTimeline();
         addNavigation(screen);
+    }
+
+    private void openSharePreview() {
+        if (previewBitmap != null && !previewBitmap.isRecycled()) previewBitmap.recycle();
+        previewBitmap = renderTodayShareImage();
+        previewVisible = true;
+
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setBackgroundColor(PAPER);
+        FrameLayout header = new FrameLayout(this);
+        ImageButton back = new ImageButton(this);
+        back.setImageResource(android.R.drawable.ic_menu_revert);
+        back.setColorFilter(GREEN);
+        back.setContentDescription("返回统计");
+        back.setBackgroundColor(Color.TRANSPARENT);
+        back.setOnClickListener(v -> closeSharePreview());
+        FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        header.addView(back, backParams);
+        TextView previewTitle = text("今日分享图", 17, INK, true);
+        previewTitle.setGravity(Gravity.CENTER);
+        header.addView(previewTitle, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(-1, dp(56));
+        headerParams.setMargins(dp(16), dp(8), dp(16), 0);
+        page.addView(header, headerParams);
+
+        ImageView image = new ImageView(this);
+        image.setImageBitmap(previewBitmap);
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        imageParams.setMargins(dp(12), dp(4), dp(12), dp(4));
+        page.addView(image, imageParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.CENTER);
+        Button save = previewActionButton("保存图片", android.R.drawable.ic_menu_save,
+                Color.TRANSPARENT, GREEN, v -> saveOrSharePreview(false));
+        Button share = previewActionButton("分享", android.R.drawable.ic_menu_share,
+                GREEN, Color.WHITE, v -> saveOrSharePreview(true));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(54), 1);
+        actionParams.setMargins(dp(6), 0, dp(6), 0);
+        actions.addView(save, actionParams);
+        LinearLayout.LayoutParams shareParams = new LinearLayout.LayoutParams(0, dp(54), 1);
+        shareParams.setMargins(dp(6), 0, dp(6), 0);
+        actions.addView(share, shareParams);
+        LinearLayout.LayoutParams footerParams = new LinearLayout.LayoutParams(-1, dp(70));
+        footerParams.setMargins(dp(14), 0, dp(14), dp(12));
+        page.addView(actions, footerParams);
+        setContentView(page);
+    }
+
+    private Button previewActionButton(String label, int iconResource, int backgroundColor,
+                                       int textColor, View.OnClickListener listener) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextColor(textColor);
+        button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setAllCaps(false);
+        Drawable icon = getDrawable(iconResource);
+        if (icon != null) {
+            icon = icon.mutate();
+            icon.setTint(textColor);
+            button.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null);
+            button.setCompoundDrawablePadding(dp(8));
+        }
+        button.setBackground(round(backgroundColor, 16));
+        button.setOnClickListener(listener);
+        return button;
+    }
+
+    private void saveOrSharePreview(boolean share) {
+        if (previewBitmap == null || previewBitmap.isRecycled()) return;
+        pendingShareAfterPermission = share;
+        if (Build.VERSION.SDK_INT < 29
+                && checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_IMAGE);
+            return;
+        }
+        persistAndSharePreview(share);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_WRITE_IMAGE) return;
+        if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            persistAndSharePreview(pendingShareAfterPermission);
+        } else {
+            Toast.makeText(this, "需要存储权限才能保存图片", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void persistAndSharePreview(boolean share) {
+        Uri uri;
+        String filename = "好好休息_今日记录_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.CHINA)
+                .format(new Date()) + ".png";
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                values.put(MediaStore.Images.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_PICTURES + "/好好休息");
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (uri == null) throw new java.io.IOException("无法创建图片记录");
+                try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                    if (output == null || !previewBitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                        throw new java.io.IOException("图片写入失败");
+                    }
+                } catch (Exception error) {
+                    getContentResolver().delete(uri, null, null);
+                    throw error;
+                }
+                ContentValues published = new ContentValues();
+                published.put(MediaStore.Images.Media.IS_PENDING, 0);
+                getContentResolver().update(uri, published, null, null);
+            } else {
+                String saved = MediaStore.Images.Media.insertImage(getContentResolver(), previewBitmap,
+                        filename, "好好休息今日记录");
+                if (saved == null) throw new java.io.IOException("图片写入失败");
+                uri = Uri.parse(saved);
+            }
+            if (share) {
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("image/png");
+                send.putExtra(Intent.EXTRA_STREAM, uri);
+                send.setClipData(ClipData.newUri(getContentResolver(), "今日记录", uri));
+                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(send, "分享今日记录"));
+            } else {
+                Toast.makeText(this, "已保存到图片/好好休息", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception error) {
+            Toast.makeText(this, share ? "保存或分享失败，请稍后重试" : "图片保存失败，请稍后重试",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void closeSharePreview() {
+        previewVisible = false;
+        if (previewBitmap != null && !previewBitmap.isRecycled()) previewBitmap.recycle();
+        previewBitmap = null;
+        render();
+    }
+
+    @Override public void onBackPressed() {
+        if (previewVisible) closeSharePreview();
+        else super.onBackPressed();
+    }
+
+    @Override protected void onDestroy() {
+        if (previewBitmap != null && !previewBitmap.isRecycled()) previewBitmap.recycle();
+        super.onDestroy();
+    }
+
+    private Bitmap renderTodayShareImage() {
+        Calendar today = Calendar.getInstance();
+        LinkedHashMap<String, ActionSummary> actions = new LinkedHashMap<>();
+        int totalReminders = 0;
+        int totalRecords = 0;
+        int done = 0;
+        for (ReminderRecord record : ReminderRecord.all(this)) {
+            if (!sameDay(record.startedAt, today)
+                    || (!ReminderRecord.KIND_DONE.equals(record.kind)
+                    && !ReminderRecord.KIND_MISSED.equals(record.kind))) continue;
+            ActionSummary summary = actions.get(record.action);
+            if (summary == null) {
+                summary = new ActionSummary();
+                actions.put(record.action, summary);
+            }
+            totalRecords++;
+            if (ReminderRecord.KIND_DONE.equals(record.kind)) {
+                summary.completed++;
+                done++;
+            }
+            if (!"提前完成".equals(record.reason)) {
+                summary.reminders++;
+                totalReminders++;
+            }
+        }
+
+        int mood = totalRecords == 0 ? 1 : done * 3 > totalRecords * 2 ? 2
+                : done * 3 > totalRecords ? 1 : 0;
+        String note = totalRecords == 0 ? "今天也记得喝水、活动身体，给自己一点照顾。"
+                : mood == 2 ? "今天很棒，继续保持，好好爱护身体。"
+                : mood == 1 ? "不错，明天继续保持，好好爱护身体。"
+                : "今天对身体有些懈怠啦，明天继续加油，好好爱护身体。";
+        int width = 1080;
+        int listTop = 770;
+        int footerTop = Math.max(900, listTop + actions.size() * 82 + 28);
+        int height = footerTop + 190;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(0xffedf5eb);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(GREEN);
+        canvas.drawRect(0, 0, width, 16, paint);
+
+        drawShareText(canvas, paint, "好好休息", 64, 118, 58, INK, true);
+        drawShareText(canvas, paint, "今日身体照顾记录", 66, 164, 26, MUTED, false);
+        String date = new SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(today.getTime());
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        paint.setTextSize(27);
+        paint.setColor(GREEN);
+        canvas.drawText(date, width - 64 - paint.measureText(date), 118, paint);
+
+        paint.setColor(Color.WHITE);
+        canvas.drawRoundRect(new RectF(60, 220, 1020, 402), 30, 30, paint);
+        drawShareText(canvas, paint, "今天提醒了我", 98, 280, 30, MUTED, false);
+        drawShareText(canvas, paint, String.valueOf(totalReminders), 98, 374, 82, GREEN, true);
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        paint.setTextSize(82);
+        float countEnd = 98 + paint.measureText(String.valueOf(totalReminders));
+        paint.setTypeface(Typeface.DEFAULT);
+        paint.setTextSize(31);
+        paint.setColor(INK);
+        canvas.drawText("次", countEnd + 12, 373, paint);
+
+        drawShareFace(canvas, 540, 520, 72, mood);
+        String rate = totalRecords == 0 ? "今天暂无提醒记录" : "完成 " + done + " / " + totalRecords + " 次";
+        paint.setTypeface(Typeface.DEFAULT);
+        paint.setTextSize(24);
+        paint.setColor(MUTED);
+        canvas.drawText(rate, (width - paint.measureText(rate)) / 2f, 650, paint);
+
+        drawShareText(canvas, paint, "事项记录", 66, 744, 30, INK, true);
+        int row = listTop;
+        for (Map.Entry<String, ActionSummary> entry : actions.entrySet()) {
+            canvas.drawRoundRect(new RectF(60, row, 1020, row + 66), 16, 16, whitePaint());
+            paint.setColor(categoryColor(entry.getKey()));
+            canvas.drawRoundRect(new RectF(82, row + 21, 96, row + 45), 5, 5, paint);
+            drawShareText(canvas, paint, fitShareText(paint, entry.getKey(), 390, 28, true),
+                    116, row + 42, 28, INK, true);
+            String detail = "提醒 " + entry.getValue().reminders + " 次  ·  做了 "
+                    + entry.getValue().completed + " 次";
+            paint.setTypeface(Typeface.DEFAULT);
+            paint.setTextSize(23);
+            paint.setColor(MUTED);
+            canvas.drawText(detail, 986 - paint.measureText(detail), row + 42, paint);
+            row += 82;
+        }
+
+        paint.setColor(0xffd6e2d5);
+        paint.setStrokeWidth(2);
+        canvas.drawLine(64, footerTop, 1016, footerTop, paint);
+        drawShareText(canvas, paint, "好好休息寄语", 66, footerTop + 53, 26, GREEN, true);
+        drawShareText(canvas, paint, note, 66, footerTop + 105, 28, INK, false);
+        drawShareText(canvas, paint, "好好爱护身体，从照顾自己的小事开始。", 66, footerTop + 151,
+                23, MUTED, false);
+        return bitmap;
+    }
+
+    private void drawShareFace(Canvas canvas, float centerX, float centerY, float radius, int mood) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(0xffd9ebd9);
+        canvas.drawCircle(centerX, centerY, radius + 12, paint);
+        paint.setColor(0xffffd85c);
+        canvas.drawCircle(centerX, centerY, radius, paint);
+        paint.setColor(0xfff39a83);
+        canvas.drawOval(new RectF(centerX - 49, centerY + 13, centerX - 25, centerY + 25), paint);
+        canvas.drawOval(new RectF(centerX + 25, centerY + 13, centerX + 49, centerY + 25), paint);
+        paint.setColor(0xff37483d);
+        if (mood == 2) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            canvas.drawArc(new RectF(centerX - 48, centerY - 30, centerX - 20, centerY - 6), 20, 140, false, paint);
+            canvas.drawArc(new RectF(centerX + 20, centerY - 30, centerX + 48, centerY - 6), 20, 140, false, paint);
+        } else {
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(centerX - 33, centerY - 18, 5, paint);
+            canvas.drawCircle(centerX + 33, centerY - 18, 5, paint);
+        }
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(6);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        if (mood == 1) {
+            canvas.drawLine(centerX - 19, centerY + 34, centerX + 19, centerY + 34, paint);
+        } else {
+            RectF mouth = mood == 0
+                    ? new RectF(centerX - 25, centerY + 18, centerX + 25, centerY + 53)
+                    : new RectF(centerX - 26, centerY + 7, centerX + 26, centerY + 47);
+            canvas.drawArc(mouth, mood == 0 ? 200 : 20, 140, false, paint);
+        }
+    }
+
+    private Paint whitePaint() {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.WHITE);
+        return paint;
+    }
+
+    private void drawShareText(Canvas canvas, Paint paint, String value, float x, float y,
+                               float size, int color, boolean bold) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        paint.setTextSize(size);
+        paint.setColor(color);
+        canvas.drawText(value, x, y, paint);
+    }
+
+    private String fitShareText(Paint paint, String value, float maxWidth, float size, boolean bold) {
+        paint.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        paint.setTextSize(size);
+        String result = value;
+        while (result.length() > 1 && paint.measureText(result + "…") > maxWidth) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result.equals(value) ? result : result + "…";
+    }
+
+    private static final class ActionSummary {
+        int reminders;
+        int completed;
     }
 
     private void shiftMonth(int amount) { month.add(Calendar.MONTH, amount); render(); }
@@ -152,29 +508,64 @@ public final class StatsActivity extends Activity {
     }
 
     private void showTimeline() {
-        List<ReminderRecord> records = ReminderRecord.all(this);
-        int count = 0;
-        for (ReminderRecord record : records) {
-            if (!sameDay(record.startedAt, selected) || !record.kind.equals(filter)) continue;
-            count++;
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.VERTICAL);
-            item.setPadding(dp(16), dp(12), dp(16), dp(12));
-            item.setBackground(round(Color.WHITE, 14));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.topMargin = dp(8);
-            item.addView(text(time(record.startedAt) + "  ·  " + record.action, 15, INK, true));
-            if (ReminderRecord.KIND_DONE.equals(filter)) {
-                long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
-                item.addView(text("完成 " + time(record.endedAt) + "  ·  用时 " + elapsed + " 秒", 12, MUTED, false));
-            } else {
-                item.addView(text("拒绝于 " + time(record.endedAt), 12, MUTED, false));
-                item.addView(text("原因：" + record.reason, 13, MUTED, false));
-            }
-            content.addView(item, params);
+        List<ReminderRecord> records = new ArrayList<>();
+        for (ReminderRecord record : ReminderRecord.all(this)) {
+            if (sameDay(record.startedAt, selected) && record.kind.equals(filter)) records.add(record);
         }
-        if (count == 0) {
-            TextView empty = text(ReminderRecord.KIND_DONE.equals(filter) ? "这一天还没有完成记录" : "这一天没有未完成记录", 13, MUTED, false);
+        Collections.sort(records, Comparator.comparingLong(record -> record.startedAt));
+        for (int index = 0; index < records.size(); index++) {
+            ReminderRecord record = records.get(index);
+            int color = categoryColor(record.action);
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.HORIZONTAL);
+            TimelineRail rail = new TimelineRail(color, index == records.size() - 1);
+            item.addView(rail, new LinearLayout.LayoutParams(dp(22), -1));
+
+            LinearLayout details = new LinearLayout(this);
+            details.setOrientation(LinearLayout.VERTICAL);
+            details.setPadding(dp(14), dp(11), dp(14), dp(10));
+            details.setBackground(round(Color.WHITE, 10));
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.setGravity(Gravity.CENTER_VERTICAL);
+            View category = new View(this);
+            category.setBackground(round(color, 2));
+            titleRow.addView(category, new LinearLayout.LayoutParams(dp(11), dp(11)));
+            TextView action = text(record.action, 15, INK, true);
+            LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, -2, 1);
+            actionParams.leftMargin = dp(9);
+            titleRow.addView(action, actionParams);
+            details.addView(titleRow);
+
+            String detail;
+            if (ReminderRecord.KIND_COMPANION.equals(filter)) {
+                long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
+                detail = "陪伴了 " + duration(elapsed);
+            } else if (ReminderRecord.KIND_DONE.equals(filter)) {
+                long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
+                detail = "完成" + ("提前完成".equals(record.reason) ? " · 提前完成" : " · 用时 " + duration(elapsed));
+            } else {
+                detail = "未完成 · " + record.reason;
+            }
+            TextView state = text(detail, 12, MUTED, false);
+            state.setPadding(dp(20), dp(6), 0, dp(2));
+            details.addView(state);
+            String timestamp = time(record.startedAt);
+            if (ReminderRecord.KIND_DONE.equals(filter) && record.endedAt > record.startedAt) {
+                timestamp += " - " + time(record.endedAt);
+            }
+            TextView time = text(timestamp, 11, color, true);
+            time.setPadding(dp(20), dp(5), 0, 0);
+            details.addView(time);
+
+            LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(0, -2, 1);
+            detailsParams.bottomMargin = dp(8);
+            item.addView(details, detailsParams);
+            content.addView(item, new LinearLayout.LayoutParams(-1, -2));
+        }
+        if (records.isEmpty()) {
+            String message = ReminderRecord.KIND_COMPANION.equals(filter) ? "这一天还没有陪伴记录"
+                    : ReminderRecord.KIND_DONE.equals(filter) ? "这一天还没有完成记录" : "这一天没有未完成记录";
+            TextView empty = text(message, 13, MUTED, false);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(30), 0, dp(30));
             content.addView(empty);
@@ -196,38 +587,53 @@ public final class StatsActivity extends Activity {
     }
 
     private int[] totalsForDay(Calendar day) {
-        int[] totals = new int[2];
+        int[] totals = new int[3];
         for (ReminderRecord record : ReminderRecord.all(this)) {
             if (!sameDay(record.startedAt, day)) continue;
-            totals[ReminderRecord.KIND_DONE.equals(record.kind) ? 0 : 1]++;
+            int index = ReminderRecord.KIND_DONE.equals(record.kind) ? 0
+                    : ReminderRecord.KIND_MISSED.equals(record.kind) ? 1 : 2;
+            totals[index]++;
         }
         return totals;
     }
 
-    private void addNavigation(LinearLayout screen) {
-        LinearLayout nav = new LinearLayout(this);
-        nav.setGravity(Gravity.CENTER);
-        nav.setBackgroundColor(Color.WHITE);
-        TextView home = text("⌂\n首页", 13, MUTED, true);
-        TextView stats = text("◷\n统计", 13, GREEN, true);
-        home.setGravity(Gravity.CENTER);
-        stats.setGravity(Gravity.CENTER);
-        home.setOnClickListener(v -> { finish(); overridePendingTransition(0, 0); });
-        TextView items = text("事项", 13, MUTED, true);
-        items.setGravity(Gravity.CENTER);
-        setTabText(home, "⌂", "首页"); setTabText(items, "▦", "事项"); setTabText(stats, "◷", "统计");
-        home.setText("⌂\n首页"); items.setText("▦\n事项"); stats.setText("◷\n统计");
-        items.setOnClickListener(v -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); });
-        nav.addView(home, new LinearLayout.LayoutParams(0, dp(60), 1));
-        nav.addView(items, new LinearLayout.LayoutParams(0, dp(60), 1));
-        nav.addView(stats, new LinearLayout.LayoutParams(0, dp(60), 1));
-        screen.addView(nav);
+    private int categoryColor(String action) {
+        if (action.contains("喝") || action.contains("水")) return 0xff287b95;
+        if (action.contains("眼") || action.contains("看")) return 0xff527947;
+        if (action.contains("颈") || action.contains("肩")) return 0xffa76c42;
+        if ("陪伴".equals(action)) return GREEN;
+        return 0xff6e6aa0;
     }
 
-    private void setTabText(TextView tab, String icon, String title) {
-        android.text.SpannableString value = new android.text.SpannableString(icon + "\n" + title);
-        value.setSpan(new android.text.style.RelativeSizeSpan(icon.equals("◷") ? 2f : 1.65f), 0, icon.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        tab.setText(value);
+    private final class TimelineRail extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int color;
+        private final boolean last;
+
+        TimelineRail(int color, boolean last) {
+            super(StatsActivity.this);
+            this.color = color;
+            this.last = last;
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float center = getWidth() / 2f;
+            paint.setColor(0xffcbd8cd);
+            paint.setStrokeWidth(dp(2));
+            canvas.drawLine(center, dp(12), center, last ? dp(12) : getHeight(), paint);
+            paint.setColor(color);
+            canvas.drawCircle(center, dp(13), dp(5), paint);
+        }
+    }
+
+    private void addNavigation(LinearLayout screen) {
+        LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.STATS,
+                () -> { finish(); overridePendingTransition(0, 0); },
+                () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
+                null);
+        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
     }
 
     private TextView pill(String label, boolean selected) {
@@ -246,6 +652,14 @@ public final class StatsActivity extends Activity {
 
     private boolean sameDay(Calendar left, Calendar right) { return sameDay(left.getTimeInMillis(), right); }
     private String time(long value) { return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(value)); }
+    private String duration(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long remainder = seconds % 60;
+        return hours > 0 ? String.format(Locale.getDefault(), "%d小时%02d分", hours, minutes)
+                : minutes > 0 ? String.format(Locale.getDefault(), "%d分%02d秒", minutes, remainder)
+                : remainder + "秒";
+    }
     private TextView text(String value, int size, int color, boolean bold) {
         TextView view = new TextView(this); view.setText(value); view.setTextSize(size); view.setTextColor(color);
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return view;

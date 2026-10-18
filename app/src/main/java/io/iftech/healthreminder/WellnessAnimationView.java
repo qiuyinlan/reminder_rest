@@ -10,7 +10,7 @@ import android.view.View;
 import android.view.animation.LinearInterpolator;
 
 final class WellnessAnimationView extends View {
-    enum Mood { SAD, TIRED, WATER }
+    enum Mood { SAD, TIRED, BREATHING, WATER }
 
     private final Mood mood;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -69,6 +69,10 @@ final class WellnessAnimationView extends View {
             canvas.drawLine(104, 70, 121, 70, paint);
             canvas.drawLine(62, 75 + blink, 73, 75 + blink, paint);
             canvas.drawLine(107, 75 + blink, 118, 75 + blink, paint);
+        } else if (mood == Mood.BREATHING) {
+            stroke(0xff37483d, 4);
+            canvas.drawArc(new RectF(56, 65, 78, 81), 20, 140, false, paint);
+            canvas.drawArc(new RectF(102, 65, 124, 81), 20, 140, false, paint);
         } else {
             canvas.drawCircle(67, 72, 5, paint);
             canvas.drawCircle(113, 72, 5, paint);
@@ -85,6 +89,8 @@ final class WellnessAnimationView extends View {
         Path mouth = new Path();
         if (mood == Mood.TIRED) {
             canvas.drawArc(new RectF(74, 104, 106, 122), 195, 150, false, paint);
+        } else if (mood == Mood.BREATHING) {
+            canvas.drawArc(new RectF(70, 101, 110, 127), 20, 140, false, paint);
         } else {
             mouth.moveTo(72, 119);
             mouth.quadTo(90, 101, 108, 119);

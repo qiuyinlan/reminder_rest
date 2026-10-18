@@ -2,9 +2,6 @@ package io.iftech.healthreminder;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.app.NotificationManager;
-import android.app.AlarmManager;
-import android.os.Build;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -59,18 +56,6 @@ final class ReminderSettings {
     static boolean enabled(Context context) { return prefs(context).getBoolean(KEY_ENABLED, false); }
     static boolean usageOnly(Context context) { return prefs(context).getBoolean("usage_only", false); }
     static boolean blockEnabled(Context context) { return prefs(context).getBoolean("block_enabled", false); }
-
-    static boolean fullScreenIntentAllowed(Context context) {
-        if (Build.VERSION.SDK_INT < 34) return true;
-        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        return manager != null && manager.canUseFullScreenIntent();
-    }
-
-    static boolean exactAlarmsAllowed(Context context) {
-        if (Build.VERSION.SDK_INT < 31) return true;
-        AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        return manager != null && manager.canScheduleExactAlarms();
-    }
 
     static Set<String> whitelist(Context context) {
         return new HashSet<>(prefs(context).getStringSet("whitelist", new HashSet<>()));
@@ -177,7 +162,7 @@ final class ReminderSettings {
 
     static boolean markCompleted(Context context, int ruleId, int target) {
         String key = "done_" + new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date()) + "_" + ruleId;
-        int count = Math.min(target, prefs(context).getInt(key, 0) + 1);
+        int count = prefs(context).getInt(key, 0) + 1;
         prefs(context).edit().putInt(key, count).apply();
         return count >= target;
     }

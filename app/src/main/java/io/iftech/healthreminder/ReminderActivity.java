@@ -20,7 +20,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.text.InputType;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.ScrollView;
 
 public final class ReminderActivity extends Activity {
     private static final int GREEN = 0xff277049;
@@ -44,6 +47,7 @@ public final class ReminderActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        setReminderSystemBarBackground();
         action = getIntent().getStringExtra("action");
         if (action == null) action = "歇一歇";
         org.json.JSONObject pendingPrefs = ReminderRecord.pending(this);
@@ -53,6 +57,10 @@ public final class ReminderActivity extends Activity {
             startedAt = pendingPrefs.optLong("startedAt", System.currentTimeMillis());
             waiting = true;
             showWaiting();
+            return;
+        }
+        if (getIntent().getBooleanExtra("begin_immediately", false)) {
+            beginDoing();
             return;
         }
         getWindow().setStatusBarColor(0xffe4f2e3);
@@ -122,6 +130,7 @@ public final class ReminderActivity extends Activity {
         snooze.setGravity(Gravity.CENTER);
         snooze.setPadding(0, dp(15), 0, dp(8));
         snooze.setOnClickListener(v -> {
+            ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
             ReminderScheduler.scheduleSnooze(this, 5, action);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
             finish();
@@ -143,8 +152,7 @@ public final class ReminderActivity extends Activity {
     }
 
     private void showWaiting() {
-        getWindow().setStatusBarColor(0xffe4f2e3);
-        getWindow().setNavigationBarColor(0xffe4f2e3);
+        setReminderSystemBarBackground();
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -178,6 +186,14 @@ public final class ReminderActivity extends Activity {
         timerHandler.post(tick);
     }
 
+    private void setReminderSystemBarBackground() {
+        getWindow().setStatusBarColor(0xffe4f2e3);
+        getWindow().setNavigationBarColor(0xffe4f2e3);
+        getWindow().getDecorView().setBackgroundColor(0xffe4f2e3);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    }
+
     private void completeSession() {
         long ended = System.currentTimeMillis();
         ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_DONE, startedAt, ended, "");
@@ -192,24 +208,100 @@ public final class ReminderActivity extends Activity {
     }
 
     private void askReason() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(22), dp(22), dp(22), dp(16));
+        content.setBackground(round(Color.WHITE, 22));
+
+        TextView title = text("这次没做的原因", 21, 0xff23342a, true);
+        content.addView(title);
+
+        TextView subtitle = text("记下此刻的情况，之后可以更了解自己的节奏。", 14, 0xff718076, false);
+        subtitle.setPadding(0, dp(7), 0, dp(18));
+        content.addView(subtitle);
+
+        TextView prompt = text("备注，一句话就好，就1s解释，你必须填！", 15, GREEN, true);
+        prompt.setLineSpacing(dp(3), 1f);
+        prompt.setPadding(dp(14), dp(12), dp(14), dp(12));
+        prompt.setBackground(round(0xffedf6ec, 14));
+        content.addView(prompt);
+
         EditText reason = new EditText(this);
-        reason.setHint("备注，一句话就好，就1s钟解释，你必须填！");
-        reason.setSingleLine(true);
-        new AlertDialog.Builder(this).setTitle("这次没做的原因")
-                .setMessage("写一句就好，帮自己留个记录。")
-                .setView(reason)
-                .setNegativeButton("再想想", null)
-                .setPositiveButton("提交", (dialog, which) -> {
-                    String value = reason.getText().toString().trim();
-                    if (value.isEmpty()) {
-                        Toast.makeText(this, "请填写一句原因", Toast.LENGTH_SHORT).show();
-                        askReason();
-                        return;
-                    }
-                    ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_MISSED,
-                            startedAt, System.currentTimeMillis(), value);
-                    finish();
-                }).show();
+        reason.setHint("例如：刚好在开会");
+        reason.setTextSize(16);
+        reason.setTextColor(0xff23342a);
+        reason.setHintTextColor(0xff93a197);
+        reason.setGravity(Gravity.TOP | Gravity.START);
+        reason.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        reason.setSingleLine(false);
+        reason.setMinLines(3);
+        reason.setMaxLines(4);
+        reason.setPadding(dp(14), dp(12), dp(14), dp(12));
+        reason.setBackground(round(0xfff4f7f3, 14));
+        LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(-1, -2);
+        reasonParams.topMargin = dp(12);
+        content.addView(reason, reasonParams);
+
+        TextView error = text("请写一句原因后再提交", 13, 0xffbd5147, false);
+        error.setVisibility(View.GONE);
+        error.setPadding(dp(2), dp(6), 0, 0);
+        content.addView(error);
+
+        reason.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (s.length() > 0) error.setVisibility(View.GONE);
+            }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(scroll).create();
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        actions.setPadding(0, dp(18), 0, 0);
+        TextView cancel = text("再想想", 15, 0xff617167, true);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setPadding(dp(18), dp(12), dp(18), dp(12));
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        TextView submit = text("提交记录", 15, Color.WHITE, true);
+        submit.setGravity(Gravity.CENTER);
+        submit.setPadding(dp(22), dp(12), dp(22), dp(12));
+        submit.setBackground(round(GREEN, 14));
+        LinearLayout.LayoutParams submitParams = new LinearLayout.LayoutParams(-2, -2);
+        submitParams.leftMargin = dp(8);
+        actions.addView(cancel);
+        actions.addView(submit, submitParams);
+        content.addView(actions);
+
+        submit.setOnClickListener(v -> {
+            String value = reason.getText().toString().trim();
+            if (value.isEmpty()) {
+                error.setVisibility(View.VISIBLE);
+                reason.requestFocus();
+                return;
+            }
+            ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_MISSED,
+                    startedAt, System.currentTimeMillis(), value);
+            dialog.dismiss();
+            finish();
+        });
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(36), -2);
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+    }
+
+    private GradientDrawable round(int color, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+        return drawable;
     }
 
     @Override protected void onPause() { super.onPause(); timerHandler.removeCallbacks(tick); }

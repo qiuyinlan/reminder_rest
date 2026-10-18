@@ -4,7 +4,6 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 
 import java.util.Calendar;
 import java.util.List;
@@ -57,7 +56,7 @@ final class ReminderScheduler {
         } else {
             next = nextTime(rule, now);
         }
-        setAlarm(context, alarms, next, pendingIntent(context, rule.id, rule.title));
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pendingIntent(context, rule.id, rule.title));
     }
 
     static void scheduleSnooze(Context context, int minutes, String action) {
@@ -65,17 +64,7 @@ final class ReminderScheduler {
         if (alarms == null) return;
         Intent intent = new Intent(context, ReminderReceiver.class).putExtra("snooze", true).putExtra("action", action);
         PendingIntent pending = PendingIntent.getBroadcast(context, 704, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        setAlarm(context, alarms, System.currentTimeMillis() + minutes * 60_000L, pending);
-    }
-
-    private static void setAlarm(Context context, AlarmManager alarms, long triggerAt, PendingIntent pending) {
-        if (Build.VERSION.SDK_INT >= 31 && ReminderSettings.exactAlarmsAllowed(context)) {
-            try {
-                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
-                return;
-            } catch (SecurityException ignored) { }
-        }
-        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + minutes * 60_000L, pending);
     }
 
     private static PendingIntent pendingIntent(Context context, int id, String title) {

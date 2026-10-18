@@ -17,7 +17,6 @@ import androidx.core.app.NotificationManagerCompat;
 
 public final class ReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "health_breaks_v2";
-
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null && intent.getBooleanExtra("snooze", false)) {
@@ -47,6 +46,11 @@ public final class ReminderReceiver extends BroadcastReceiver {
         if (action == null) action = ReminderSettings.nextType(context);
         Intent open = new Intent(context, ReminderActivity.class).putExtra("action", action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 702, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        boolean covered = ReminderOverlayWindow.show(context, action);
+        if (covered) {
+            NotificationManagerCompat.from(context).cancel(703);
+            return;
+        }
         String title = ReminderActivity.titleFor(action);
         String message = ReminderActivity.pleaFor(action);
         androidx.core.app.NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
@@ -55,8 +59,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setContentText(message)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setFullScreenIntent(content, true)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setAutoCancel(true)
                 .setContentIntent(content);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {

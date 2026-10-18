@@ -2,11 +2,15 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -25,6 +29,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.text.SimpleDateFormat;
 
 public final class ItemsActivity extends Activity {
     private static final int GREEN = 0xff277049;
@@ -99,6 +109,7 @@ public final class ItemsActivity extends Activity {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.bottomMargin = dp(10);
             list.addView(card, params);
             card.setOnClickListener(v -> editRule(rule));
+            card.setOnLongClickListener(v -> { showItemHistory(rule); return true; });
         }
         if (ReminderSettings.rules(this).isEmpty()) list.addView(text("点击右下角 + 添加提醒事项", 14, MUTED, false));
     }
@@ -155,6 +166,165 @@ public final class ItemsActivity extends Activity {
         builder.show();
     }
 
+    private void showItemHistory(ReminderSettings.Rule rule) {
+        Calendar selectedDay = Calendar.getInstance();
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(12));
+        panel.setBackground(round(Color.WHITE, 20));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout titleGroup = new LinearLayout(this);
+        titleGroup.setOrientation(LinearLayout.VERTICAL);
+        titleGroup.addView(text(rule.title, 19, INK, true));
+        TextView subtitle = text("今天每一次照顾自己，都值得记下来", 12, MUTED, false);
+        subtitle.setPadding(0, dp(3), 0, 0);
+        titleGroup.addView(subtitle);
+        header.addView(titleGroup, new LinearLayout.LayoutParams(0, -2, 1));
+        View calendarButton = new CalendarButton();
+        calendarButton.setContentDescription("选择日期");
+        calendarButton.setBackground(round(0xffedf6ec, 12));
+        header.addView(calendarButton, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        panel.addView(header);
+
+        LinearLayout dateRow = new LinearLayout(this);
+        dateRow.setGravity(Gravity.CENTER_VERTICAL);
+        dateRow.setPadding(0, dp(14), 0, dp(10));
+        TextView previous = text("‹", 28, GREEN, true);
+        previous.setGravity(Gravity.CENTER);
+        dateRow.addView(previous, new LinearLayout.LayoutParams(dp(42), dp(38)));
+        TextView dateLabel = text("", 14, INK, true);
+        dateLabel.setGravity(Gravity.CENTER);
+        dateRow.addView(dateLabel, new LinearLayout.LayoutParams(0, dp(38), 1));
+        TextView next = text("›", 28, GREEN, true);
+        next.setGravity(Gravity.CENTER);
+        dateRow.addView(next, new LinearLayout.LayoutParams(dp(42), dp(38)));
+        panel.addView(dateRow);
+
+        TextView totals = text("", 13, MUTED, true);
+        totals.setPadding(0, 0, 0, dp(10));
+        panel.addView(totals);
+
+        LinearLayout history = new LinearLayout(this);
+        history.setOrientation(LinearLayout.VERTICAL);
+        ScrollView historyScroll = new ScrollView(this);
+        historyScroll.setFillViewport(true);
+        historyScroll.addView(history);
+        panel.addView(historyScroll, new LinearLayout.LayoutParams(-1, dp(300)));
+
+        Runnable refresh = () -> renderItemHistory(rule, selectedDay, dateLabel, totals, history);
+        View.OnClickListener chooseDate = v -> new DatePickerDialog(this, (picker, year, month, day) -> {
+            selectedDay.set(year, month, day);
+            refresh.run();
+        }, selectedDay.get(Calendar.YEAR), selectedDay.get(Calendar.MONTH), selectedDay.get(Calendar.DAY_OF_MONTH)).show();
+        calendarButton.setOnClickListener(chooseDate);
+        dateLabel.setOnClickListener(chooseDate);
+        previous.setOnClickListener(v -> { selectedDay.add(Calendar.DAY_OF_MONTH, -1); refresh.run(); });
+        next.setOnClickListener(v -> { selectedDay.add(Calendar.DAY_OF_MONTH, 1); refresh.run(); });
+        refresh.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(panel).create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(32), -2);
+        }
+    }
+
+    private void renderItemHistory(ReminderSettings.Rule rule, Calendar day, TextView dateLabel,
+                                   TextView totals, LinearLayout history) {
+        dateLabel.setText(new SimpleDateFormat("yyyy年M月d日  EEEE", Locale.CHINA).format(day.getTime()));
+        ArrayList<ReminderRecord> records = new ArrayList<>();
+        int done = 0;
+        int missed = 0;
+        for (ReminderRecord record : ReminderRecord.all(this)) {
+            if (!rule.title.equals(record.action) || !sameDay(record.startedAt, day)) continue;
+            if (ReminderRecord.KIND_DONE.equals(record.kind)) done++;
+            else if (ReminderRecord.KIND_MISSED.equals(record.kind)) missed++;
+            else continue;
+            records.add(record);
+        }
+        Collections.sort(records, Comparator.comparingLong(record -> record.startedAt));
+        totals.setText("完成 " + done + " 次    没做 " + missed + " 次");
+        history.removeAllViews();
+        for (ReminderRecord record : records) {
+            boolean completed = ReminderRecord.KIND_DONE.equals(record.kind);
+            int accent = completed ? GREEN : 0xffbf665a;
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.TOP);
+            row.setPadding(dp(12), dp(11), dp(12), dp(11));
+            row.setBackground(round(completed ? 0xffedf6ec : 0xfffff1ed, 12));
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+            rowParams.bottomMargin = dp(8);
+            TextView marker = text(completed ? "✓" : "·", 18, accent, true);
+            marker.setGravity(Gravity.CENTER);
+            row.addView(marker, new LinearLayout.LayoutParams(dp(24), dp(24)));
+            LinearLayout detail = new LinearLayout(this);
+            detail.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(0, -2, 1);
+            detailParams.leftMargin = dp(8);
+            row.addView(detail, detailParams);
+            detail.addView(text(completed ? "做到了" : "这次没做", 14, INK, true));
+            String note = record.reason == null ? "" : record.reason.trim();
+            if (completed && "提前完成".equals(note)) note = "提前完成一次";
+            if (!note.isEmpty()) {
+                TextView noteView = text(note, 13, MUTED, false);
+                noteView.setPadding(0, dp(3), 0, 0);
+                detail.addView(noteView);
+            }
+            TextView time = text(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(record.startedAt), 11, accent, true);
+            time.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+            row.addView(time, new LinearLayout.LayoutParams(-2, dp(24)));
+            history.addView(row, rowParams);
+        }
+        if (records.isEmpty()) {
+            TextView empty = text("这一天还没有“" + rule.title + "”的记录", 13, MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, dp(32), 0, dp(32));
+            history.addView(empty);
+        }
+    }
+
+    private boolean sameDay(long timestamp, Calendar day) {
+        Calendar value = Calendar.getInstance();
+        value.setTimeInMillis(timestamp);
+        return value.get(Calendar.YEAR) == day.get(Calendar.YEAR)
+                && value.get(Calendar.DAY_OF_YEAR) == day.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private final class CalendarButton extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        CalendarButton() {
+            super(ItemsActivity.this);
+            paint.setColor(GREEN);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1.8f));
+            paint.setStrokeCap(Paint.Cap.ROUND);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float scale = getResources().getDisplayMetrics().density;
+            float x = (getWidth() - dp(20)) / 2f;
+            float y = (getHeight() - dp(20)) / 2f;
+            canvas.save();
+            canvas.translate(x, y);
+            canvas.scale(scale, scale);
+            canvas.drawRoundRect(new RectF(2, 4, 18, 19), 2, 2, paint);
+            canvas.drawLine(2, 8, 18, 8, paint);
+            canvas.drawLine(6, 2, 6, 6, paint);
+            canvas.drawLine(14, 2, 14, 6, paint);
+            paint.setStyle(Paint.Style.FILL);
+            for (int row = 0; row < 2; row++) {
+                for (int col = 0; col < 3; col++) canvas.drawCircle(6 + col * 4, 12 + row * 3, 0.8f, paint);
+            }
+            paint.setStyle(Paint.Style.STROKE);
+            canvas.restore();
+        }
+    }
+
     private TextView timeField(String title, int minute) {
         TextView field = text(title + "\n" + MainActivity.clock(minute), 15, GREEN, true); field.setGravity(Gravity.CENTER);
         field.setPadding(dp(10), dp(10), dp(10), dp(10)); field.setBackground(round(0xffe7f1e5, 12));
@@ -178,20 +348,17 @@ public final class ItemsActivity extends Activity {
     private String intervalText(int minutes) { int h = minutes / 60, m = minutes % 60; if (h == 0) return "每 " + m + " 分钟"; return m == 0 ? "每 " + h + " 小时" : "每 " + h + " 小时 " + m + " 分钟"; }
 
     private void addNavigation(LinearLayout screen) {
-        LinearLayout nav = new LinearLayout(this); nav.setBackgroundColor(Color.WHITE); nav.setGravity(Gravity.CENTER);
-        TextView home = text("首页", 13, MUTED, true), items = text("事项", 13, GREEN, true), stats = text("统计", 13, MUTED, true);
-        home.setText("⌂\n首页"); items.setText("▦\n事项"); stats.setText("◷\n统计");
-        setTabText(home, "⌂", "首页"); setTabText(items, "▦", "事项"); setTabText(stats, "◷", "统计");
-        home.setGravity(Gravity.CENTER); items.setGravity(Gravity.CENTER); stats.setGravity(Gravity.CENTER);
-        for (TextView tab : new TextView[]{home, items, stats}) nav.addView(tab, new LinearLayout.LayoutParams(0, dp(60), 1));
-        home.setOnClickListener(v -> { finish(); overridePendingTransition(0, 0); });
-        stats.setOnClickListener(v -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });
-        screen.addView(nav);
+        LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.ITEMS,
+                () -> { finish(); overridePendingTransition(0, 0); },
+                null,
+                () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });
+        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
     }
 
     private TextView text(String value, int size, int color, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return t; }
-    private void setTabText(TextView tab, String icon, String title) { android.text.SpannableString value = new android.text.SpannableString(icon + "\n" + title); value.setSpan(new android.text.style.RelativeSizeSpan(icon.equals("◷") ? 2f : 1.65f), 0, icon.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE); tab.setText(value); }
     private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
     private GradientDrawable circle(int color) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setShape(GradientDrawable.OVAL); return d; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private float dp(float value) { return value * getResources().getDisplayMetrics().density; }
 }
