@@ -45,6 +45,8 @@ public final class MainActivity extends Activity {
     private static final int PAPER = Color.rgb(244, 248, 241);
     private LinearLayout body;
     private boolean reopenPermissionGuide;
+    private boolean checkExactAlarmOnResume;
+    private boolean exactAlarmAllowedBeforeSettings;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -53,6 +55,7 @@ public final class MainActivity extends Activity {
         getWindow().setNavigationBarColor(PAPER);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
+        ReminderScheduler.update(this);
         if (getIntent().getBooleanExtra("new_item", false)) editRule(null);
         int editId = getIntent().getIntExtra("edit_id", -1);
         if (editId >= 0) for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) if (rule.id == editId) { editRule(rule); break; }
@@ -63,6 +66,12 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (body != null) {
             render();
+            if (checkExactAlarmOnResume) {
+                checkExactAlarmOnResume = false;
+                if (exactAlarmAllowedBeforeSettings != ReminderSettings.exactAlarmsAllowed(this)) {
+                    ReminderScheduler.update(this);
+                }
+            }
             if (reopenPermissionGuide) {
                 reopenPermissionGuide = false;
                 showPermissionChecklist();
@@ -243,7 +252,8 @@ public final class MainActivity extends Activity {
         boolean usage = UsageAccess.hasAccess(this);
         boolean accessibility = isWatchServiceEnabled();
         boolean fullScreen = ReminderSettings.fullScreenIntentAllowed(this);
-        boolean ready = notification && usage && accessibility && fullScreen;
+        boolean exactAlarm = ReminderSettings.exactAlarmsAllowed(this);
+        boolean ready = notification && usage && accessibility && fullScreen && exactAlarm;
         LinearLayout banner = new LinearLayout(this);
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(14), dp(11), dp(14), dp(11));
@@ -268,6 +278,7 @@ public final class MainActivity extends Activity {
         explanation.setPadding(0, 0, 0, dp(8));
         list.addView(explanation, 0);
         addPermissionRow(list, guide, "通知权限", notification, () -> { if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 91); });
+        addPermissionRow(list, guide, "精确闹钟（按设定时间提醒）", ReminderSettings.exactAlarmsAllowed(this), this::openExactAlarmSettings);
         addPermissionRow(list, guide, "使用情况访问", UsageAccess.hasAccess(this), this::openUsageSettings);
         addPermissionRow(list, guide, "无障碍服务（读取当前 App 名称）", isWatchServiceEnabled(), this::openAccessibilitySettings);
         addPermissionRow(list, guide, "全屏提醒权限", ReminderSettings.fullScreenIntentAllowed(this), this::openFullScreenIntentSettings);
@@ -297,6 +308,19 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        exactAlarmAllowedBeforeSettings = ReminderSettings.exactAlarmsAllowed(this);
+        checkExactAlarmOnResume = true;
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception error) {
+            Toast.makeText(this, "无法打开精确闹钟设置", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private boolean isBuiltIn(String title) {
         for (String type : ReminderSettings.TYPES) if (type.equals(title)) return true;
         return false;
@@ -322,17 +346,21 @@ public final class MainActivity extends Activity {
         int done = ReminderSettings.completedToday(this, rule.id);
         copy.addView(label(clock(rule.start) + " - " + clock(rule.end) + "  ·  " + intervalText(rule.interval) + "  ·  今日 " + done + "/" + rule.dailyTarget, 12, MUTED, false));
         String nextText;
+        long nextAt = 0L;
+        boolean ticking = false;
         if (done >= rule.dailyTarget && !rule.remindAfterTarget) {
             nextText = "✓ 今日目标已完成";
         } else if (!rule.enabled || !ReminderSettings.enabled(this)) {
             nextText = "提醒已暂停";
         } else {
-            long nextAt = ReminderScheduler.nextTime(rule, System.currentTimeMillis());
-            long minutesLeft = Math.max(0, (nextAt - System.currentTimeMillis() + 59_999L) / 60_000L);
-            nextText = minutesLeft < 1 ? "即将提醒" : "下次提醒还有 " + minutesLeft + " 分钟";
+            nextAt = ReminderScheduler.nextTime(rule, System.currentTimeMillis());
+            ticking = true;
+            nextText = countdownText(nextAt - System.currentTimeMillis());
             if (done >= rule.dailyTarget) nextText = "目标已达成，仍提醒 · " + nextText;
         }
-        copy.addView(label(nextText, 12, done >= rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget));
+        TextView countdown = label(nextText, 12, done >= rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget);
+        copy.addView(countdown);
+        if (ticking) startCountdown(countdown, nextAt, done >= rule.dailyTarget);
         TextView complete = label(done >= rule.dailyTarget ? "✓ 已完成" : "完成一次", 12, done >= rule.dailyTarget ? GREEN : 0xff547b5e, true);
         complete.setPadding(0, dp(5), 0, 0);
         complete.setOnClickListener(v -> { if (ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget)) ReminderScheduler.update(this); render(); });
@@ -346,6 +374,28 @@ public final class MainActivity extends Activity {
         item.setOnClickListener(v -> editRule(rule));
         item.setOnLongClickListener(v -> { editRule(rule); return true; });
         parent.addView(item, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private String countdownText(long remainingMillis) {
+        long seconds = Math.max(0, (remainingMillis + 999L) / 1000L);
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long remainder = seconds % 60;
+        return String.format(java.util.Locale.getDefault(), "还差%dh%02dmin%02ds提醒", hours, minutes, remainder);
+    }
+
+    private void startCountdown(TextView view, long nextAt, boolean targetReached) {
+        Runnable ticker = new Runnable() {
+            @Override public void run() {
+                if (!view.isAttachedToWindow()) return;
+                String value = countdownText(nextAt - System.currentTimeMillis());
+                if (targetReached) value = "目标已达成，仍提醒 · " + value;
+                view.setText(value);
+                view.setTextColor(targetReached ? GREEN : MUTED);
+                view.postDelayed(this, 1000);
+            }
+        };
+        view.post(ticker);
     }
 
     private int iconColor(String title) {

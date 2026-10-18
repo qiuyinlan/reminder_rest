@@ -4,6 +4,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
 import java.util.Calendar;
 import java.util.List;
@@ -56,8 +57,7 @@ final class ReminderScheduler {
         } else {
             next = nextTime(rule, now);
         }
-        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next,
-                pendingIntent(context, rule.id, rule.title));
+        setAlarm(context, alarms, next, pendingIntent(context, rule.id, rule.title));
     }
 
     static void scheduleSnooze(Context context, int minutes, String action) {
@@ -65,7 +65,17 @@ final class ReminderScheduler {
         if (alarms == null) return;
         Intent intent = new Intent(context, ReminderReceiver.class).putExtra("snooze", true).putExtra("action", action);
         PendingIntent pending = PendingIntent.getBroadcast(context, 704, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + minutes * 60_000L, pending);
+        setAlarm(context, alarms, System.currentTimeMillis() + minutes * 60_000L, pending);
+    }
+
+    private static void setAlarm(Context context, AlarmManager alarms, long triggerAt, PendingIntent pending) {
+        if (Build.VERSION.SDK_INT >= 31 && ReminderSettings.exactAlarmsAllowed(context)) {
+            try {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+                return;
+            } catch (SecurityException ignored) { }
+        }
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
     }
 
     private static PendingIntent pendingIntent(Context context, int id, String title) {
@@ -87,33 +97,36 @@ final class ReminderScheduler {
         end.set(Calendar.MINUTE, rule.end % 60);
         end.set(Calendar.SECOND, 0);
         end.set(Calendar.MILLISECOND, 0);
-        boolean overnight = !end.after(start);
-        if (overnight) end.add(Calendar.DAY_OF_YEAR, 1);
-        Calendar candidate;
-        if (overnight && now.before(start)) {
-            Calendar endToday = (Calendar) end.clone();
-            endToday.add(Calendar.DAY_OF_YEAR, -1);
-            if (now.before(endToday)) {
-                candidate = (Calendar) now.clone();
-                candidate.add(Calendar.MINUTE, rule.interval);
-                if (candidate.before(end)) return candidate.getTimeInMillis();
-                candidate = (Calendar) start.clone();
-            } else {
-                candidate = (Calendar) start.clone();
-            }
-        } else if (now.before(start)) {
-            candidate = (Calendar) start.clone();
-        } else if (!now.before(end)) {
-            candidate = (Calendar) start.clone();
-            candidate.add(Calendar.DAY_OF_YEAR, 1);
-        } else {
-            candidate = (Calendar) now.clone();
-            candidate.add(Calendar.MINUTE, rule.interval);
-            if (candidate.before(end)) return candidate.getTimeInMillis();
-            candidate = (Calendar) start.clone();
-            if (!candidate.after(now)) candidate.add(Calendar.DAY_OF_YEAR, 1);
+
+        if (rule.start == rule.end) {
+            Calendar next = (Calendar) now.clone();
+            next.add(Calendar.MINUTE, rule.interval);
+            return next.getTimeInMillis();
         }
-        candidate.add(Calendar.MINUTE, rule.interval);
-        return candidate.getTimeInMillis();
+
+        boolean overnight = rule.end < rule.start;
+        if (overnight) end.add(Calendar.DAY_OF_YEAR, 1);
+
+        if (overnight && now.before(start) && now.before(end)) {
+            Calendar previousEnd = (Calendar) end.clone();
+            previousEnd.add(Calendar.DAY_OF_YEAR, -1);
+            if (now.before(previousEnd)) {
+                Calendar next = (Calendar) now.clone();
+                next.add(Calendar.MINUTE, rule.interval);
+                if (next.before(end)) return next.getTimeInMillis();
+            }
+        } else if (!now.before(start) && now.before(end)) {
+            Calendar next = (Calendar) now.clone();
+            next.add(Calendar.MINUTE, rule.interval);
+            if (next.before(end)) return next.getTimeInMillis();
+        }
+
+        if (now.before(start)) {
+            start.add(Calendar.MINUTE, rule.interval);
+            return start.getTimeInMillis();
+        }
+        start.add(Calendar.DAY_OF_YEAR, 1);
+        start.add(Calendar.MINUTE, rule.interval);
+        return start.getTimeInMillis();
     }
 }

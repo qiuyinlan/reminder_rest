@@ -8,13 +8,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.RingtoneManager;
 import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ReminderReceiver extends BroadcastReceiver {
-    private static final String CHANNEL_ID = "health_breaks";
+    private static final String CHANNEL_ID = "health_breaks_v2";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -65,6 +67,14 @@ public final class ReminderReceiver extends BroadcastReceiver {
     private static void createChannel(Context context) {
         if (Build.VERSION.SDK_INT < 26) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (manager != null) manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "健康提醒", NotificationManager.IMPORTANCE_HIGH));
+        if (manager != null) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "健康提醒", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("定时健康休息提醒");
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 350, 150, 350});
+            channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
+            manager.createNotificationChannel(channel);
+        }
     }
 }

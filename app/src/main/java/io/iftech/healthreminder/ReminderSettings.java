@@ -3,6 +3,7 @@ package io.iftech.healthreminder;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.app.NotificationManager;
+import android.app.AlarmManager;
 import android.os.Build;
 
 import org.json.JSONArray;
@@ -63,6 +64,12 @@ final class ReminderSettings {
         if (Build.VERSION.SDK_INT < 34) return true;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         return manager != null && manager.canUseFullScreenIntent();
+    }
+
+    static boolean exactAlarmsAllowed(Context context) {
+        if (Build.VERSION.SDK_INT < 31) return true;
+        AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        return manager != null && manager.canScheduleExactAlarms();
     }
 
     static Set<String> whitelist(Context context) {
