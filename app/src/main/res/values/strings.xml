@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_service_description">仅用于识别当前打开的应用，并在你选择的时段提醒休息；不读取屏幕文字或窗口内容。</string>
+</resources>
