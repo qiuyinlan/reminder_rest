@@ -28,45 +28,82 @@ public final class ReminderReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null && ACTION_STOP_ALARM_VIBRATION.equals(intent.getAction())) {
-            stopAlarmVibration(context);
+            Log.i(TAG, "stopAlarm action received");
+            stopAlarmVibration(context, "notification dismissed");
             return;
         }
-        if (intent != null && intent.getBooleanExtra("snooze", false)) {
+        boolean snooze = intent != null && intent.getBooleanExtra("snooze", false);
+        int receivedRuleId = intent == null ? -1 : intent.getIntExtra("rule_id", -1);
+        PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        Log.i(TAG, "received snooze=" + snooze + " rule=" + receivedRuleId
+                + " enabled=" + ReminderSettings.enabled(context)
+                + " screenOffAlarm=" + ReminderSettings.screenOffAlarm(context)
+                + " interactive=" + (power == null || power.isInteractive()));
+        if (snooze) {
             if (!ReminderSettings.enabled(context)) return;
             String action = intent.getStringExtra("action");
-            int ruleId = intent.getIntExtra("rule_id", -1);
+            int ruleId = receivedRuleId;
             if (!hasEnabledRule(context, ruleId, action)) return;
             if (shouldSkipWhileScreenOff(context)) {
+                Log.i(TAG, "snooze skipped while screen is off; pausing schedule");
                 ReminderScheduler.pauseForScreenOff(context);
                 return;
             }
             ReminderScheduler.consumeSnooze(context, ruleId);
-            post(context, action, ruleId);
             if (intent.getBooleanExtra("resume_schedule", false) && ruleId >= 0) {
-                ReminderScheduler.scheduleNext(context, ruleId);
+                scheduleNextSafely(context, ruleId);
             }
+            postSafely(context, action, ruleId);
             return;
         }
         if (!ReminderSettings.enabled(context)) return;
-        int ruleId = intent == null ? -1 : intent.getIntExtra("rule_id", -1);
+        int ruleId = receivedRuleId;
         ReminderSettings.Rule rule = null;
         for (ReminderSettings.Rule candidate : ReminderSettings.rules(context)) {
             if (candidate.id == ruleId && candidate.enabled) { rule = candidate; break; }
         }
-        if (rule == null) return;
+        if (rule == null) {
+            Log.w(TAG, "ignored alarm with no enabled rule=" + ruleId);
+            return;
+        }
         if (shouldSkipWhileScreenOff(context)) {
+            Log.i(TAG, "rule skipped while screen is off; pausing schedule rule=" + ruleId);
             ReminderScheduler.pauseForScreenOff(context);
             return;
         }
         if (ReminderSettings.usageOnly(context)) {
             long recent = UsageAccess.recentMillis(context, System.currentTimeMillis() - rule.intervalSeconds * 1_000L, System.currentTimeMillis());
             if (recent == 0) {
-                ReminderScheduler.scheduleNext(context, rule.id);
+                scheduleNextSafely(context, rule.id);
                 return;
             }
         }
-        post(context, rule.title, rule.id);
-        ReminderScheduler.scheduleNext(context, rule.id);
+        if (ReminderSettings.screenOffAlarm(context)
+                && (power == null || !power.isInteractive())
+                && (ReminderSettings.screenOffSound(context) || ReminderSettings.screenOffVibrate(context))) {
+            ReminderScheduler.beginScreenOffAlarmSession(context, rule.id);
+            Log.i(TAG, "screen-off alarm session started rule=" + rule.id);
+        }
+        scheduleNextSafely(context, rule.id);
+        postSafely(context, rule.title, rule.id);
+    }
+
+    private static void scheduleNextSafely(Context context, int ruleId) {
+        try {
+            ReminderScheduler.scheduleNext(context, ruleId);
+            Log.i(TAG, "next alarm scheduled rule=" + ruleId
+                    + " at=" + ReminderScheduler.scheduledAt(context, ruleId));
+        } catch (RuntimeException error) {
+            Log.e(TAG, "unable to schedule next alarm rule=" + ruleId, error);
+        }
+    }
+
+    private static void postSafely(Context context, String action, int ruleId) {
+        try {
+            post(context, action, ruleId);
+        } catch (RuntimeException error) {
+            Log.e(TAG, "unable to post reminder rule=" + ruleId, error);
+        }
     }
 
     private static boolean hasEnabledRule(Context context, int ruleId, String action) {
@@ -87,22 +124,24 @@ public final class ReminderReceiver extends BroadcastReceiver {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         boolean screenOffAlarmEnabled = ReminderSettings.screenOffAlarm(context);
         boolean interactive = power == null || power.isInteractive();
-        boolean alarmMode = screenOffAlarmEnabled && !interactive;
+        boolean alarmSession = ReminderScheduler.screenOffAlarmSessionActive(context, ruleId);
+        boolean alarmMode = screenOffAlarmEnabled && (!interactive || alarmSession);
         boolean soundEnabled = alarmMode && ReminderSettings.screenOffSound(context);
         boolean vibrate = alarmMode && ReminderSettings.screenOffVibrate(context);
         boolean notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
                 && (Build.VERSION.SDK_INT < 33
                 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
         Log.i(TAG, "post rule=" + ruleId + " screenOffEnabled=" + screenOffAlarmEnabled
-                + " interactive=" + interactive + " notificationsEnabled=" + notificationsEnabled);
+                + " alarmSession=" + alarmSession + " interactive=" + interactive
+                + " notificationsEnabled=" + notificationsEnabled);
         Uri alarmSound = alarmSound(context);
-        boolean serviceAlarm = alarmMode && (soundEnabled || vibrate)
+        boolean serviceRequestAccepted = alarmMode && (soundEnabled || vibrate)
                 && AlarmRingtoneService.start(context, alarmSound, soundEnabled, vibrate);
-        Log.i(TAG, "alarmMode=" + alarmMode + " serviceStarted=" + serviceAlarm
+        Log.i(TAG, "alarmMode=" + alarmMode + " serviceRequestAccepted=" + serviceRequestAccepted
                 + " sound=" + soundEnabled + " vibrate=" + vibrate);
-        if (vibrate && !notificationsEnabled && !serviceAlarm) vibrateForAlarm(context);
+        if (vibrate && !notificationsEnabled && !serviceRequestAccepted) vibrateForAlarm(context);
         String channelId = createChannel(context, alarmMode,
-                soundEnabled && !serviceAlarm, vibrate && !serviceAlarm, alarmSound);
+                soundEnabled && !serviceRequestAccepted, vibrate && !serviceRequestAccepted, alarmSound);
         if (action == null) action = ReminderSettings.nextType(context);
         Intent open = new Intent(context, ReminderActivity.class).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -136,18 +175,24 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setAutoCancel(true)
                 .setContentIntent(content)
                 .setDeleteIntent(delete)
-                .setFullScreenIntent(content, screenOffAlarmEnabled);
+                .setFullScreenIntent(content, alarmMode);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             NotificationManagerCompat.from(context).notify(703, builder.build());
-            Log.i(TAG, "notificationPosted channel=" + channelId + " fullScreen=" + screenOffAlarmEnabled);
+            Log.i(TAG, "notificationPosted channel=" + channelId + " fullScreen=" + alarmMode);
         } else {
             Log.w(TAG, "notificationSkipped permissionDenied");
         }
     }
 
-    static void stopAlarmVibration(Context context) {
-        Vibrator vibrator = defaultVibrator(context);
-        if (vibrator != null) vibrator.cancel();
+    static void stopAlarmVibration(Context context, String reason) {
+        Log.i(TAG, "stopping alarm reason=" + reason);
+        ReminderScheduler.clearScreenOffAlarmSession(context, reason);
+        try {
+            Vibrator vibrator = defaultVibrator(context);
+            if (vibrator != null) vibrator.cancel();
+        } catch (RuntimeException error) {
+            Log.w(TAG, "unable to cancel the default vibrator", error);
+        }
         AlarmRingtoneService.stop(context);
     }
 

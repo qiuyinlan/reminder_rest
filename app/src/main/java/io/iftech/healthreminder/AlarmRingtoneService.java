@@ -28,6 +28,11 @@ public final class AlarmRingtoneService extends Service {
     private static final int NOTIFICATION_ID = 4201;
     private Ringtone ringtone;
     private Vibrator vibrator;
+    private Uri activeSound;
+    private boolean activeSoundEnabled;
+    private boolean activeVibrate;
+    private boolean hasActiveRequest;
+    private boolean vibrationAttempted;
 
     static boolean start(Context context, Uri sound, boolean soundEnabled, boolean vibrate) {
         Intent intent = new Intent(context, AlarmRingtoneService.class)
@@ -39,7 +44,8 @@ public final class AlarmRingtoneService extends Service {
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent);
             else context.startService(intent);
             return true;
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException error) {
+            Log.e("AlarmRingtone", "Unable to request alarm playback service", error);
             return false;
         }
     }
@@ -59,30 +65,48 @@ public final class AlarmRingtoneService extends Service {
             return START_NOT_STICKY;
         }
         startForeground(NOTIFICATION_ID, buildNotification());
-        stopRingtone();
-        stopVibration();
         boolean soundEnabled = intent.getBooleanExtra(EXTRA_SOUND_ENABLED, true);
         boolean vibrate = intent.getBooleanExtra(EXTRA_VIBRATE, false);
+        Uri sound = intent.getData();
+        boolean sameRequest = hasActiveRequest && java.util.Objects.equals(activeSound, sound)
+                && activeSoundEnabled == soundEnabled && activeVibrate == vibrate;
+        boolean soundPlaying = isRingtonePlaying();
+        boolean soundActive = !soundEnabled || soundPlaying;
+        if (sameRequest && soundActive) {
+            if (vibrate && !vibrationAttempted) startVibration();
+            Log.i("AlarmRingtone", "duplicate start kept current request soundPlaying=" + soundPlaying
+                    + " vibrationAttempted=" + vibrationAttempted);
+            return START_NOT_STICKY;
+        }
+        stopRingtone();
+        stopVibration();
+        activeSound = sound;
+        activeSoundEnabled = soundEnabled;
+        activeVibrate = vibrate;
+        hasActiveRequest = true;
+        Log.i("AlarmRingtone", "foreground service started sound=" + soundEnabled
+                + " vibrate=" + vibrate + " soundUri=" + sound);
         if (vibrate) startVibration();
         if (!soundEnabled) return START_NOT_STICKY;
 
-        Uri sound = intent.getData();
         Uri defaultAlarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         ringtone = loadRingtone(sound);
         if (ringtone == null && !java.util.Objects.equals(sound, defaultAlarm)) {
             ringtone = loadRingtone(defaultAlarm);
         }
         if (ringtone == null) {
+            Log.e("AlarmRingtone", "No playable alarm tone for " + sound);
             stopSelf(startId);
             return START_NOT_STICKY;
         }
-        ringtone.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build());
-        if (Build.VERSION.SDK_INT >= 28) ringtone.setLooping(true);
         try {
+            ringtone.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build());
+            if (Build.VERSION.SDK_INT >= 28) ringtone.setLooping(true);
             ringtone.play();
+            Log.i("AlarmRingtone", "alarm playback requested; isPlaying=" + isRingtonePlaying());
         } catch (RuntimeException error) {
             Log.e("AlarmRingtone", "Unable to play the selected alarm tone", error);
             stopRingtone();
@@ -92,15 +116,24 @@ public final class AlarmRingtoneService extends Service {
             }
             ringtone = loadRingtone(defaultAlarm);
             if (ringtone == null) {
+                Log.e("AlarmRingtone", "Default alarm tone could not be loaded after selected tone failed");
                 stopSelf(startId);
                 return START_NOT_STICKY;
             }
-            ringtone.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build());
-            if (Build.VERSION.SDK_INT >= 28) ringtone.setLooping(true);
-            ringtone.play();
+            try {
+                ringtone.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build());
+                if (Build.VERSION.SDK_INT >= 28) ringtone.setLooping(true);
+                ringtone.play();
+                Log.i("AlarmRingtone", "default alarm fallback playback requested; isPlaying="
+                        + isRingtonePlaying());
+            } catch (RuntimeException fallbackError) {
+                Log.e("AlarmRingtone", "Unable to play the default alarm tone fallback", fallbackError);
+                stopRingtone();
+                stopSelf(startId);
+            }
         }
         return START_NOT_STICKY;
     }
@@ -115,31 +148,56 @@ public final class AlarmRingtoneService extends Service {
         }
     }
 
-    private void startVibration() {
-        if (Build.VERSION.SDK_INT >= 31) {
-            VibratorManager manager = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
-            vibrator = manager == null ? null : manager.getDefaultVibrator();
-        } else {
-            vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+    private boolean isRingtonePlaying() {
+        if (ringtone == null) return false;
+        try {
+            return ringtone.isPlaying();
+        } catch (RuntimeException error) {
+            Log.w("AlarmRingtone", "Unable to query alarm playback state", error);
+            return false;
         }
-        if (vibrator == null || !vibrator.hasVibrator()) return;
-        if (Build.VERSION.SDK_INT >= 26) {
-            VibrationEffect effect = VibrationEffect.createWaveform(new long[]{0, 500, 250, 500}, 0);
-            AudioAttributes attributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-            vibrator.vibrate(effect, attributes);
-        } else {
-            vibrator.vibrate(new long[]{0, 500, 250, 500}, 0);
+    }
+
+    private void startVibration() {
+        vibrationAttempted = true;
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                VibratorManager manager = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                vibrator = manager == null ? null : manager.getDefaultVibrator();
+            } else {
+                vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            }
+            if (vibrator == null || !vibrator.hasVibrator()) {
+                Log.w("AlarmRingtone", "Vibration requested but no vibrator is available");
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= 26) {
+                VibrationEffect effect = VibrationEffect.createWaveform(new long[]{0, 500, 250, 500}, 0);
+                AudioAttributes attributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build();
+                vibrator.vibrate(effect, attributes);
+            } else {
+                vibrator.vibrate(new long[]{0, 500, 250, 500}, 0);
+            }
+            Log.i("AlarmRingtone", "vibration request submitted");
+        } catch (RuntimeException error) {
+            Log.e("AlarmRingtone", "Unable to start alarm vibration", error);
         }
     }
 
     private void stopVibration() {
         if (vibrator != null) {
-            vibrator.cancel();
-            vibrator = null;
+            try {
+                vibrator.cancel();
+            } catch (RuntimeException error) {
+                Log.w("AlarmRingtone", "Unable to stop previous alarm vibration", error);
+            } finally {
+                vibrator = null;
+            }
         }
+        vibrationAttempted = false;
     }
 
     private Notification buildNotification() {
@@ -168,14 +226,22 @@ public final class AlarmRingtoneService extends Service {
 
     private void stopRingtone() {
         if (ringtone != null) {
-            if (ringtone.isPlaying()) ringtone.stop();
-            ringtone = null;
+            try {
+                if (ringtone.isPlaying()) ringtone.stop();
+            } catch (RuntimeException error) {
+                Log.w("AlarmRingtone", "Unable to stop previous alarm tone", error);
+            } finally {
+                ringtone = null;
+            }
         }
     }
 
     @Override public void onDestroy() {
+        Log.i("AlarmRingtone", "foreground service destroyed");
         stopRingtone();
         stopVibration();
+        activeSound = null;
+        hasActiveRequest = false;
         stopForeground(true);
         super.onDestroy();
     }

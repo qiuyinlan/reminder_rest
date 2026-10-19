@@ -137,7 +137,7 @@ public final class ReminderActivity extends Activity {
         snooze.setGravity(Gravity.CENTER);
         snooze.setPadding(0, dp(15), 0, dp(8));
         snooze.setOnClickListener(v -> {
-            ReminderReceiver.stopAlarmVibration(this);
+            ReminderReceiver.stopAlarmVibration(this, "user chose snooze");
             ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
             ReminderScheduler.scheduleSnooze(this, 5, action, ruleId);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
@@ -147,7 +147,7 @@ public final class ReminderActivity extends Activity {
     }
 
     private void beginDoing() {
-        ReminderReceiver.stopAlarmVibration(this);
+        ReminderReceiver.stopAlarmVibration(this, "user started reminder action");
         waiting = true;
         sessionId = java.util.UUID.randomUUID().toString();
         startedAt = System.currentTimeMillis();
@@ -376,7 +376,7 @@ public final class ReminderActivity extends Activity {
                 ReminderScheduler.scheduleCustomSnooze(this,
                         delayMinutes(hourPicker.getValue(), minutePicker.getValue()), action, ruleId);
             }
-            ReminderReceiver.stopAlarmVibration(this);
+            ReminderReceiver.stopAlarmVibration(this, "user submitted follow-up");
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
             dialog.dismiss();
             finish();

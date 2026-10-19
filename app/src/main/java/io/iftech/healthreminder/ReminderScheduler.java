@@ -14,14 +14,31 @@ final class ReminderScheduler {
     private static final int LEGACY_SNOOZE_REQUEST = 704;
     private static final String SCHEDULE_PREFS = "reminder_schedule";
     private static final String KEY_SCREEN_OFF_PAUSED = "screen_off_paused";
+    private static final String KEY_SCREEN_OFF_ALARM_SESSION_RULE = "screen_off_alarm_session_rule";
     private ReminderScheduler() { }
 
     static void update(Context context) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
+        if (!ReminderSettings.enabled(context) || !ReminderSettings.screenOffAlarm(context)) {
+            ReminderReceiver.stopAlarmVibration(context, "reminders or screen-off alarm disabled");
+        }
         if (isInteractive(context) && isPaused(context)) resumeAfterScreenOn(context);
         List<ReminderSettings.Rule> rules = ReminderSettings.rules(context);
         boolean enabled = ReminderSettings.enabled(context);
+        int sessionRuleId = schedulePrefs(context).getInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, -1);
+        if (sessionRuleId >= 0) {
+            boolean sessionRuleEnabled = false;
+            for (ReminderSettings.Rule rule : rules) {
+                if (rule.id == sessionRuleId && rule.enabled) {
+                    sessionRuleEnabled = true;
+                    break;
+                }
+            }
+            if (!sessionRuleEnabled) {
+                ReminderReceiver.stopAlarmVibration(context, "session rule disabled or removed");
+            }
+        }
         for (ReminderSettings.Rule rule : rules) {
             alarms.cancel(pendingIntent(context, rule.id, null));
             alarms.cancel(pendingIntent(context, rule.id, rule.title));
@@ -64,6 +81,21 @@ final class ReminderScheduler {
 
     static long scheduledAt(Context context, int ruleId) {
         return context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE).getLong(scheduleKey(ruleId), 0L);
+    }
+
+    static boolean screenOffAlarmSessionActive(Context context, int ruleId) {
+        return schedulePrefs(context).getInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, -1) == ruleId;
+    }
+
+    static void beginScreenOffAlarmSession(Context context, int ruleId) {
+        schedulePrefs(context).edit().putInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, ruleId).apply();
+    }
+
+    static void clearScreenOffAlarmSession(Context context, String reason) {
+        int ruleId = schedulePrefs(context).getInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, -1);
+        schedulePrefs(context).edit().remove(KEY_SCREEN_OFF_ALARM_SESSION_RULE).apply();
+        android.util.Log.i("HealthReminderAlarm", "screen-off alarm session cleared rule="
+                + ruleId + " reason=" + reason);
     }
 
     static void resetNext(Context context, int ruleId) {

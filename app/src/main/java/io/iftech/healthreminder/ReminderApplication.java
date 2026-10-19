@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.PowerManager;
+import android.util.Log;
 
 public final class ReminderApplication extends Application {
     private static int startedActivities;
@@ -35,7 +36,8 @@ public final class ReminderApplication extends Application {
                 if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
                     ReminderScheduler.pauseForScreenOff(context);
                 } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-                    ReminderScheduler.resumeAfterScreenOn(context);
+                    Log.i("HealthReminderAlarm", "screen on; reconciling scheduled reminders");
+                    ReminderScheduler.update(context);
                 }
             }
         };
