@@ -17,6 +17,12 @@ public final class CompanionLandingActivity extends Activity {
     private static final int PAPER = 0xfff4f8f1;
     private android.animation.ObjectAnimator breatheX;
     private android.animation.ObjectAnimator breatheY;
+    /* private boolean focusMode; */
+    /* private TextView companionOption; */
+    /* private TextView focusOption; */
+    private TextView prompt;
+    private TextView detail;
+    private TextView start;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -35,6 +41,20 @@ public final class CompanionLandingActivity extends Activity {
 
         TextView title = text("陪伴", 23, GREEN, true);
         content.addView(title);
+        /*
+        LinearLayout modes = new LinearLayout(this);
+        modes.setPadding(dp(4), dp(4), dp(4), dp(4));
+        modes.setBackground(round(0xffe4ece2, 22));
+        companionOption = modeOption("陪伴");
+        focusOption = modeOption("专注");
+        companionOption.setOnClickListener(v -> setFocusMode(false));
+        focusOption.setOnClickListener(v -> setFocusMode(true));
+        modes.addView(companionOption, new LinearLayout.LayoutParams(0, dp(40), 1));
+        modes.addView(focusOption, new LinearLayout.LayoutParams(0, dp(40), 1));
+        LinearLayout.LayoutParams modesParams = new LinearLayout.LayoutParams(-1, -2);
+        modesParams.topMargin = dp(14);
+        content.addView(modes, modesParams);
+        */
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
         LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(224), dp(224));
         faceParams.topMargin = dp(30);
@@ -50,29 +70,53 @@ public final class CompanionLandingActivity extends Activity {
         breatheX.start();
         breatheY.start();
 
-        TextView prompt = text("现在开始一段安静的陪伴", 17, 0xff23342a, true);
+        prompt = text("现在开始一段安静的陪伴", 17, 0xff23342a, true);
         prompt.setGravity(Gravity.CENTER);
         prompt.setPadding(0, dp(32), 0, dp(10));
         content.addView(prompt);
-        TextView detail = text("可选择喜欢的环境音，随时结束。", 13, MUTED, false);
+        detail = text("可选择喜欢的环境音，随时结束。", 13, MUTED, false);
         detail.setGravity(Gravity.CENTER);
         content.addView(detail);
 
         View spacer = new View(this);
         content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
-        TextView start = text("开始陪伴", 16, Color.WHITE, true);
+        start = text("开始陪伴", 16, Color.WHITE, true);
         start.setGravity(Gravity.CENTER);
         start.setBackground(round(GREEN, 18));
         start.setOnClickListener(v -> {
-            startActivity(new Intent(this, CompanionActivity.class));
+            Intent companion = new Intent(this, CompanionActivity.class);
+            /* companion.putExtra(CompanionAudioService.EXTRA_FOCUS_MODE, focusMode); */
+            startActivity(companion);
             overridePendingTransition(0, 0);
             finish();
         });
         content.addView(start, new LinearLayout.LayoutParams(-1, dp(54)));
+        // setFocusMode(false);
 
         screen.addView(createNavigation(), new LinearLayout.LayoutParams(-1, dp(60)));
         setContentView(screen);
     }
+
+    /*
+    private TextView modeOption(String label) {
+        TextView option = text(label, 14, MUTED, true);
+        option.setGravity(Gravity.CENTER);
+        return option;
+    }
+    */
+
+    /*
+    private void setFocusMode(boolean focus) {
+        focusMode = focus;
+        companionOption.setTextColor(focus ? MUTED : Color.WHITE);
+        companionOption.setBackground(round(focus ? Color.TRANSPARENT : GREEN, 18));
+        focusOption.setTextColor(focus ? Color.WHITE : MUTED);
+        focusOption.setBackground(round(focus ? GREEN : Color.TRANSPARENT, 18));
+        prompt.setText(focus ? "给自己一段专注时间" : "现在开始一段安静的陪伴");
+        detail.setText(focus ? "安静做手边的事，结束时会记下专注时长。" : "可选择喜欢的环境音，随时结束。");
+        start.setText(focus ? "开始专注" : "开始陪伴");
+    }
+    */
 
     @Override protected void onDestroy() {
         if (breatheX != null) breatheX.cancel();

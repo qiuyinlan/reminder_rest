@@ -88,7 +88,7 @@ public final class ItemsActivity extends Activity {
             details.setOrientation(LinearLayout.VERTICAL);
             details.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
             TextView name = text(rule.title, 16, INK, true);
-            TextView progress = text(done >= rule.dailyTarget ? "✓ 已完成  " + done + "/" + rule.dailyTarget : "今日完成  " + done + "/" + rule.dailyTarget + " 次", 13, done >= rule.dailyTarget ? GREEN : MUTED, true);
+            TextView progress = text(done >= rule.dailyTarget ? "✓ 已完成  " + done + "/" + rule.dailyTarget : "今日完成  " + done + "/" + rule.dailyTarget + " 次", 16, GREEN, true);
             progress.setPadding(0, dp(7), 0, 0);
             TextView schedule = text(MainActivity.clock(rule.start) + " - " + MainActivity.clock(rule.end) + "  ·  每 " + rule.interval + " 分钟", 12, MUTED, false);
             schedule.setPadding(0, dp(5), 0, 0);

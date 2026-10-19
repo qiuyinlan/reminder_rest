@@ -56,6 +56,10 @@ final class ReminderSettings {
     static boolean enabled(Context context) { return prefs(context).getBoolean(KEY_ENABLED, false); }
     static boolean usageOnly(Context context) { return prefs(context).getBoolean("usage_only", false); }
     static boolean blockEnabled(Context context) { return prefs(context).getBoolean("block_enabled", false); }
+    static boolean screenOffAlarm(Context context) { return prefs(context).getBoolean("screen_off_alarm", false); }
+    static boolean screenOffSound(Context context) { return prefs(context).getBoolean("screen_off_sound", true); }
+    static boolean screenOffVibrate(Context context) { return prefs(context).getBoolean("screen_off_vibrate", false); }
+    static String screenOffRingtone(Context context) { return prefs(context).getString("screen_off_ringtone", null); }
 
     static Set<String> whitelist(Context context) {
         return new HashSet<>(prefs(context).getStringSet("whitelist", new HashSet<>()));

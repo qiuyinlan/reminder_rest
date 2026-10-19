@@ -10,7 +10,7 @@ import android.view.View;
 import android.view.animation.LinearInterpolator;
 
 final class WellnessAnimationView extends View {
-    enum Mood { SAD, TIRED, BREATHING, WATER }
+    enum Mood { SAD, TIRED, BREATHING, THIRSTY, WATER }
 
     private final Mood mood;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -53,7 +53,7 @@ final class WellnessAnimationView extends View {
     }
 
     private void drawFace(Canvas canvas) {
-        float bob = (float) Math.sin(phase * Math.PI * 2) * 2.5f;
+        float bob = (float) Math.sin(phase * Math.PI * 2) * (mood == Mood.BREATHING ? 5f : 2.5f);
         canvas.save();
         canvas.translate(0, bob);
         fill(0xffd9ebd9);
@@ -73,6 +73,22 @@ final class WellnessAnimationView extends View {
             stroke(0xff37483d, 4);
             canvas.drawArc(new RectF(56, 65, 78, 81), 20, 140, false, paint);
             canvas.drawArc(new RectF(102, 65, 124, 81), 20, 140, false, paint);
+        } else if (mood == Mood.THIRSTY) {
+            stroke(0xff765448, 4);
+            canvas.drawLine(57, 61, 77, 67, paint);
+            canvas.drawLine(103, 67, 123, 61, paint);
+            fill(0xff37483d);
+            canvas.drawOval(new RectF(63, 70, 75, 83), paint);
+            canvas.drawOval(new RectF(105, 70, 117, 83), paint);
+            float sweatY = 2f + (float) Math.sin(phase * Math.PI * 2) * 4f;
+            Path sweat = new Path();
+            sweat.moveTo(143, 38 + sweatY);
+            sweat.cubicTo(140, 44 + sweatY, 135, 50 + sweatY, 135, 54 + sweatY);
+            sweat.cubicTo(135, 60 + sweatY, 144, 60 + sweatY, 144, 54 + sweatY);
+            sweat.cubicTo(144, 50 + sweatY, 141, 44 + sweatY, 143, 38 + sweatY);
+            sweat.close();
+            fill(0xff63b6d2);
+            canvas.drawPath(sweat, paint);
         } else {
             canvas.drawCircle(67, 72, 5, paint);
             canvas.drawCircle(113, 72, 5, paint);
@@ -87,7 +103,13 @@ final class WellnessAnimationView extends View {
         canvas.drawOval(new RectF(111, 88, 132, 97), paint);
         stroke(0xff9b584d, 4);
         Path mouth = new Path();
-        if (mood == Mood.TIRED) {
+        if (mood == Mood.THIRSTY) {
+            fill(0xff7b3f45);
+            float gasp = (float) Math.sin(phase * Math.PI * 2) * 2f;
+            canvas.drawOval(new RectF(76, 106, 104, 139 + gasp), paint);
+            fill(0xffef9789);
+            canvas.drawOval(new RectF(84, 126 + gasp, 96, 136 + gasp), paint);
+        } else if (mood == Mood.TIRED) {
             canvas.drawArc(new RectF(74, 104, 106, 122), 195, 150, false, paint);
         } else if (mood == Mood.BREATHING) {
             canvas.drawArc(new RectF(70, 101, 110, 127), 20, 140, false, paint);

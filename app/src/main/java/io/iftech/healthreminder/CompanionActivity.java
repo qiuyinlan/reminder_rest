@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -24,14 +25,18 @@ public final class CompanionActivity extends Activity {
     private static final int GREEN = 0xff277049;
     private static final int PAPER = 0xffedf5eb;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private TextView currentTime;
     private TextView timer;
     private TextView musicButton;
+    /* private boolean focusMode; */
     private final java.util.ArrayList<TextView> soundOptions = new java.util.ArrayList<>();
     private ObjectAnimator breatheX;
     private ObjectAnimator breatheY;
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
             long started = CompanionAudioService.startedAt(CompanionActivity.this);
+            currentTime.setText(new java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                    .format(System.currentTimeMillis()));
             timer.setText(formatDuration(started == 0 ? 0 : (System.currentTimeMillis() - started) / 1000));
             handler.postDelayed(this, 1000);
         }
@@ -43,7 +48,13 @@ public final class CompanionActivity extends Activity {
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
         hideSystemBars();
-        startService(new Intent(this, CompanionAudioService.class).setAction(CompanionAudioService.ACTION_START));
+        /*
+        boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
+        focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
+                : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);
+        */
+        startService(new Intent(this, CompanionAudioService.class)
+                .setAction(CompanionAudioService.ACTION_START));
         render();
     }
 
@@ -82,8 +93,11 @@ public final class CompanionActivity extends Activity {
         root.addView(content, contentParams);
 
         TextView title = text("陪伴", 22, GREEN, true);
+        /* TextView title = text(focusMode ? "专注" : "陪伴", 22, GREEN, true); */
         content.addView(title);
         TextView subtitle = text("不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false);
+        /* TextView subtitle = text(focusMode ? "留一点安静时间，把注意力放回手边。"
+                : "不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false); */
         subtitle.setPadding(0, dp(8), 0, dp(24));
         content.addView(subtitle);
 
@@ -103,10 +117,29 @@ public final class CompanionActivity extends Activity {
         breatheY.start();
 
         TextView breatheHint = text("吸气……呼气……", 17, GREEN, true);
-        breatheHint.setPadding(0, dp(26), 0, dp(10));
+        /* TextView breatheHint = text(focusMode ? "专注进行中" : "吸气……呼气……", 17, GREEN, true); */
+        breatheHint.setPadding(0, dp(20), 0, dp(10));
         content.addView(breatheHint);
-        timer = text("00:00:00", 25, 0xff23342a, true);
-        content.addView(timer);
+
+        LinearLayout clockPanel = new LinearLayout(this);
+        clockPanel.setOrientation(LinearLayout.VERTICAL);
+        clockPanel.setGravity(Gravity.CENTER);
+        clockPanel.setPadding(dp(24), dp(14), dp(24), dp(14));
+        clockPanel.setBackground(round(Color.WHITE, 18));
+        TextView clockLabel = text("现在", 12, 0xff718174, false);
+        clockPanel.addView(clockLabel);
+        currentTime = text("--:--:--", 48, 0xff23342a, true);
+        currentTime.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        currentTime.setGravity(Gravity.CENTER);
+        clockPanel.addView(currentTime);
+        timer = text("已陪伴 00:00:00", 13, 0xff617466, true);
+        /* timer = text((focusMode ? "已专注 " : "已陪伴 ") + "00:00:00", 13, 0xff617466, true); */
+        timer.setGravity(Gravity.CENTER);
+        timer.setPadding(0, dp(3), 0, 0);
+        clockPanel.addView(timer);
+        LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(-1, -2);
+        clockParams.setMargins(dp(22), dp(4), dp(22), 0);
+        content.addView(clockPanel, clockParams);
 
         TextView soundLabel = text("环境音", 13, 0xff617466, false);
         soundLabel.setPadding(0, dp(14), 0, 0);
@@ -131,6 +164,7 @@ public final class CompanionActivity extends Activity {
         content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
 
         TextView end = text("结束陪伴", 16, Color.WHITE, true);
+        /* TextView end = text(focusMode ? "结束专注" : "结束陪伴", 16, Color.WHITE, true); */
         end.setGravity(Gravity.CENTER);
         end.setBackground(round(GREEN, 28));
         end.setOnClickListener(v -> endSession());
@@ -138,15 +172,18 @@ public final class CompanionActivity extends Activity {
         endParams.bottomMargin = dp(8);
         content.addView(end, endParams);
 
-        musicButton = text("♫", 22, GREEN, true);
+        musicButton = text("♫", 22, 0xff9aa59c, true);
         musicButton.setGravity(Gravity.CENTER);
         musicButton.setContentDescription("播放" + CompanionAudioService.soundName(
                 CompanionAudioService.selectedSound(this)));
         musicButton.setBackground(round(Color.WHITE, 24));
         musicButton.setOnClickListener(v -> {
-            startService(new Intent(this, CompanionAudioService.class)
-                    .setAction(CompanionAudioService.ACTION_TOGGLE_MUSIC));
+            boolean play = !CompanionAudioService.isMusicPlaying(this);
+            CompanionAudioService.setMusicPlaying(this, play);
             updateMusicButton();
+            startService(new Intent(this, CompanionAudioService.class)
+                    .setAction(CompanionAudioService.ACTION_SET_MUSIC)
+                    .putExtra(CompanionAudioService.EXTRA_MUSIC_PLAYING, play));
         });
         FrameLayout.LayoutParams musicParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.RIGHT);
         musicParams.setMargins(0, dp(12), dp(16), 0);
@@ -188,9 +225,9 @@ public final class CompanionActivity extends Activity {
     private void updateMusicButton() {
         if (musicButton == null) return;
         boolean playing = CompanionAudioService.isMusicPlaying(this);
-        musicButton.setText(playing ? "♫" : "♪");
-        musicButton.setTextColor(playing ? Color.WHITE : GREEN);
-        musicButton.setBackground(round(playing ? GREEN : Color.WHITE, 24));
+        musicButton.setText("♫");
+        musicButton.setTextColor(playing ? GREEN : 0xff9aa59c);
+        musicButton.setBackground(round(playing ? 0xffe0efe1 : Color.WHITE, 24));
         String sound = CompanionAudioService.soundName(CompanionAudioService.selectedSound(this));
         musicButton.setContentDescription((playing ? "暂停" : "播放") + sound);
     }
@@ -202,7 +239,7 @@ public final class CompanionActivity extends Activity {
     }
 
     private String formatDuration(long seconds) {
-        return String.format(Locale.getDefault(), "%02d:%02d:%02d", seconds / 3600,
+        return "已陪伴 " + String.format(Locale.getDefault(), "%02d:%02d:%02d", seconds / 3600,
                 (seconds % 3600) / 60, seconds % 60);
     }
 

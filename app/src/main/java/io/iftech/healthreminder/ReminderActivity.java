@@ -19,6 +19,8 @@ import android.widget.FrameLayout;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.text.InputType;
 import android.text.Editable;
@@ -28,11 +30,14 @@ import android.widget.ScrollView;
 public final class ReminderActivity extends Activity {
     private static final int GREEN = 0xff277049;
     private String action;
+    private int ruleId = -1;
     private String sessionId;
     private long startedAt;
     private boolean waiting;
+    private boolean reasonFromOverlay;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private TextView elapsedLabel;
+    private EditText completionNote;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (waiting && elapsedLabel != null) {
@@ -49,7 +54,18 @@ public final class ReminderActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         setReminderSystemBarBackground();
         action = getIntent().getStringExtra("action");
+        ruleId = getIntent().getIntExtra("rule_id", -1);
         if (action == null) action = "歇一歇";
+        reasonFromOverlay = getIntent().getBooleanExtra("enter_reason", false);
+        if (reasonFromOverlay) {
+            sessionId = java.util.UUID.randomUUID().toString();
+            startedAt = System.currentTimeMillis();
+            LinearLayout background = new LinearLayout(this);
+            background.setBackgroundColor(0xffe4f2e3);
+            setContentView(background);
+            askReason();
+            return;
+        }
         org.json.JSONObject pendingPrefs = ReminderRecord.pending(this);
         if (pendingPrefs.optBoolean("waiting", false)) {
             action = pendingPrefs.optString("action", action);
@@ -131,7 +147,7 @@ public final class ReminderActivity extends Activity {
         snooze.setPadding(0, dp(15), 0, dp(8));
         snooze.setOnClickListener(v -> {
             ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
-            ReminderScheduler.scheduleSnooze(this, 5, action);
+            ReminderScheduler.scheduleSnooze(this, 5, action, ruleId);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
             finish();
         });
@@ -160,11 +176,8 @@ public final class ReminderActivity extends Activity {
         root.setBackgroundColor(0xffe4f2e3);
         setContentView(root);
         root.addView(text("我在这里等你回来", 17, GREEN, true));
-        TextView smile = text("☺", 126, GREEN, true);
-        smile.setGravity(Gravity.CENTER);
-        root.addView(smile, new LinearLayout.LayoutParams(-1, dp(240)));
-        smile.animate().scaleX(1.08f).scaleY(1.08f).setDuration(900).withEndAction(() ->
-                smile.animate().scaleX(1f).scaleY(1f).setDuration(900).start()).start();
+        WellnessAnimationView smile = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
+        root.addView(smile, new LinearLayout.LayoutParams(dp(240), dp(240)));
         TextView message = text("正在等你去做：" + titleFor(action), 23, 0xff23342a, true);
         message.setGravity(Gravity.CENTER);
         root.addView(message);
@@ -172,6 +185,18 @@ public final class ReminderActivity extends Activity {
         elapsedLabel.setGravity(Gravity.CENTER);
         elapsedLabel.setPadding(0, dp(12), 0, dp(26));
         root.addView(elapsedLabel);
+        completionNote = new EditText(this);
+        completionNote.setSingleLine(true);
+        completionNote.setTextSize(15);
+        completionNote.setTextColor(0xff23342a);
+        completionNote.setHintTextColor(0xff87968b);
+        completionNote.setHint("做了什么？（选填）");
+        completionNote.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        completionNote.setPadding(dp(14), dp(10), dp(14), dp(10));
+        completionNote.setBackground(round(Color.WHITE, 12));
+        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, dp(50));
+        noteParams.bottomMargin = dp(12);
+        root.addView(completionNote, noteParams);
         View spacer = new View(this);
         root.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
         Button completed = button("已做完", GREEN, Color.WHITE);
@@ -182,6 +207,9 @@ public final class ReminderActivity extends Activity {
         missed.setPadding(0, dp(16), 0, dp(8));
         missed.setOnClickListener(v -> askReason());
         root.addView(missed);
+        completionNote.clearFocus();
+        root.setFocusableInTouchMode(true);
+        root.requestFocus();
         timerHandler.removeCallbacks(tick);
         timerHandler.post(tick);
     }
@@ -196,10 +224,12 @@ public final class ReminderActivity extends Activity {
 
     private void completeSession() {
         long ended = System.currentTimeMillis();
-        ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_DONE, startedAt, ended, "");
+        String note = completionNote == null ? "" : completionNote.getText().toString().trim();
+        ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_DONE, startedAt, ended, note);
         for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
             if (rule.title.equals(action)) {
                 ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
+                ReminderScheduler.resetNext(this, rule.id);
                 ReminderScheduler.update(this);
                 break;
             }
@@ -213,35 +243,95 @@ public final class ReminderActivity extends Activity {
         content.setPadding(dp(22), dp(22), dp(22), dp(16));
         content.setBackground(round(Color.WHITE, 22));
 
-        TextView title = text("这次没做的原因", 21, 0xff23342a, true);
+        TextView title = text("临时有事", 21, 0xff23342a, true);
         content.addView(title);
 
-        TextView subtitle = text("记下此刻的情况，之后可以更了解自己的节奏。", 14, 0xff718076, false);
+        TextView subtitle = text("记下为什么没能完成，也可以选择稍后提醒。", 14, 0xff718076, false);
         subtitle.setPadding(0, dp(7), 0, dp(18));
         content.addView(subtitle);
 
-        TextView prompt = text("备注，一句话就好，就1s解释，你必须填！", 15, GREEN, true);
-        prompt.setLineSpacing(dp(3), 1f);
-        prompt.setPadding(dp(14), dp(12), dp(14), dp(12));
-        prompt.setBackground(round(0xffedf6ec, 14));
-        content.addView(prompt);
-
         EditText reason = new EditText(this);
-        reason.setHint("例如：刚好在开会");
+        reason.setHint("什么事比我还重要！");
         reason.setTextSize(16);
         reason.setTextColor(0xff23342a);
         reason.setHintTextColor(0xff93a197);
-        reason.setGravity(Gravity.TOP | Gravity.START);
-        reason.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        reason.setSingleLine(false);
-        reason.setMinLines(3);
-        reason.setMaxLines(4);
-        reason.setPadding(dp(14), dp(12), dp(14), dp(12));
-        reason.setBackground(round(0xfff4f7f3, 14));
+        reason.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        reason.setSingleLine(true);
+        reason.setPadding(dp(14), dp(10), dp(14), dp(10));
+        reason.setBackground(round(0xfff4f7f3, 12));
         LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(-1, -2);
-        reasonParams.topMargin = dp(12);
+        reasonParams.topMargin = dp(4);
         content.addView(reason, reasonParams);
+
+        LinearLayout snoozeHeader = new LinearLayout(this);
+        snoozeHeader.setGravity(Gravity.CENTER_VERTICAL);
+        TextView snoozeTitle = text("稍后提醒我", 14, 0xff23342a, true);
+        snoozeHeader.addView(snoozeTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        Switch customDelay = new Switch(this);
+        customDelay.setText("自选");
+        customDelay.setTextColor(0xff617466);
+        snoozeHeader.addView(customDelay);
+        LinearLayout.LayoutParams snoozeHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        snoozeHeaderParams.topMargin = dp(14);
+        content.addView(snoozeHeader, snoozeHeaderParams);
+
+        LinearLayout delayRow = new LinearLayout(this);
+        delayRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView delayLabel = text("延后时间", 12, 0xff718076, false);
+        delayRow.addView(delayLabel, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView delayValue = text("下一次到时再提醒", 13, GREEN, true);
+        delayRow.addView(delayValue);
+        LinearLayout.LayoutParams delayRowParams = new LinearLayout.LayoutParams(-1, -2);
+        delayRowParams.topMargin = dp(4);
+        content.addView(delayRow, delayRowParams);
+
+        LinearLayout delayPickers = new LinearLayout(this);
+        delayPickers.setGravity(Gravity.CENTER);
+        delayPickers.setPadding(dp(12), dp(2), dp(12), dp(2));
+        delayPickers.setBackground(round(0xfff4f7f3, 12));
+        LinearLayout hourColumn = new LinearLayout(this);
+        hourColumn.setGravity(Gravity.CENTER);
+        hourColumn.setOrientation(LinearLayout.HORIZONTAL);
+        NumberPicker hourPicker = new NumberPicker(this);
+        hourPicker.setMinValue(0);
+        hourPicker.setMaxValue(23);
+        hourPicker.setValue(0);
+        NumberPicker minutePicker = new NumberPicker(this);
+        minutePicker.setMinValue(0);
+        minutePicker.setMaxValue(59);
+        minutePicker.setValue(15);
+        hourColumn.addView(hourPicker, new LinearLayout.LayoutParams(dp(88), dp(112)));
+        hourColumn.addView(text("小时", 13, 0xff718076, false));
+        LinearLayout minuteColumn = new LinearLayout(this);
+        minuteColumn.setGravity(Gravity.CENTER);
+        minuteColumn.setOrientation(LinearLayout.HORIZONTAL);
+        minuteColumn.addView(minutePicker, new LinearLayout.LayoutParams(dp(88), dp(112)));
+        minuteColumn.addView(text("分钟", 13, 0xff718076, false));
+        delayPickers.addView(hourColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        delayPickers.addView(minuteColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams pickerParams = new LinearLayout.LayoutParams(-1, -2);
+        pickerParams.topMargin = dp(8);
+        content.addView(delayPickers, pickerParams);
+
+        TextView defaultDelay = text("不选的话，默认下一次到时再提醒", 12, 0xff718076, false);
+        defaultDelay.setPadding(0, 0, 0, dp(3));
+        content.addView(defaultDelay);
+        TextView warning = text("想想清楚，最好是真的有事！\n不要骗别人把自己也骗了！", 12,
+                0xffbd5147, false);
+        warning.setLineSpacing(dp(2), 1f);
+        warning.setPadding(dp(10), dp(8), dp(10), dp(8));
+        warning.setBackground(round(0xffffefed, 8));
+        content.addView(warning);
+
+        customDelay.setOnCheckedChangeListener((button, checked) -> {
+            updateDelayLabel(delayValue, hourPicker.getValue(), minutePicker.getValue(), checked);
+        });
+        NumberPicker.OnValueChangeListener onDelayChanged = (picker, oldValue, newValue) -> {
+            if (!customDelay.isChecked()) customDelay.setChecked(true);
+            updateDelayLabel(delayValue, hourPicker.getValue(), minutePicker.getValue(), true);
+        };
+        hourPicker.setOnValueChangedListener(onDelayChanged);
+        minutePicker.setOnValueChangedListener(onDelayChanged);
 
         TextView error = text("请写一句原因后再提交", 13, 0xffbd5147, false);
         error.setVisibility(View.GONE);
@@ -266,7 +356,10 @@ public final class ReminderActivity extends Activity {
         TextView cancel = text("再想想", 15, 0xff617167, true);
         cancel.setGravity(Gravity.CENTER);
         cancel.setPadding(dp(18), dp(12), dp(18), dp(12));
-        cancel.setOnClickListener(v -> dialog.dismiss());
+        cancel.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (reasonFromOverlay) finish();
+        });
         TextView submit = text("提交记录", 15, Color.WHITE, true);
         submit.setGravity(Gravity.CENTER);
         submit.setPadding(dp(22), dp(12), dp(22), dp(12));
@@ -286,8 +379,15 @@ public final class ReminderActivity extends Activity {
             }
             ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_MISSED,
                     startedAt, System.currentTimeMillis(), value);
+            if (customDelay.isChecked()) {
+                ReminderScheduler.scheduleCustomSnooze(this,
+                        delayMinutes(hourPicker.getValue(), minutePicker.getValue()), action, ruleId);
+            }
             dialog.dismiss();
             finish();
+        });
+        dialog.setOnCancelListener(ignored -> {
+            if (reasonFromOverlay) finish();
         });
         dialog.show();
         if (dialog.getWindow() != null) {
@@ -295,6 +395,20 @@ public final class ReminderActivity extends Activity {
             dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(36), -2);
             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+    }
+
+    private void updateDelayLabel(TextView label, int hours, int minutes, boolean custom) {
+        if (!custom) {
+            label.setText("下一次到时再提醒");
+            return;
+        }
+        int totalMinutes = delayMinutes(hours, minutes);
+        label.setText(String.format(java.util.Locale.getDefault(), "%dh%02dmin 后再提醒我",
+                totalMinutes / 60, totalMinutes % 60));
+    }
+
+    private int delayMinutes(int hours, int minutes) {
+        return Math.max(1, hours * 60 + minutes);
     }
 
     private GradientDrawable round(int color, int radius) {

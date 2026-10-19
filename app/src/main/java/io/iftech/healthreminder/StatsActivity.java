@@ -1,6 +1,9 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.ClipData;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -21,6 +24,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -51,7 +55,8 @@ public final class StatsActivity extends Activity {
     private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
-    private String filter = ReminderRecord.KIND_DONE;
+    private static final String FILTER_ALL = "all";
+    private String filter = FILTER_ALL;
     private LinearLayout content;
     private TextView monthLabel;
     private float touchX;
@@ -136,21 +141,31 @@ public final class StatsActivity extends Activity {
         dayHeading.setPadding(0, dp(20), 0, dp(12));
         content.addView(dayHeading);
         int[] totals = totalsForDay(selected);
-        TextView summary = text("完成 " + totals[0] + " 次    未完成 " + totals[1] + " 次    陪伴 " + totals[2] + " 次", 13, MUTED, false);
+        TextView summary = text("完成 " + totals[0] + " 次    未完成 " + totals[1]
+                + " 次    陪伴 " + totals[2] + " 次", 13, MUTED, false);
+        /* Original focus count:
+        + " 次    陪伴 " + totals[2] + " 次    专注 " + totals[3] + " 次"
+        */
         summary.setPadding(0, 0, 0, dp(12));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
         pills.setPadding(dp(4), dp(4), dp(4), dp(4));
         pills.setBackground(round(0xffe4ece2, 24));
+        TextView all = pill("全部", FILTER_ALL.equals(filter));
         TextView done = pill("做了", ReminderRecord.KIND_DONE.equals(filter));
         TextView missed = pill("没做", ReminderRecord.KIND_MISSED.equals(filter));
         TextView companion = pill("陪伴", ReminderRecord.KIND_COMPANION.equals(filter));
+        /* TextView focus = pill("专注", ReminderRecord.KIND_FOCUS.equals(filter)); */
+        all.setOnClickListener(v -> { filter = FILTER_ALL; render(); });
         done.setOnClickListener(v -> { filter = ReminderRecord.KIND_DONE; render(); });
         missed.setOnClickListener(v -> { filter = ReminderRecord.KIND_MISSED; render(); });
         companion.setOnClickListener(v -> { filter = ReminderRecord.KIND_COMPANION; render(); });
+        /* focus.setOnClickListener(v -> { filter = ReminderRecord.KIND_FOCUS; render(); }); */
+        pills.addView(all, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(done, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(missed, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(companion, new LinearLayout.LayoutParams(0, dp(40), 1));
+        /* pills.addView(focus, new LinearLayout.LayoutParams(0, dp(40), 1)); */
         content.addView(pills);
         showTimeline();
         addNavigation(screen);
@@ -165,11 +180,9 @@ public final class StatsActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(PAPER);
         FrameLayout header = new FrameLayout(this);
-        ImageButton back = new ImageButton(this);
-        back.setImageResource(android.R.drawable.ic_menu_revert);
-        back.setColorFilter(GREEN);
+        TextView back = text("‹", 30, GREEN, true);
+        back.setGravity(Gravity.CENTER);
         back.setContentDescription("返回统计");
-        back.setBackgroundColor(Color.TRANSPARENT);
         back.setOnClickListener(v -> closeSharePreview());
         FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.LEFT | Gravity.CENTER_VERTICAL);
         header.addView(back, backParams);
@@ -510,7 +523,11 @@ public final class StatsActivity extends Activity {
     private void showTimeline() {
         List<ReminderRecord> records = new ArrayList<>();
         for (ReminderRecord record : ReminderRecord.all(this)) {
-            if (sameDay(record.startedAt, selected) && record.kind.equals(filter)) records.add(record);
+            boolean visibleKind = ReminderRecord.KIND_DONE.equals(record.kind)
+                    || ReminderRecord.KIND_MISSED.equals(record.kind)
+                    || ReminderRecord.KIND_COMPANION.equals(record.kind);
+            if (sameDay(record.startedAt, selected) && (FILTER_ALL.equals(filter)
+                    ? visibleKind : record.kind.equals(filter))) records.add(record);
         }
         Collections.sort(records, Comparator.comparingLong(record -> record.startedAt));
         for (int index = 0; index < records.size(); index++) {
@@ -537,22 +554,39 @@ public final class StatsActivity extends Activity {
             details.addView(titleRow);
 
             String detail;
-            if (ReminderRecord.KIND_COMPANION.equals(filter)) {
+            if (ReminderRecord.KIND_COMPANION.equals(record.kind)) {
                 long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
                 detail = "陪伴了 " + duration(elapsed);
-            } else if (ReminderRecord.KIND_DONE.equals(filter)) {
+            /* } else if (ReminderRecord.KIND_FOCUS.equals(filter)) {
+                long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
+                detail = "专注了 " + duration(elapsed);
+            */
+            } else if (ReminderRecord.KIND_DONE.equals(record.kind)) {
                 long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
                 detail = "完成" + ("提前完成".equals(record.reason) ? " · 提前完成" : " · 用时 " + duration(elapsed));
             } else {
-                detail = "未完成 · " + record.reason;
+                detail = "没做";
             }
             TextView state = text(detail, 12, MUTED, false);
             state.setPadding(dp(20), dp(6), 0, dp(2));
             details.addView(state);
+            if (ReminderRecord.KIND_MISSED.equals(record.kind) && !record.reason.isEmpty()) {
+                TextView note = text("原因：" + record.reason, 12, MUTED, false);
+                note.setPadding(dp(20), dp(5), 0, 0);
+                details.addView(note);
+            }
+            if (ReminderRecord.KIND_DONE.equals(record.kind) && !record.reason.isEmpty()
+                    && !"提前完成".equals(record.reason)) {
+                TextView note = text(record.reason, 13, INK, false);
+                note.setPadding(dp(20), dp(5), 0, 0);
+                details.addView(note);
+            }
             String timestamp = time(record.startedAt);
-            if (ReminderRecord.KIND_DONE.equals(filter) && record.endedAt > record.startedAt) {
+            if ((ReminderRecord.KIND_DONE.equals(record.kind) || ReminderRecord.KIND_COMPANION.equals(record.kind))
+                    && record.endedAt > record.startedAt) {
                 timestamp += " - " + time(record.endedAt);
             }
+            /* Original timestamp filter also included ReminderRecord.KIND_FOCUS. */
             TextView time = text(timestamp, 11, color, true);
             time.setPadding(dp(20), dp(5), 0, 0);
             details.addView(time);
@@ -560,16 +594,117 @@ public final class StatsActivity extends Activity {
             LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(0, -2, 1);
             detailsParams.bottomMargin = dp(8);
             item.addView(details, detailsParams);
+            item.setOnLongClickListener(v -> {
+                showRecordActions(record);
+                return true;
+            });
             content.addView(item, new LinearLayout.LayoutParams(-1, -2));
         }
         if (records.isEmpty()) {
-            String message = ReminderRecord.KIND_COMPANION.equals(filter) ? "这一天还没有陪伴记录"
+            String message = FILTER_ALL.equals(filter) ? "这一天还没有记录"
+                    : ReminderRecord.KIND_COMPANION.equals(filter) ? "这一天还没有陪伴记录"
                     : ReminderRecord.KIND_DONE.equals(filter) ? "这一天还没有完成记录" : "这一天没有未完成记录";
+            /* Original focus empty-state branch:
+            ReminderRecord.KIND_FOCUS.equals(filter) ? "这一天还没有专注记录" :
+            */
             TextView empty = text(message, 13, MUTED, false);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(30), 0, dp(30));
             content.addView(empty);
         }
+    }
+
+    private void showRecordActions(ReminderRecord record) {
+        new AlertDialog.Builder(this)
+                .setItems(new String[]{"编辑记录", "删除记录"}, (dialog, which) -> {
+                    if (which == 0) editRecord(record);
+                    else new AlertDialog.Builder(this)
+                            .setMessage("删除这条记录？")
+                            .setNegativeButton("取消", null)
+                            .setPositiveButton("删除", (confirm, selected) -> {
+                                ReminderRecord.delete(this, record.id);
+                                render();
+                            })
+                            .show();
+                })
+                .show();
+    }
+
+    private void editRecord(ReminderRecord record) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(20), dp(4), dp(20), 0);
+
+        EditText action = new EditText(this);
+        action.setSingleLine(true);
+        action.setHint("记录名称");
+        action.setText(record.action);
+        form.addView(action);
+
+        long[] startedAt = {record.startedAt};
+        long[] endedAt = {record.endedAt};
+        TextView start = recordTimeField("开始时间", startedAt[0]);
+        TextView end = recordTimeField("结束时间", endedAt[0]);
+        start.setOnClickListener(v -> pickRecordTime(start, startedAt, "开始时间"));
+        end.setOnClickListener(v -> pickRecordTime(end, endedAt, "结束时间"));
+        form.addView(start);
+        form.addView(end);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("编辑记录")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String title = action.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        Toast.makeText(this, "记录名称不能为空", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (endedAt[0] < startedAt[0]) {
+                        Toast.makeText(this, "结束时间不能早于开始时间", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReminderRecord.update(this, new ReminderRecord(record.id, title, record.kind,
+                            startedAt[0], endedAt[0], record.reason));
+                    dialog.dismiss();
+                    render();
+                }));
+        dialog.show();
+    }
+
+    private TextView recordTimeField(String label, long timestamp) {
+        TextView field = text(label + "\n" + recordDateTime(timestamp), 14, GREEN, true);
+        field.setPadding(dp(12), dp(10), dp(12), dp(10));
+        field.setBackground(round(0xffe7f1e5, 10));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(8);
+        field.setLayoutParams(params);
+        return field;
+    }
+
+    private void pickRecordTime(TextView field, long[] timestamp, String label) {
+        Calendar selectedTime = Calendar.getInstance();
+        selectedTime.setTimeInMillis(timestamp[0]);
+        new DatePickerDialog(this, (datePicker, year, monthOfYear, dayOfMonth) -> {
+            selectedTime.set(Calendar.YEAR, year);
+            selectedTime.set(Calendar.MONTH, monthOfYear);
+            selectedTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+            new TimePickerDialog(this, (timePicker, hour, minute) -> {
+                selectedTime.set(Calendar.HOUR_OF_DAY, hour);
+                selectedTime.set(Calendar.MINUTE, minute);
+                selectedTime.set(Calendar.SECOND, 0);
+                selectedTime.set(Calendar.MILLISECOND, 0);
+                timestamp[0] = selectedTime.getTimeInMillis();
+                field.setText(label + "\n" + recordDateTime(timestamp[0]));
+            }, selectedTime.get(Calendar.HOUR_OF_DAY), selectedTime.get(Calendar.MINUTE), true).show();
+        }, selectedTime.get(Calendar.YEAR), selectedTime.get(Calendar.MONTH),
+                selectedTime.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private String recordDateTime(long timestamp) {
+        return new SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINA).format(new Date(timestamp));
     }
 
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
@@ -591,8 +726,10 @@ public final class StatsActivity extends Activity {
         for (ReminderRecord record : ReminderRecord.all(this)) {
             if (!sameDay(record.startedAt, day)) continue;
             int index = ReminderRecord.KIND_DONE.equals(record.kind) ? 0
-                    : ReminderRecord.KIND_MISSED.equals(record.kind) ? 1 : 2;
-            totals[index]++;
+                    : ReminderRecord.KIND_MISSED.equals(record.kind) ? 1
+                    : ReminderRecord.KIND_COMPANION.equals(record.kind) ? 2 : -1;
+            if (index >= 0) totals[index]++;
+            /* The prior fourth counter counted focus records. */
         }
         return totals;
     }
@@ -602,6 +739,7 @@ public final class StatsActivity extends Activity {
         if (action.contains("眼") || action.contains("看")) return 0xff527947;
         if (action.contains("颈") || action.contains("肩")) return 0xffa76c42;
         if ("陪伴".equals(action)) return GREEN;
+        /* if ("专注".equals(action)) return 0xff8a7042; */
         return 0xff6e6aa0;
     }
 

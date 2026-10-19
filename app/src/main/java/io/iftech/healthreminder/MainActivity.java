@@ -54,8 +54,8 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-        render();
         ReminderScheduler.update(this);
+        render();
         if (getIntent().getBooleanExtra("new_item", false)) editRule(null);
         int editId = getIntent().getIntExtra("edit_id", -1);
         if (editId >= 0) for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) if (rule.id == editId) { editRule(rule); break; }
@@ -91,14 +91,24 @@ public final class MainActivity extends Activity {
         currentScroll.post(() -> currentScroll.scrollTo(0, previousScrollY));
 
         LinearLayout top = row();
-        TextView brand = label("好好歇会", 24, INK, true);
+        TextView brand = label("休息一下", 24, INK, true);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        top.addView(label(ReminderSettings.enabled(this) ? "● 正在守护" : "○ 已暂停", 12,
-                ReminderSettings.enabled(this) ? GREEN : MUTED, true));
+        TextView settingsButton = label("设置", 15, GREEN, true);
+        settingsButton.setGravity(Gravity.CENTER);
+        settingsButton.setPadding(dp(12), dp(8), dp(4), dp(8));
+        settingsButton.setContentDescription("设置");
+        settingsButton.setOnClickListener(v -> startActivity(new Intent(this, ScreenOffSettingsActivity.class)));
+        top.addView(settingsButton);
         body.addView(top);
+        LinearLayout dateRow = row();
+        dateRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView date = label(DateFormat.getDateInstance(DateFormat.FULL).format(Calendar.getInstance().getTime()), 12, MUTED, false);
-        date.setPadding(0, dp(2), 0, dp(14));
-        body.addView(date);
+        dateRow.addView(date, new LinearLayout.LayoutParams(0, -2, 1));
+        dateRow.addView(label(ReminderSettings.enabled(this) ? "● 正在守护" : "○ 已暂停", 12,
+                ReminderSettings.enabled(this) ? GREEN : MUTED, true));
+        date.setPadding(0, dp(2), 0, 0);
+        dateRow.setPadding(0, 0, 0, dp(14));
+        body.addView(dateRow);
         addPermissionBanner();
 
         LinearLayout hero = row();
@@ -403,10 +413,16 @@ public final class MainActivity extends Activity {
     private void addRuleRow(LinearLayout parent, ReminderSettings.Rule rule) {
         LinearLayout item = row();
         item.setPadding(dp(2), dp(12), dp(2), dp(12));
-        TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
-        badge.setGravity(Gravity.CENTER);
-        badge.setBackground(round(iconTint(rule.title), 12));
-        item.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        if ("喝水".equals(rule.title)) {
+            WellnessAnimationView thirstyFace = new WellnessAnimationView(this, WellnessAnimationView.Mood.THIRSTY);
+            thirstyFace.setContentDescription("口渴的表情");
+            item.addView(thirstyFace, new LinearLayout.LayoutParams(dp(60), dp(60)));
+        } else {
+            TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(round(iconTint(rule.title), 12));
+            item.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        }
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setPadding(dp(11), 0, dp(6), 0);
@@ -421,7 +437,10 @@ public final class MainActivity extends Activity {
         } else if (!rule.enabled || !ReminderSettings.enabled(this)) {
             nextText = "提醒已暂停";
         } else {
-            nextAt = ReminderScheduler.nextTime(rule, System.currentTimeMillis());
+            nextAt = ReminderScheduler.scheduledAt(this, rule.id);
+            if (nextAt <= System.currentTimeMillis()) {
+                nextAt = ReminderScheduler.nextTime(rule, System.currentTimeMillis());
+            }
             ticking = true;
             nextText = countdownText(nextAt - System.currentTimeMillis());
             if (done >= rule.dailyTarget) nextText = "目标已达成，仍提醒 · " + nextText;
@@ -444,6 +463,7 @@ public final class MainActivity extends Activity {
         complete.setOnClickListener(v -> {
             long now = System.currentTimeMillis();
             ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
+            ReminderScheduler.resetNext(this, rule.id);
             String recordId = java.util.UUID.randomUUID().toString();
             ReminderRecord.finish(this, recordId, rule.title, ReminderRecord.KIND_DONE,
                     now, now, "提前完成");

@@ -10,24 +10,56 @@ import java.util.List;
 
 final class ReminderScheduler {
     private static final int REQUEST_BASE = 71000;
+    private static final int SNOOZE_REQUEST_BASE = 72000;
+    private static final int LEGACY_SNOOZE_REQUEST = 704;
+    private static final String SCHEDULE_PREFS = "reminder_schedule";
     private ReminderScheduler() { }
 
     static void update(Context context) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        List<ReminderSettings.Rule> rules = ReminderSettings.rules(context);
+        boolean enabled = ReminderSettings.enabled(context);
+        for (ReminderSettings.Rule rule : rules) {
             alarms.cancel(pendingIntent(context, rule.id, null));
             alarms.cancel(pendingIntent(context, rule.id, rule.title));
+            if (!enabled || !rule.enabled) cancelSnooze(context, rule.id);
         }
-        if (!ReminderSettings.enabled(context)) return;
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
-            if (rule.enabled) scheduleNext(context, rule);
+        if (!enabled) {
+            cancelSnooze(context, -1);
+            alarms.cancel(snoozePendingIntent(context, LEGACY_SNOOZE_REQUEST, null, null));
+            return;
+        }
+        for (ReminderSettings.Rule rule : rules) {
+            if (rule.enabled) {
+                long next = scheduledAt(context, rule.id);
+                if (next <= System.currentTimeMillis()) next = calculateNext(context, rule);
+                setScheduledAt(context, rule.id, next);
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pendingIntent(context, rule.id, rule.title));
+            }
         }
     }
 
     static void cancelRule(Context context, int id) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms != null) alarms.cancel(pendingIntent(context, id, null));
+        cancelSnooze(context, id);
+        resetNext(context, id);
+    }
+
+    static long scheduledAt(Context context, int ruleId) {
+        return context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE).getLong(scheduleKey(ruleId), 0L);
+    }
+
+    static void resetNext(Context context, int ruleId) {
+        context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE).edit().remove(scheduleKey(ruleId)).apply();
+    }
+
+    private static String scheduleKey(int ruleId) { return "next_" + ruleId; }
+
+    private static void setScheduledAt(Context context, int ruleId, long timeMillis) {
+        context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE).edit()
+                .putLong(scheduleKey(ruleId), timeMillis).apply();
     }
 
     static void scheduleNext(Context context, int ruleId) {
@@ -42,8 +74,13 @@ final class ReminderScheduler {
     private static void scheduleNext(Context context, ReminderSettings.Rule rule) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
+        long next = calculateNext(context, rule);
+        setScheduledAt(context, rule.id, next);
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pendingIntent(context, rule.id, rule.title));
+    }
+
+    private static long calculateNext(Context context, ReminderSettings.Rule rule) {
         long now = System.currentTimeMillis();
-        long next;
         if (!rule.remindAfterTarget && ReminderSettings.completedToday(context, rule.id) >= rule.dailyTarget) {
             Calendar tomorrowStart = Calendar.getInstance();
             tomorrowStart.setTimeInMillis(now);
@@ -52,19 +89,47 @@ final class ReminderScheduler {
             tomorrowStart.set(Calendar.MINUTE, rule.start % 60);
             tomorrowStart.set(Calendar.SECOND, 0);
             tomorrowStart.set(Calendar.MILLISECOND, 0);
-            next = nextTime(rule, tomorrowStart.getTimeInMillis());
-        } else {
-            next = nextTime(rule, now);
+            return nextTime(rule, tomorrowStart.getTimeInMillis());
         }
-        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pendingIntent(context, rule.id, rule.title));
+        return nextTime(rule, now);
     }
 
-    static void scheduleSnooze(Context context, int minutes, String action) {
+    static void scheduleSnooze(Context context, int minutes, String action, int ruleId) {
+        scheduleSnooze(context, minutes, action, ruleId, false);
+    }
+
+    static void scheduleCustomSnooze(Context context, int minutes, String action, int ruleId) {
+        if (ruleId >= 0) {
+            AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (alarms != null) alarms.cancel(pendingIntent(context, ruleId, null));
+            resetNext(context, ruleId);
+        }
+        scheduleSnooze(context, minutes, action, ruleId, true);
+    }
+
+    private static void scheduleSnooze(Context context, int minutes, String action, int ruleId,
+                                       boolean resumeSchedule) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
-        Intent intent = new Intent(context, ReminderReceiver.class).putExtra("snooze", true).putExtra("action", action);
-        PendingIntent pending = PendingIntent.getBroadcast(context, 704, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent intent = new Intent(context, ReminderReceiver.class).putExtra("snooze", true).putExtra("action", action)
+                .putExtra("rule_id", ruleId).putExtra("resume_schedule", resumeSchedule);
+        int requestCode = SNOOZE_REQUEST_BASE + Math.max(0, ruleId);
+        PendingIntent pending = PendingIntent.getBroadcast(context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + minutes * 60_000L, pending);
+    }
+
+    private static void cancelSnooze(Context context, int ruleId) {
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarms != null) alarms.cancel(snoozePendingIntent(context, SNOOZE_REQUEST_BASE + Math.max(0, ruleId), null, null));
+    }
+
+    private static PendingIntent snoozePendingIntent(Context context, int requestCode, String action, Integer ruleId) {
+        Intent intent = new Intent(context, ReminderReceiver.class).putExtra("snooze", true);
+        if (action != null) intent.putExtra("action", action);
+        if (ruleId != null) intent.putExtra("rule_id", ruleId);
+        return PendingIntent.getBroadcast(context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     private static PendingIntent pendingIntent(Context context, int id, String title) {

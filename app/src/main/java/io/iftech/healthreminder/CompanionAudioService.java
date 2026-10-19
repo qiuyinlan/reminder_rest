@@ -19,13 +19,17 @@ import androidx.core.app.NotificationCompat;
 public final class CompanionAudioService extends Service {
     static final String ACTION_START = "io.iftech.healthreminder.companion.START";
     static final String ACTION_TOGGLE_MUSIC = "io.iftech.healthreminder.companion.TOGGLE_MUSIC";
+    static final String ACTION_SET_MUSIC = "io.iftech.healthreminder.companion.SET_MUSIC";
     static final String ACTION_SET_SOUND = "io.iftech.healthreminder.companion.SET_SOUND";
     static final String ACTION_STOP = "io.iftech.healthreminder.companion.STOP";
     static final String EXTRA_SOUND_ID = "sound_id";
+    static final String EXTRA_MUSIC_PLAYING = "music_playing";
+    /* static final String EXTRA_FOCUS_MODE = "focus_mode"; */
     private static final String PREFS = "companion_session";
     private static final String KEY_STARTED_AT = "started_at";
     private static final String KEY_MUSIC = "music_playing";
     private static final String KEY_SOUND = "sound_id";
+    /* private static final String KEY_FOCUS_MODE = "focus_mode"; */
     private static final String CHANNEL_ID = "companion_audio";
     private static final int NOTIFICATION_ID = 4102;
     private MediaPlayer player;
@@ -34,8 +38,18 @@ public final class CompanionAudioService extends Service {
         return context.getSharedPreferences(PREFS, MODE_PRIVATE).getLong(KEY_STARTED_AT, 0L);
     }
 
+    /*
+    static boolean isFocusSession(android.content.Context context) {
+        return context.getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_FOCUS_MODE, false);
+    }
+    */
+
     static boolean isMusicPlaying(android.content.Context context) {
         return context.getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_MUSIC, false);
+    }
+
+    static void setMusicPlaying(android.content.Context context, boolean playing) {
+        context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_MUSIC, playing).apply();
     }
 
     static String selectedSound(android.content.Context context) {
@@ -81,12 +95,20 @@ public final class CompanionAudioService extends Service {
             startedAt = System.currentTimeMillis();
             getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                     .putLong(KEY_STARTED_AT, startedAt).putBoolean(KEY_MUSIC, false).apply();
+            /* Original focus-mode state:
+            .putBoolean(KEY_FOCUS_MODE, intent != null
+                    && intent.getBooleanExtra(EXTRA_FOCUS_MODE, false)).apply();
+            */
         }
         startForeground(NOTIFICATION_ID, notification());
 
         if (ACTION_TOGGLE_MUSIC.equals(action)) {
             boolean next = !isMusicPlaying(this);
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_MUSIC, next).apply();
+        }
+        if (ACTION_SET_MUSIC.equals(action) && intent != null) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putBoolean(KEY_MUSIC, intent.getBooleanExtra(EXTRA_MUSIC_PLAYING, false)).apply();
         }
         if (ACTION_SET_SOUND.equals(action) && intent != null) {
             String sound = intent.getStringExtra(EXTRA_SOUND_ID);
@@ -151,6 +173,12 @@ public final class CompanionAudioService extends Service {
             long end = Math.max(start, System.currentTimeMillis());
             ReminderRecord.finish(this, "companion-" + start, "陪伴", ReminderRecord.KIND_COMPANION,
                     start, end, "");
+            /* Original focus-session record:
+            boolean focus = isFocusSession(this);
+            ReminderRecord.finish(this, (focus ? "focus-" : "companion-") + start,
+                    focus ? "专注" : "陪伴", focus ? ReminderRecord.KIND_FOCUS : ReminderRecord.KIND_COMPANION,
+                    start, end, "");
+            */
         }
         stopForeground(true);
         stopSelf();
@@ -158,12 +186,15 @@ public final class CompanionAudioService extends Service {
 
     private Notification notification() {
         Intent open = new Intent(this, CompanionActivity.class);
+        /* open.putExtra(EXTRA_FOCUS_MODE, isFocusSession(this)); */
         PendingIntent openPending = PendingIntent.getActivity(this, 0, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Intent stop = new Intent(this, CompanionAudioService.class).setAction(ACTION_STOP);
         PendingIntent stopPending = PendingIntent.getService(this, 1, stop,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String title = isMusicPlaying(this) ? "陪伴中 · " + soundName(selectedSound(this)) + "播放中" : "陪伴计时正在进行";
+        /* String title = isFocusSession(this) ? "专注计时正在进行"
+                : isMusicPlaying(this) ? "陪伴中 · " + soundName(selectedSound(this)) + "播放中" : "陪伴计时正在进行"; */
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setContentTitle(title)

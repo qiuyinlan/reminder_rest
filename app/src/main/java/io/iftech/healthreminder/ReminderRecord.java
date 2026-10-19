@@ -14,6 +14,7 @@ final class ReminderRecord {
     static final String KIND_DONE = "done";
     static final String KIND_MISSED = "missed";
     static final String KIND_COMPANION = "companion";
+    /* static final String KIND_FOCUS = "focus"; */
     final String id;
     final String action;
     final String kind;
@@ -57,6 +58,22 @@ final class ReminderRecord {
         android.content.SharedPreferences.Editor editor = preferences.edit().putString("records", records.toString());
         if (id.equals(active.optString("id", ""))) editor.remove("pending");
         editor.apply();
+    }
+
+    static void update(Context context, ReminderRecord changed) {
+        JSONArray records = new JSONArray();
+        for (ReminderRecord record : all(context)) {
+            records.put(record.id.equals(changed.id) ? changed.toJson() : record.toJson());
+        }
+        prefs(context).edit().putString("records", records.toString()).apply();
+    }
+
+    static void delete(Context context, String id) {
+        JSONArray records = new JSONArray();
+        for (ReminderRecord record : all(context)) {
+            if (!record.id.equals(id)) records.put(record.toJson());
+        }
+        prefs(context).edit().putString("records", records.toString()).apply();
     }
 
     static void recordSnoozed(Context context, String action, long timestamp) {

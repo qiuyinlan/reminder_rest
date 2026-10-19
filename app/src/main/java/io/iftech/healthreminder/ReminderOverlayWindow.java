@@ -23,6 +23,10 @@ final class ReminderOverlayWindow {
     private ReminderOverlayWindow() { }
 
     static synchronized boolean show(Context context, String action) {
+        return show(context, action, -1);
+    }
+
+    static synchronized boolean show(Context context, String action, int ruleId) {
         if (action == null) action = ReminderSettings.nextType(context);
         final String reminderAction = action;
         if (android.os.Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return false;
@@ -62,6 +66,7 @@ final class ReminderOverlayWindow {
             dismiss(context);
             Intent open = new Intent(context, ReminderActivity.class)
                     .putExtra("action", reminderAction)
+                    .putExtra("rule_id", ruleId)
                     .putExtra("begin_immediately", true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(open);
@@ -72,9 +77,13 @@ final class ReminderOverlayWindow {
         later.setGravity(Gravity.CENTER);
         later.setPadding(0, dp(context, 12), 0, dp(context, 4));
         later.setOnClickListener(v -> {
-            ReminderRecord.recordSnoozed(context, reminderAction, System.currentTimeMillis());
-            ReminderScheduler.scheduleSnooze(context, 5, reminderAction);
+            Intent reason = new Intent(context, ReminderActivity.class)
+                    .putExtra("action", reminderAction)
+                    .putExtra("rule_id", ruleId)
+                    .putExtra("enter_reason", true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             dismiss(context);
+            context.startActivity(reason);
         });
         root.addView(later, new LinearLayout.LayoutParams(-1, dp(context, 48)));
 
