@@ -16,6 +16,7 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -23,6 +24,7 @@ import androidx.core.app.NotificationManagerCompat;
 public final class ReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "health_breaks_v2";
     private static final String ACTION_STOP_ALARM_VIBRATION = "io.iftech.healthreminder.STOP_ALARM_VIBRATION";
+    private static final String TAG = "HealthReminderAlarm";
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null && ACTION_STOP_ALARM_VIBRATION.equals(intent.getAction())) {
@@ -83,15 +85,21 @@ public final class ReminderReceiver extends BroadcastReceiver {
 
     static void post(Context context, String action, int ruleId) {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        boolean alarmMode = ReminderSettings.screenOffAlarm(context) && power != null && !power.isInteractive();
+        boolean screenOffAlarmEnabled = ReminderSettings.screenOffAlarm(context);
+        boolean interactive = power == null || power.isInteractive();
+        boolean alarmMode = screenOffAlarmEnabled && !interactive;
         boolean soundEnabled = alarmMode && ReminderSettings.screenOffSound(context);
         boolean vibrate = alarmMode && ReminderSettings.screenOffVibrate(context);
         boolean notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
                 && (Build.VERSION.SDK_INT < 33
                 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
+        Log.i(TAG, "post rule=" + ruleId + " screenOffEnabled=" + screenOffAlarmEnabled
+                + " interactive=" + interactive + " notificationsEnabled=" + notificationsEnabled);
         Uri alarmSound = alarmSound(context);
         boolean serviceAlarm = alarmMode && (soundEnabled || vibrate)
                 && AlarmRingtoneService.start(context, alarmSound, soundEnabled, vibrate);
+        Log.i(TAG, "alarmMode=" + alarmMode + " serviceStarted=" + serviceAlarm
+                + " sound=" + soundEnabled + " vibrate=" + vibrate);
         if (vibrate && !notificationsEnabled && !serviceAlarm) vibrateForAlarm(context);
         String channelId = createChannel(context, alarmMode,
                 soundEnabled && !serviceAlarm, vibrate && !serviceAlarm, alarmSound);
@@ -103,11 +111,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
         PendingIntent delete = PendingIntent.getBroadcast(context, 704, dismissed,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean covered = ReminderOverlayWindow.show(context, action, ruleId);
-        if (covered && !alarmMode) {
+        Log.i(TAG, "overlayCovered=" + covered);
+        if (covered && !screenOffAlarmEnabled) {
             NotificationManagerCompat.from(context).cancel(703);
             return;
         }
-        if (!covered && power != null && power.isInteractive() && ReminderApplication.isInForeground()) {
+        if (!screenOffAlarmEnabled && !covered && interactive && ReminderApplication.isInForeground()) {
             try {
                 context.startActivity(open);
                 NotificationManagerCompat.from(context).cancel(703);
@@ -127,9 +136,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setAutoCancel(true)
                 .setContentIntent(content)
                 .setDeleteIntent(delete)
-                .setFullScreenIntent(content, alarmMode);
+                .setFullScreenIntent(content, screenOffAlarmEnabled);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             NotificationManagerCompat.from(context).notify(703, builder.build());
+            Log.i(TAG, "notificationPosted channel=" + channelId + " fullScreen=" + screenOffAlarmEnabled);
+        } else {
+            Log.w(TAG, "notificationSkipped permissionDenied");
         }
     }
 
