@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -19,6 +20,7 @@
     </queries>
 
     <application
+        android:name=".ReminderApplication"
         android:allowBackup="false"
         android:label="好好歇会"
         android:icon="@drawable/ic_health_reminder"
@@ -46,6 +48,7 @@
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity android:name=".ScreenOffSettingsActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".ItemsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".CompanionLandingActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity
@@ -78,6 +81,10 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
         <service
+            android:name=".AlarmRingtoneService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+        <service
             android:name=".WellnessWallpaperService"
             android:exported="true"
             android:label="好好歇会保活壁纸"
@@ -90,6 +97,11 @@
                 android:resource="@xml/wellness_wallpaper" />
         </service>
         <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".ScreenUnlockReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

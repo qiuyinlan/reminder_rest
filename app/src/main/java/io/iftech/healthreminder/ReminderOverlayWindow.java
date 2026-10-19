@@ -49,8 +49,10 @@ final class ReminderOverlayWindow {
         overline.setPadding(0, 0, 0, dp(context, 8));
         root.addView(overline, new LinearLayout.LayoutParams(-1, -2));
 
-        WellnessAnimationView face = new WellnessAnimationView(context,
-                action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD);
+        WellnessAnimationView.Mood mood = action.contains("喝水") || action.contains("饮水") || action.contains("补水")
+                ? WellnessAnimationView.Mood.THIRSTY
+                : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
+        WellnessAnimationView face = new WellnessAnimationView(context, mood);
         root.addView(face, new LinearLayout.LayoutParams(dp(context, 250), dp(context, 250)));
 
         TextView title = text(context, ReminderActivity.titleFor(action), 28, 0xff23342a, true);
@@ -60,6 +62,9 @@ final class ReminderOverlayWindow {
         plea.setGravity(Gravity.CENTER);
         plea.setPadding(0, dp(context, 10), 0, dp(context, 18));
         root.addView(plea, new LinearLayout.LayoutParams(-1, -2));
+
+        View spacer = new View(context);
+        root.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
 
         Button start = button(context, "好，我去做", true);
         start.setOnClickListener(v -> {

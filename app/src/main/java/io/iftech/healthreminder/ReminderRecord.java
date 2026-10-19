@@ -14,7 +14,7 @@ final class ReminderRecord {
     static final String KIND_DONE = "done";
     static final String KIND_MISSED = "missed";
     static final String KIND_COMPANION = "companion";
-    /* static final String KIND_FOCUS = "focus"; */
+    static final String KIND_FOCUS = "focus";
     final String id;
     final String action;
     final String kind;

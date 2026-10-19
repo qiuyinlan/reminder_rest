@@ -90,7 +90,7 @@ public final class ItemsActivity extends Activity {
             TextView name = text(rule.title, 16, INK, true);
             TextView progress = text(done >= rule.dailyTarget ? "✓ 已完成  " + done + "/" + rule.dailyTarget : "今日完成  " + done + "/" + rule.dailyTarget + " 次", 16, GREEN, true);
             progress.setPadding(0, dp(7), 0, 0);
-            TextView schedule = text(MainActivity.clock(rule.start) + " - " + MainActivity.clock(rule.end) + "  ·  每 " + rule.interval + " 分钟", 12, MUTED, false);
+            TextView schedule = text(MainActivity.clock(rule.start) + " - " + MainActivity.clock(rule.end) + "  ·  " + intervalText(rule.intervalSeconds), 12, MUTED, false);
             schedule.setPadding(0, dp(5), 0, 0);
             TextView afterTarget = text(rule.remindAfterTarget ? "达标后：继续提醒" : "达标后：停止提醒", 12, MUTED, false);
             afterTarget.setPadding(0, dp(4), 0, 0);
@@ -118,7 +118,7 @@ public final class ItemsActivity extends Activity {
         int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
         int[] start = {existing == null ? 9 * 60 : existing.start};
         int[] end = {existing == null ? 18 * 60 : existing.end};
-        int[] interval = {existing == null ? 30 : existing.interval};
+        int[] interval = {existing == null ? 30 * 60 : existing.intervalSeconds};
         int[] target = {existing == null ? 3 : existing.dailyTarget};
         boolean[] enabled = {existing == null || existing.enabled};
         boolean[] remindAfterTarget = {existing != null && existing.remindAfterTarget};
@@ -159,7 +159,7 @@ public final class ItemsActivity extends Activity {
                     String title = name.getText().toString().trim();
                     if (title.isEmpty()) { Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show(); return; }
                     ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this)); updated.removeIf(rule -> rule.id == id);
-                    updated.add(new ReminderSettings.Rule(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], enabled[0]));
+                    updated.add(ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], enabled[0]));
                     ReminderSettings.saveRules(this, updated); renderItems();
                 });
         if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> { ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this)); updated.removeIf(rule -> rule.id == id); ReminderSettings.saveRules(this, updated); renderItems(); });
@@ -332,20 +332,227 @@ public final class ItemsActivity extends Activity {
     }
 
     private void chooseInterval(int[] interval, Button button) {
-        int[] values = {5, 10, 15, 20, 30, 45, 60, 90};
-        String[] options = {"自定义", "每 5 分钟", "每 10 分钟", "每 15 分钟", "每 20 分钟", "每 30 分钟", "每 45 分钟", "每 1 小时", "每 1 小时 30 分钟"};
-        new AlertDialog.Builder(this).setTitle("提醒间隔").setItems(options, (dialog, which) -> {
-            if (which != 0) { interval[0] = values[which - 1]; button.setText("提醒间隔  " + intervalText(interval[0])); return; }
-            LinearLayout fields = new LinearLayout(this); fields.setGravity(Gravity.CENTER);
-            NumberPicker hours = new NumberPicker(this); hours.setMinValue(0); hours.setMaxValue(23); hours.setValue(interval[0] / 60);
-            NumberPicker minutes = new NumberPicker(this); minutes.setMinValue(0); minutes.setMaxValue(59); minutes.setValue(interval[0] % 60);
-            fields.addView(hours); fields.addView(text("小时", 14, INK, true)); fields.addView(minutes); fields.addView(text("分钟", 14, INK, true));
-            new AlertDialog.Builder(this).setTitle("自定义提醒间隔").setView(fields).setNegativeButton("取消", null)
-                    .setPositiveButton("确定", (d, w) -> { int total = hours.getValue() * 60 + minutes.getValue(); if (total > 0) { interval[0] = total; button.setText("提醒间隔  " + intervalText(total)); } else Toast.makeText(this, "至少间隔 1 分钟", Toast.LENGTH_SHORT).show(); }).show();
+        List<Integer> saved = readSavedIntervals();
+        List<Integer> favorites = readFavoriteIntervals();
+        saved.sort((a, b) -> {
+            int favoriteOrder = Boolean.compare(favorites.contains(b), favorites.contains(a));
+            return favoriteOrder != 0 ? favoriteOrder : Integer.compare(a, b);
+        });
+        ArrayList<String> options = new ArrayList<>();
+        for (int value : saved) options.add((favorites.contains(value) ? "★ 常用 · " : "自定义 · ") + intervalText(value));
+        int savedCount = options.size();
+        options.add("自定义时间…");
+        options.add("管理自定义时间…");
+        options.add("每 5 分钟");
+        options.add("每 10 分钟");
+        options.add("每 15 分钟");
+        options.add("每 20 分钟");
+        options.add("每 30 分钟");
+        options.add("每 45 分钟");
+        options.add("每 1 小时");
+        options.add("每 1 小时 30 分钟");
+        new AlertDialog.Builder(this).setTitle("提醒间隔").setItems(options.toArray(new String[0]), (dialog, which) -> {
+            if (which < savedCount) {
+                setInterval(interval, button, saved.get(which));
+            } else if (which == savedCount) {
+                showCustomIntervalPicker(interval, button);
+            } else if (which == savedCount + 1) {
+                manageSavedIntervals(interval, button);
+            } else {
+                int[] values = {5, 10, 15, 20, 30, 45, 60, 90};
+                setInterval(interval, button, values[which - savedCount - 2] * 60);
+            }
         }).show();
     }
 
-    private String intervalText(int minutes) { int h = minutes / 60, m = minutes % 60; if (h == 0) return "每 " + m + " 分钟"; return m == 0 ? "每 " + h + " 小时" : "每 " + h + " 小时 " + m + " 分钟"; }
+    private void showCustomIntervalPicker(int[] interval, Button button) {
+        LinearLayout fields = new LinearLayout(this);
+        fields.setGravity(Gravity.CENTER);
+        fields.setOrientation(LinearLayout.HORIZONTAL);
+        fields.setPadding(dp(12), dp(8), dp(12), dp(8));
+        fields.setBackground(round(0xfff1f6ef, 12));
+        NumberPicker hours = new NumberPicker(this);
+        hours.setMinValue(0);
+        hours.setMaxValue(23);
+        hours.setWrapSelectorWheel(false);
+        hours.setValue(interval[0] / 3600);
+        NumberPicker minutes = new NumberPicker(this);
+        minutes.setMinValue(0);
+        minutes.setMaxValue(59);
+        minutes.setWrapSelectorWheel(false);
+        minutes.setValue(interval[0] / 60 % 60);
+        NumberPicker seconds = new NumberPicker(this);
+        seconds.setMinValue(0);
+        seconds.setMaxValue(59);
+        seconds.setWrapSelectorWheel(false);
+        seconds.setValue(interval[0] % 60);
+        addIntervalWheel(fields, hours, "小时");
+        addIntervalWheel(fields, minutes, "分钟");
+        addIntervalWheel(fields, seconds, "秒");
+        AlertDialog pickerDialog = new AlertDialog.Builder(this).setTitle("自定义提醒间隔")
+                .setMessage("选择提醒间隔")
+                .setView(fields).setNegativeButton("取消", null)
+                .setNeutralButton("收藏置顶", null).setPositiveButton("确定", null).create();
+        pickerDialog.setOnShowListener(ignored -> {
+            pickerDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                int total = hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue();
+                if (total <= 0) {
+                    Toast.makeText(this, "提醒间隔至少为 1 秒", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!addSavedInterval(total)) {
+                    Toast.makeText(this, "保存自定义时间失败，请重试", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                setInterval(interval, button, total);
+                Toast.makeText(this, "已保存自定义时间，下次可在间隔选项顶部选择", Toast.LENGTH_SHORT).show();
+                pickerDialog.dismiss();
+            });
+            pickerDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                int total = hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue();
+                if (total <= 0) {
+                    Toast.makeText(this, "提醒间隔至少为 1 秒", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!addSavedInterval(total)) {
+                    Toast.makeText(this, "保存自定义时间失败，请重试", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                List<Integer> favorites = readFavoriteIntervals();
+                if (!favorites.contains(total)) favorites.add(total);
+                writeIntervalList("favorite_item_intervals_seconds", favorites);
+                setInterval(interval, button, total);
+                pickerDialog.dismiss();
+            });
+        });
+        pickerDialog.show();
+    }
+
+    private void manageSavedIntervals(int[] interval, Button button) {
+        List<Integer> saved = readSavedIntervals();
+        saved.sort(Integer::compareTo);
+        if (saved.isEmpty()) {
+            Toast.makeText(this, "还没有自定义时间", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        rows.setPadding(dp(16), dp(8), dp(16), dp(8));
+        AlertDialog manager = new AlertDialog.Builder(this).setTitle("管理自定义时间")
+                .setView(rows).setPositiveButton("完成", null).create();
+        Runnable[] refresh = new Runnable[1];
+        refresh[0] = () -> {
+            rows.removeAllViews();
+            List<Integer> current = readSavedIntervals();
+            current.sort(Integer::compareTo);
+            for (int value : current) {
+                LinearLayout row = new LinearLayout(this);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                TextView label = text(intervalText(value), 15, INK, true);
+                row.addView(label, new LinearLayout.LayoutParams(0, dp(48), 1));
+                TextView favorite = text(readFavoriteIntervals().contains(value) ? "★" : "☆", 22,
+                        readFavoriteIntervals().contains(value) ? 0xffd59b28 : MUTED, true);
+                favorite.setGravity(Gravity.CENTER);
+                favorite.setContentDescription("收藏到顶部");
+                favorite.setOnClickListener(v -> {
+                    List<Integer> updated = readFavoriteIntervals();
+                    if (updated.contains(value)) updated.remove(Integer.valueOf(value));
+                    else updated.add(value);
+                    writeIntervalList("favorite_item_intervals_seconds", updated);
+                    refresh[0].run();
+                });
+                row.addView(favorite, new LinearLayout.LayoutParams(dp(44), dp(48)));
+                TextView delete = text("×", 22, 0xffbd5147, false);
+                delete.setGravity(Gravity.CENTER);
+                delete.setContentDescription("删除自定义时间");
+                delete.setOnClickListener(v -> new AlertDialog.Builder(this)
+                        .setMessage("删除 " + intervalText(value) + "？")
+                        .setNegativeButton("取消", null)
+                        .setPositiveButton("删除", (d, w) -> {
+                            List<Integer> updated = readSavedIntervals();
+                            updated.remove(Integer.valueOf(value));
+                            writeIntervalList("custom_item_intervals_seconds", updated);
+                            List<Integer> starred = readFavoriteIntervals();
+                            starred.remove(Integer.valueOf(value));
+                            writeIntervalList("favorite_item_intervals_seconds", starred);
+                            refresh[0].run();
+                            if (interval[0] == value) setInterval(interval, button, 30 * 60);
+                        }).show());
+                row.addView(delete, new LinearLayout.LayoutParams(dp(40), dp(48)));
+                rows.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
+            }
+        };
+        manager.setOnShowListener(ignored -> refresh[0].run());
+        manager.show();
+    }
+
+    private List<Integer> readSavedIntervals() {
+        return readIntervalList("custom_item_intervals_seconds", "custom_item_intervals", 60);
+    }
+
+    private List<Integer> readFavoriteIntervals() {
+        return readIntervalList("favorite_item_intervals_seconds", "favorite_item_intervals", 60);
+    }
+
+    private List<Integer> readIntervalList(String key, String legacyKey, int legacyMultiplier) {
+        java.util.Set<String> stored = ReminderSettings.prefs(this).getStringSet(key, null);
+        if (stored == null) {
+            java.util.Set<String> legacy = ReminderSettings.prefs(this).getStringSet(legacyKey, java.util.Collections.emptySet());
+            ArrayList<Integer> migrated = new ArrayList<>();
+            for (String value : legacy) {
+                try { migrated.add(Integer.parseInt(value) * legacyMultiplier); }
+                catch (NumberFormatException ignored) { }
+            }
+            if (!migrated.isEmpty()) writeIntervalList(key, migrated);
+            stored = ReminderSettings.prefs(this).getStringSet(key, java.util.Collections.emptySet());
+        }
+        ArrayList<Integer> values = new ArrayList<>();
+        for (String value : new java.util.HashSet<>(stored)) {
+            try {
+                int seconds = Integer.parseInt(value);
+                if (seconds > 0 && seconds <= 86399 && !values.contains(seconds)) values.add(seconds);
+            } catch (NumberFormatException ignored) { }
+        }
+        return values;
+    }
+
+    private boolean writeIntervalList(String key, List<Integer> values) {
+        java.util.Set<String> stored = new java.util.HashSet<>();
+        for (int value : values) stored.add(Integer.toString(value));
+        return ReminderSettings.prefs(this).edit().putStringSet(key, stored).commit();
+    }
+
+    private boolean addSavedInterval(int value) {
+        List<Integer> saved = readSavedIntervals();
+        if (!saved.contains(value)) saved.add(value);
+        return writeIntervalList("custom_item_intervals_seconds", saved)
+                && readSavedIntervals().contains(value);
+    }
+
+    private void setInterval(int[] interval, Button button, int value) {
+        interval[0] = value;
+        button.setText("提醒间隔  " + intervalText(value));
+    }
+
+    private void addIntervalWheel(LinearLayout parent, NumberPicker picker, String unit) {
+        LinearLayout column = new LinearLayout(this);
+        column.setGravity(Gravity.CENTER);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.addView(picker, new LinearLayout.LayoutParams(dp(76), dp(112)));
+        TextView label = text(unit, 13, MUTED, true);
+        label.setGravity(Gravity.CENTER);
+        column.addView(label, new LinearLayout.LayoutParams(-1, dp(24)));
+        parent.addView(column, new LinearLayout.LayoutParams(0, -2, 1));
+    }
+
+    private String intervalText(int seconds) {
+        int h = seconds / 3600, m = seconds / 60 % 60, s = seconds % 60;
+        StringBuilder label = new StringBuilder("每 ");
+        if (h > 0) label.append(h).append(" 小时 ");
+        if (m > 0) label.append(m).append(" 分钟 ");
+        if (s > 0 || (h == 0 && m == 0)) label.append(s).append(" 秒");
+        return label.toString().trim();
+    }
 
     private void addNavigation(LinearLayout screen) {
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.ITEMS,

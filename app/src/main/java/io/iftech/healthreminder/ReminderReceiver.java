@@ -13,19 +13,32 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "health_breaks_v2";
+    private static final String ACTION_STOP_ALARM_VIBRATION = "io.iftech.healthreminder.STOP_ALARM_VIBRATION";
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (intent != null && ACTION_STOP_ALARM_VIBRATION.equals(intent.getAction())) {
+            stopAlarmVibration(context);
+            return;
+        }
         if (intent != null && intent.getBooleanExtra("snooze", false)) {
             if (!ReminderSettings.enabled(context)) return;
             String action = intent.getStringExtra("action");
             int ruleId = intent.getIntExtra("rule_id", -1);
             if (!hasEnabledRule(context, ruleId, action)) return;
+            if (shouldSkipWhileScreenOff(context)) {
+                ReminderScheduler.pauseForScreenOff(context);
+                return;
+            }
+            ReminderScheduler.consumeSnooze(context, ruleId);
             post(context, action, ruleId);
             if (intent.getBooleanExtra("resume_schedule", false) && ruleId >= 0) {
                 ReminderScheduler.scheduleNext(context, ruleId);
@@ -39,8 +52,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
             if (candidate.id == ruleId && candidate.enabled) { rule = candidate; break; }
         }
         if (rule == null) return;
+        if (shouldSkipWhileScreenOff(context)) {
+            ReminderScheduler.pauseForScreenOff(context);
+            return;
+        }
         if (ReminderSettings.usageOnly(context)) {
-            long recent = UsageAccess.recentMillis(context, System.currentTimeMillis() - rule.interval * 60_000L, System.currentTimeMillis());
+            long recent = UsageAccess.recentMillis(context, System.currentTimeMillis() - rule.intervalSeconds * 1_000L, System.currentTimeMillis());
             if (recent == 0) {
                 ReminderScheduler.scheduleNext(context, rule.id);
                 return;
@@ -58,21 +75,44 @@ public final class ReminderReceiver extends BroadcastReceiver {
         return false;
     }
 
+    private static boolean shouldSkipWhileScreenOff(Context context) {
+        if (ReminderSettings.screenOffAlarm(context)) return false;
+        PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return power != null && !power.isInteractive();
+    }
+
     static void post(Context context, String action, int ruleId) {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         boolean alarmMode = ReminderSettings.screenOffAlarm(context) && power != null && !power.isInteractive();
         boolean soundEnabled = alarmMode && ReminderSettings.screenOffSound(context);
         boolean vibrate = alarmMode && ReminderSettings.screenOffVibrate(context);
+        boolean notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+                && (Build.VERSION.SDK_INT < 33
+                || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
         Uri alarmSound = alarmSound(context);
-        String channelId = createChannel(context, alarmMode, soundEnabled, vibrate, alarmSound);
+        boolean serviceAlarm = alarmMode && !notificationsEnabled && (soundEnabled || vibrate)
+                && AlarmRingtoneService.start(context, alarmSound, soundEnabled, vibrate);
+        if (vibrate && !notificationsEnabled && !serviceAlarm) vibrateForAlarm(context);
+        String channelId = createChannel(context, alarmMode,
+                soundEnabled && !serviceAlarm, vibrate && !serviceAlarm, alarmSound);
         if (action == null) action = ReminderSettings.nextType(context);
         Intent open = new Intent(context, ReminderActivity.class).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 702, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent dismissed = new Intent(context, ReminderReceiver.class).setAction(ACTION_STOP_ALARM_VIBRATION);
+        PendingIntent delete = PendingIntent.getBroadcast(context, 704, dismissed,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean covered = ReminderOverlayWindow.show(context, action, ruleId);
-        if (covered) {
+        if (covered && !alarmMode) {
             NotificationManagerCompat.from(context).cancel(703);
             return;
+        }
+        if (!covered && power != null && power.isInteractive() && ReminderApplication.isInForeground()) {
+            try {
+                context.startActivity(open);
+                NotificationManagerCompat.from(context).cancel(703);
+                return;
+            } catch (RuntimeException ignored) { }
         }
         String title = ReminderActivity.titleFor(action);
         String message = ReminderActivity.pleaFor(action);
@@ -86,15 +126,36 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
                 .setContentIntent(content)
+                .setDeleteIntent(delete)
                 .setFullScreenIntent(content, alarmMode);
-        if (Build.VERSION.SDK_INT < 26 && alarmMode) {
-            if (soundEnabled) builder.setSound(alarmSound);
-            else builder.setSound(null);
-            if (vibrate) builder.setVibrate(new long[]{0, 500, 250, 500});
-        }
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             NotificationManagerCompat.from(context).notify(703, builder.build());
         }
+    }
+
+    static void stopAlarmVibration(Context context) {
+        Vibrator vibrator = defaultVibrator(context);
+        if (vibrator != null) vibrator.cancel();
+        AlarmRingtoneService.stop(context);
+    }
+
+    private static void vibrateForAlarm(Context context) {
+        Vibrator vibrator = defaultVibrator(context);
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        VibrationEffect effect = VibrationEffect.createWaveform(new long[]{0, 500, 250, 500}, 0);
+        AudioAttributes attributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        vibrator.vibrate(effect, attributes);
+    }
+
+    private static Vibrator defaultVibrator(Context context) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            VibratorManager manager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            return manager == null ? null : manager.getDefaultVibrator();
+        }
+        return (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
     }
 
     private static String createChannel(Context context, boolean alarmMode, boolean soundEnabled, boolean vibrate, Uri alarmSound) {
@@ -121,11 +182,11 @@ public final class ReminderReceiver extends BroadcastReceiver {
         try {
             byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
                     .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder id = new StringBuilder("health_alarm_v2_");
+            StringBuilder id = new StringBuilder("health_alarm_v7_");
             for (int i = 0; i < 8; i++) id.append(String.format(java.util.Locale.ROOT, "%02x", digest[i] & 0xff));
             return id.toString();
         } catch (java.security.NoSuchAlgorithmException impossible) {
-            return "health_alarm_v2_" + Integer.toHexString(value.hashCode());
+            return "health_alarm_v7_" + Integer.toHexString(value.hashCode());
         }
     }
 
@@ -138,11 +199,13 @@ public final class ReminderReceiver extends BroadcastReceiver {
             channel.setDescription(alarmMode ? "息屏时使用闹钟声音提醒" : "定时健康休息提醒");
             channel.enableVibration(alarmMode ? vibrate : true);
             if (alarmMode && vibrate) channel.setVibrationPattern(new long[]{0, 500, 250, 500});
-            if (alarmMode && soundEnabled) {
-                channel.setSound(alarmSound, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
-            } else if (alarmMode) {
-                channel.setSound(null, null);
+            if (!alarmMode) channel.setVibrationPattern(new long[]{0, 350, 150, 350});
+            if (alarmMode) {
+                AudioAttributes alarmAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build();
+                channel.setSound(soundEnabled ? alarmSound : null, alarmAttributes);
             } else {
                 channel.setVibrationPattern(new long[]{0, 350, 150, 350});
                 channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),

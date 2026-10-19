@@ -25,6 +25,7 @@ final class ReminderSettings {
         final int start;
         final int end;
         final int interval;
+        final int intervalSeconds;
         final int dailyTarget;
         final boolean remindAfterTarget;
         final boolean enabled;
@@ -36,14 +37,25 @@ final class ReminderSettings {
             this(id, title, start, end, interval, dailyTarget, false, enabled);
         }
         Rule(int id, String title, int start, int end, int interval, int dailyTarget, boolean remindAfterTarget, boolean enabled) {
+            this(id, title, start, end, interval, interval * 60, dailyTarget, remindAfterTarget, enabled);
+        }
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled) {
             this.id = id;
             this.title = title;
             this.start = start;
             this.end = end;
             this.interval = interval;
+            this.intervalSeconds = Math.max(1, intervalSeconds);
             this.dailyTarget = Math.max(1, dailyTarget);
             this.remindAfterTarget = remindAfterTarget;
             this.enabled = enabled;
+        }
+
+        static Rule withIntervalSeconds(int id, String title, int start, int end, int intervalSeconds,
+                                        int dailyTarget, boolean remindAfterTarget, boolean enabled) {
+            return new Rule(id, title, start, end, Math.max(1, (intervalSeconds + 59) / 60), intervalSeconds,
+                    dailyTarget, remindAfterTarget, enabled);
         }
     }
 
@@ -82,8 +94,10 @@ final class ReminderSettings {
             JSONArray array = new JSONArray(encoded);
             for (int i = 0; i < array.length(); i++) {
                 JSONObject item = array.getJSONObject(i);
-                result.add(new Rule(item.getInt("id"), item.getString("title"), item.getInt("start"),
-                        item.getInt("end"), item.getInt("interval"), item.optInt("dailyTarget", 3),
+                int intervalSeconds = item.has("intervalSeconds")
+                        ? item.getInt("intervalSeconds") : item.getInt("interval") * 60;
+                result.add(Rule.withIntervalSeconds(item.getInt("id"), item.getString("title"), item.getInt("start"),
+                        item.getInt("end"), intervalSeconds, item.optInt("dailyTarget", 3),
                         item.optBoolean("remindAfterTarget", false), item.optBoolean("enabled", true)));
             }
         } catch (JSONException ignored) { }
@@ -105,9 +119,32 @@ final class ReminderSettings {
     }
 
     static void saveRules(Context context, List<Rule> rules) {
-        for (Rule previous : rules(context)) ReminderScheduler.cancelRule(context, previous.id);
+        List<Rule> previousRules = rules(context);
+        for (Rule previous : previousRules) {
+            Rule updated = findRule(rules, previous.id);
+            if (updated == null || !sameRule(previous, updated)) {
+                ReminderScheduler.cancelRule(context, previous.id);
+            }
+        }
+        for (Rule updated : rules) {
+            if (findRule(previousRules, updated.id) == null) {
+                ReminderScheduler.resetNext(context, updated.id);
+            }
+        }
         writeRules(context, rules);
         ReminderScheduler.update(context);
+    }
+
+    private static Rule findRule(List<Rule> rules, int id) {
+        for (Rule rule : rules) if (rule.id == id) return rule;
+        return null;
+    }
+
+    private static boolean sameRule(Rule first, Rule second) {
+        return first.id == second.id && first.title.equals(second.title)
+                && first.start == second.start && first.end == second.end
+                && first.intervalSeconds == second.intervalSeconds && first.dailyTarget == second.dailyTarget
+                && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled;
     }
 
     private static void writeRules(Context context, List<Rule> rules) {
@@ -120,6 +157,7 @@ final class ReminderSettings {
                 item.put("start", rule.start);
                 item.put("end", rule.end);
                 item.put("interval", rule.interval);
+                item.put("intervalSeconds", rule.intervalSeconds);
                 item.put("dailyTarget", rule.dailyTarget);
                 item.put("remindAfterTarget", rule.remindAfterTarget);
                 item.put("enabled", rule.enabled);

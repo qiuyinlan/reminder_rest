@@ -98,8 +98,10 @@ public final class ReminderActivity extends Activity {
         if (isTypingReminder(action)) {
             animation.addView(new TypingSceneView(this), new FrameLayout.LayoutParams(-1, -1));
         } else {
+            WellnessAnimationView.Mood mood = isWaterReminder(action) ? WellnessAnimationView.Mood.THIRSTY
+                    : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
             WellnessAnimationView face = new WellnessAnimationView(this,
-                    action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD);
+                    mood);
             face.setScaleX(.82f);
             face.setScaleY(.82f);
             face.setAlpha(0f);
@@ -111,17 +113,6 @@ public final class ReminderActivity extends Activity {
             bob.setRepeatCount(ValueAnimator.INFINITE);
             face.post(bob::start);
             animation.addView(face, new FrameLayout.LayoutParams(dp(260), dp(250), Gravity.CENTER));
-        }
-        if (isWaterReminder(action)) {
-            WellnessAnimationView droplet = new WellnessAnimationView(this, WellnessAnimationView.Mood.WATER);
-            ObjectAnimator dropBob = ObjectAnimator.ofFloat(droplet, View.TRANSLATION_Y, -dp(5), dp(8), -dp(5));
-            dropBob.setDuration(1500);
-            dropBob.setRepeatCount(ValueAnimator.INFINITE);
-            droplet.post(dropBob::start);
-            FrameLayout.LayoutParams dropParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.RIGHT | Gravity.TOP);
-            dropParams.topMargin = dp(20);
-            dropParams.rightMargin = dp(12);
-            animation.addView(droplet, dropParams);
         }
         int sceneHeight = isTypingReminder(action) ? 210 : 260;
         LinearLayout.LayoutParams sceneParams = new LinearLayout.LayoutParams(-1, dp(sceneHeight));
@@ -146,6 +137,7 @@ public final class ReminderActivity extends Activity {
         snooze.setGravity(Gravity.CENTER);
         snooze.setPadding(0, dp(15), 0, dp(8));
         snooze.setOnClickListener(v -> {
+            ReminderReceiver.stopAlarmVibration(this);
             ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
             ReminderScheduler.scheduleSnooze(this, 5, action, ruleId);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
@@ -155,6 +147,7 @@ public final class ReminderActivity extends Activity {
     }
 
     private void beginDoing() {
+        ReminderReceiver.stopAlarmVibration(this);
         waiting = true;
         sessionId = java.util.UUID.randomUUID().toString();
         startedAt = System.currentTimeMillis();
@@ -358,7 +351,7 @@ public final class ReminderActivity extends Activity {
         cancel.setPadding(dp(18), dp(12), dp(18), dp(12));
         cancel.setOnClickListener(v -> {
             dialog.dismiss();
-            if (reasonFromOverlay) finish();
+            if (reasonFromOverlay) returnToOverlay();
         });
         TextView submit = text("提交记录", 15, Color.WHITE, true);
         submit.setGravity(Gravity.CENTER);
@@ -383,11 +376,13 @@ public final class ReminderActivity extends Activity {
                 ReminderScheduler.scheduleCustomSnooze(this,
                         delayMinutes(hourPicker.getValue(), minutePicker.getValue()), action, ruleId);
             }
+            ReminderReceiver.stopAlarmVibration(this);
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
             dialog.dismiss();
             finish();
         });
         dialog.setOnCancelListener(ignored -> {
-            if (reasonFromOverlay) finish();
+            if (reasonFromOverlay) returnToOverlay();
         });
         dialog.show();
         if (dialog.getWindow() != null) {
@@ -395,6 +390,12 @@ public final class ReminderActivity extends Activity {
             dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(36), -2);
             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+    }
+
+    private void returnToOverlay() {
+        finish();
+        new Handler(Looper.getMainLooper()).postDelayed(
+                () -> ReminderOverlayWindow.show(getApplicationContext(), action, ruleId), 180);
     }
 
     private void updateDelayLabel(TextView label, int hours, int minutes, boolean custom) {

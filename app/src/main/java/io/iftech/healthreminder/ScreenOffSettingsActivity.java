@@ -9,12 +9,18 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.app.NotificationManagerCompat;
 
 public final class ScreenOffSettingsActivity extends Activity {
     private static final int GREEN = 0xff277049;
@@ -33,6 +39,7 @@ public final class ScreenOffSettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (ReminderSettings.enabled(this)) ReminderScheduler.update(this);
         render();
     }
 
@@ -58,27 +65,41 @@ public final class ScreenOffSettingsActivity extends Activity {
         options.setOrientation(LinearLayout.VERTICAL);
         options.setPadding(dp(16), dp(4), dp(16), dp(4));
         options.setBackground(round(Color.WHITE, 12));
-        Switch alarm = addSwitchRow(options, "息屏提醒", ReminderSettings.screenOffAlarm(this));
-        alarm.setOnCheckedChangeListener((button, checked) -> {
-            if (!checked) {
-                ReminderSettings.prefs(this).edit().putBoolean("screen_off_alarm", false).apply();
-                return;
-            }
-            new AlertDialog.Builder(this).setTitle("息屏设置")
-                    .setMessage("息屏时身体也在劳作，我会化成闹钟提醒你的")
-                    .setNegativeButton("取消", (dialog, which) -> button.setChecked(false))
-                    .setPositiveButton("开启", (dialog, which) ->
-                            ReminderSettings.prefs(this).edit().putBoolean("screen_off_alarm", true).apply())
-                    .setOnCancelListener(dialog -> button.setChecked(false))
-                    .show();
-        });
+        Switch alarm = addSwitchRow(options, "统计息屏", ReminderSettings.screenOffAlarm(this));
+        TextView screenOffHint = text("关闭屏幕时也计入提醒时间", 11, MUTED, false);
+        screenOffHint.setPadding(0, 0, 0, dp(12));
+        options.addView(screenOffHint, new LinearLayout.LayoutParams(-1, -2));
         addDivider(options);
-        Switch sound = addSwitchRow(options, "闹钟铃声", ReminderSettings.screenOffSound(this));
+        Switch sound = addSwitchRow(options, "息屏闹钟", ReminderSettings.screenOffSound(this));
         addDivider(options);
-        Switch vibrate = addSwitchRow(options, "振动", ReminderSettings.screenOffVibrate(this));
+        Switch vibrate = addSwitchRow(options, "息屏振动", ReminderSettings.screenOffVibrate(this));
         vibrate.setOnCheckedChangeListener((button, checked) ->
                 ReminderSettings.prefs(this).edit().putBoolean("screen_off_vibrate", checked).apply());
         page.addView(options, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView permissionsTitle = text("锁屏提醒权限", 16, INK, true);
+        LinearLayout.LayoutParams permissionsTitleParams = new LinearLayout.LayoutParams(-1, -2);
+        permissionsTitleParams.topMargin = dp(20);
+        permissionsTitleParams.bottomMargin = dp(8);
+        page.addView(permissionsTitle, permissionsTitleParams);
+        addPermissionRow(page, "精确闹钟", exactAlarmAllowed() ? "已允许" : "未开启 · 去设置",
+                this::openExactAlarmSettings);
+        boolean notificationsAllowed = NotificationManagerCompat.from(this).areNotificationsEnabled()
+                && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED);
+        addPermissionRow(page, "通知权限", notificationsAllowed ? "已允许" : "未开启 · 去设置",
+                this::openNotificationSettings);
+        if (Build.VERSION.SDK_INT >= 34) {
+            NotificationManager notifications = getSystemService(NotificationManager.class);
+            boolean fullScreenAllowed = notifications != null && notifications.canUseFullScreenIntent();
+            addPermissionRow(page, "锁屏全屏提醒", fullScreenAllowed ? "已允许" : "未开启 · 去设置",
+                    this::openFullScreenSettings);
+        }
+        TextView recheck = text("重新检查权限", 14, GREEN, true);
+        recheck.setGravity(Gravity.CENTER);
+        recheck.setPadding(0, dp(10), 0, dp(10));
+        recheck.setOnClickListener(v -> render());
+        page.addView(recheck, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout ringtoneRow = new LinearLayout(this);
         ringtoneRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -94,15 +115,40 @@ public final class ScreenOffSettingsActivity extends Activity {
         ringtoneRow.addView(ringtoneValue);
         ringtoneRow.setContentDescription("选择铃声，" + ringtoneName());
         ringtoneRow.setOnClickListener(v -> pickAlarmRingtone());
-        ringtoneRow.setEnabled(ReminderSettings.screenOffSound(this));
-        ringtoneRow.setAlpha(ReminderSettings.screenOffSound(this) ? 1f : 0.45f);
+        LinearLayout soundRow = (LinearLayout) sound.getParent();
+        LinearLayout vibrateRow = (LinearLayout) vibrate.getParent();
         sound.setOnCheckedChangeListener((button, checked) -> {
             ReminderSettings.prefs(this).edit().putBoolean("screen_off_sound", checked).apply();
-            ringtoneRow.setEnabled(checked);
-            ringtoneRow.setAlpha(checked ? 1f : 0.45f);
+            updateControlState(alarm.isChecked(), checked, sound, vibrate,
+                    soundRow, vibrateRow, ringtoneRow);
         });
+        alarm.setOnCheckedChangeListener((button, checked) -> {
+            if (!checked) {
+                ReminderSettings.prefs(this).edit().putBoolean("screen_off_alarm", false).apply();
+                ReminderScheduler.update(this);
+                updateControlState(false, sound.isChecked(), sound, vibrate,
+                        soundRow, vibrateRow, ringtoneRow);
+                return;
+            }
+            new AlertDialog.Builder(this).setTitle("统计息屏")
+                    .setMessage("息屏时身体也在劳作，我会化成闹钟提醒你的")
+                    .setNegativeButton("取消", (dialog, which) -> button.setChecked(false))
+                    .setPositiveButton("开启", (dialog, which) -> {
+                        ReminderSettings.prefs(this).edit().putBoolean("screen_off_alarm", true).apply();
+                        ReminderScheduler.update(this);
+                        updateControlState(true, sound.isChecked(), sound, vibrate,
+                                soundRow, vibrateRow, ringtoneRow);
+                    })
+                    .setOnCancelListener(dialog -> button.setChecked(false))
+                    .show();
+        });
+        updateControlState(alarm.isChecked(), sound.isChecked(), sound, vibrate,
+                soundRow, vibrateRow, ringtoneRow);
 
-        setContentView(page);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(page);
+        setContentView(scroll);
     }
 
     private Switch addSwitchRow(LinearLayout parent, String title, boolean checked) {
@@ -122,6 +168,74 @@ public final class ScreenOffSettingsActivity extends Activity {
         View divider = new View(this);
         divider.setBackgroundColor(0xffe8eee6);
         parent.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+    }
+
+    private void updateControlState(boolean screenOffEnabled, boolean soundEnabled,
+                                    Switch sound, Switch vibrate, LinearLayout soundRow,
+                                    LinearLayout vibrateRow, LinearLayout ringtoneRow) {
+        sound.setEnabled(screenOffEnabled);
+        vibrate.setEnabled(screenOffEnabled);
+        soundRow.setAlpha(screenOffEnabled ? 1f : 0.45f);
+        vibrateRow.setAlpha(screenOffEnabled ? 1f : 0.45f);
+        boolean ringtoneEnabled = screenOffEnabled && soundEnabled;
+        ringtoneRow.setEnabled(ringtoneEnabled);
+        ringtoneRow.setAlpha(ringtoneEnabled ? 1f : 0.45f);
+    }
+
+    private boolean exactAlarmAllowed() {
+        if (Build.VERSION.SDK_INT < 31) return true;
+        AlarmManager alarms = getSystemService(AlarmManager.class);
+        return alarms != null && alarms.canScheduleExactAlarms();
+    }
+
+    private void addPermissionRow(LinearLayout parent, String label, String status, Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+        row.setBackground(round(Color.WHITE, 12));
+        TextView name = text(label, 15, INK, false);
+        row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView value = text(status, 14, status.startsWith("未开启") ? 0xffa33b32 : GREEN, true);
+        row.addView(value);
+        row.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(8);
+        parent.addView(row, params);
+    }
+
+    private void openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                .setData(Uri.parse("package:" + getPackageName()));
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException error) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    private void openFullScreenSettings() {
+        if (Build.VERSION.SDK_INT < 34) return;
+        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                .setData(Uri.parse("package:" + getPackageName()));
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException error) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    private void openNotificationSettings() {
+        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException error) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + getPackageName())));
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {

@@ -56,6 +56,7 @@ public final class StatsActivity extends Activity {
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
     private static final String FILTER_ALL = "all";
+    private static final String FILTER_COMPANION = "companion_all";
     private String filter = FILTER_ALL;
     private LinearLayout content;
     private TextView monthLabel;
@@ -143,9 +144,6 @@ public final class StatsActivity extends Activity {
         int[] totals = totalsForDay(selected);
         TextView summary = text("完成 " + totals[0] + " 次    未完成 " + totals[1]
                 + " 次    陪伴 " + totals[2] + " 次", 13, MUTED, false);
-        /* Original focus count:
-        + " 次    陪伴 " + totals[2] + " 次    专注 " + totals[3] + " 次"
-        */
         summary.setPadding(0, 0, 0, dp(12));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
@@ -154,18 +152,15 @@ public final class StatsActivity extends Activity {
         TextView all = pill("全部", FILTER_ALL.equals(filter));
         TextView done = pill("做了", ReminderRecord.KIND_DONE.equals(filter));
         TextView missed = pill("没做", ReminderRecord.KIND_MISSED.equals(filter));
-        TextView companion = pill("陪伴", ReminderRecord.KIND_COMPANION.equals(filter));
-        /* TextView focus = pill("专注", ReminderRecord.KIND_FOCUS.equals(filter)); */
+        TextView companion = pill("陪伴", FILTER_COMPANION.equals(filter));
         all.setOnClickListener(v -> { filter = FILTER_ALL; render(); });
         done.setOnClickListener(v -> { filter = ReminderRecord.KIND_DONE; render(); });
         missed.setOnClickListener(v -> { filter = ReminderRecord.KIND_MISSED; render(); });
-        companion.setOnClickListener(v -> { filter = ReminderRecord.KIND_COMPANION; render(); });
-        /* focus.setOnClickListener(v -> { filter = ReminderRecord.KIND_FOCUS; render(); }); */
+        companion.setOnClickListener(v -> { filter = FILTER_COMPANION; render(); });
         pills.addView(all, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(done, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(missed, new LinearLayout.LayoutParams(0, dp(40), 1));
         pills.addView(companion, new LinearLayout.LayoutParams(0, dp(40), 1));
-        /* pills.addView(focus, new LinearLayout.LayoutParams(0, dp(40), 1)); */
         content.addView(pills);
         showTimeline();
         addNavigation(screen);
@@ -525,9 +520,12 @@ public final class StatsActivity extends Activity {
         for (ReminderRecord record : ReminderRecord.all(this)) {
             boolean visibleKind = ReminderRecord.KIND_DONE.equals(record.kind)
                     || ReminderRecord.KIND_MISSED.equals(record.kind)
-                    || ReminderRecord.KIND_COMPANION.equals(record.kind);
-            if (sameDay(record.startedAt, selected) && (FILTER_ALL.equals(filter)
-                    ? visibleKind : record.kind.equals(filter))) records.add(record);
+                    || ReminderRecord.KIND_COMPANION.equals(record.kind)
+                    || ReminderRecord.KIND_FOCUS.equals(record.kind);
+            boolean isCompanion = ReminderRecord.KIND_COMPANION.equals(record.kind)
+                    || ReminderRecord.KIND_FOCUS.equals(record.kind);
+            if (sameDay(record.startedAt, selected) && (FILTER_ALL.equals(filter) ? visibleKind
+                    : FILTER_COMPANION.equals(filter) ? isCompanion : record.kind.equals(filter))) records.add(record);
         }
         Collections.sort(records, Comparator.comparingLong(record -> record.startedAt));
         for (int index = 0; index < records.size(); index++) {
@@ -557,10 +555,9 @@ public final class StatsActivity extends Activity {
             if (ReminderRecord.KIND_COMPANION.equals(record.kind)) {
                 long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
                 detail = "陪伴了 " + duration(elapsed);
-            /* } else if (ReminderRecord.KIND_FOCUS.equals(filter)) {
+            } else if (ReminderRecord.KIND_FOCUS.equals(record.kind)) {
                 long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
-                detail = "专注了 " + duration(elapsed);
-            */
+                detail = "专注陪伴了 " + duration(elapsed);
             } else if (ReminderRecord.KIND_DONE.equals(record.kind)) {
                 long elapsed = Math.max(0, record.endedAt - record.startedAt) / 1000;
                 detail = "完成" + ("提前完成".equals(record.reason) ? " · 提前完成" : " · 用时 " + duration(elapsed));
@@ -582,11 +579,10 @@ public final class StatsActivity extends Activity {
                 details.addView(note);
             }
             String timestamp = time(record.startedAt);
-            if ((ReminderRecord.KIND_DONE.equals(record.kind) || ReminderRecord.KIND_COMPANION.equals(record.kind))
-                    && record.endedAt > record.startedAt) {
+            if ((ReminderRecord.KIND_DONE.equals(record.kind) || ReminderRecord.KIND_COMPANION.equals(record.kind)
+                    || ReminderRecord.KIND_FOCUS.equals(record.kind)) && record.endedAt > record.startedAt) {
                 timestamp += " - " + time(record.endedAt);
             }
-            /* Original timestamp filter also included ReminderRecord.KIND_FOCUS. */
             TextView time = text(timestamp, 11, color, true);
             time.setPadding(dp(20), dp(5), 0, 0);
             details.addView(time);
@@ -602,11 +598,8 @@ public final class StatsActivity extends Activity {
         }
         if (records.isEmpty()) {
             String message = FILTER_ALL.equals(filter) ? "这一天还没有记录"
-                    : ReminderRecord.KIND_COMPANION.equals(filter) ? "这一天还没有陪伴记录"
+                    : FILTER_COMPANION.equals(filter) ? "这一天还没有陪伴记录"
                     : ReminderRecord.KIND_DONE.equals(filter) ? "这一天还没有完成记录" : "这一天没有未完成记录";
-            /* Original focus empty-state branch:
-            ReminderRecord.KIND_FOCUS.equals(filter) ? "这一天还没有专注记录" :
-            */
             TextView empty = text(message, 13, MUTED, false);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(30), 0, dp(30));
@@ -727,9 +720,8 @@ public final class StatsActivity extends Activity {
             if (!sameDay(record.startedAt, day)) continue;
             int index = ReminderRecord.KIND_DONE.equals(record.kind) ? 0
                     : ReminderRecord.KIND_MISSED.equals(record.kind) ? 1
-                    : ReminderRecord.KIND_COMPANION.equals(record.kind) ? 2 : -1;
+                    : ReminderRecord.KIND_COMPANION.equals(record.kind) || ReminderRecord.KIND_FOCUS.equals(record.kind) ? 2 : -1;
             if (index >= 0) totals[index]++;
-            /* The prior fourth counter counted focus records. */
         }
         return totals;
     }
@@ -738,8 +730,8 @@ public final class StatsActivity extends Activity {
         if (action.contains("喝") || action.contains("水")) return 0xff287b95;
         if (action.contains("眼") || action.contains("看")) return 0xff527947;
         if (action.contains("颈") || action.contains("肩")) return 0xffa76c42;
-        if ("陪伴".equals(action)) return GREEN;
-        /* if ("专注".equals(action)) return 0xff8a7042; */
+        if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return GREEN;
+        if ("专注陪伴".equals(action)) return 0xff8a7042;
         return 0xff6e6aa0;
     }
 

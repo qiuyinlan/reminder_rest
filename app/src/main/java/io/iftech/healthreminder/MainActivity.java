@@ -32,6 +32,7 @@ import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.app.NotificationManagerCompat;
 
 import java.text.DateFormat;
 import java.util.Calendar;
@@ -97,7 +98,7 @@ public final class MainActivity extends Activity {
         settingsButton.setGravity(Gravity.CENTER);
         settingsButton.setPadding(dp(12), dp(8), dp(4), dp(8));
         settingsButton.setContentDescription("设置");
-        settingsButton.setOnClickListener(v -> startActivity(new Intent(this, ScreenOffSettingsActivity.class)));
+        settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         top.addView(settingsButton);
         body.addView(top);
         LinearLayout dateRow = row();
@@ -241,12 +242,14 @@ public final class MainActivity extends Activity {
     }
 
     private void addPermissionBanner() {
-        boolean notification = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        boolean notification = notificationPermissionReady();
+        boolean exactAlarm = exactAlarmAllowed();
+        boolean fullScreen = fullScreenIntentAllowed();
         boolean usage = UsageAccess.hasAccess(this);
         boolean accessibility = isWatchServiceEnabled();
         boolean overlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
         boolean batteryExempt = isIgnoringBatteryOptimizations();
-        boolean ready = notification && overlay && batteryExempt
+        boolean ready = notification && exactAlarm && fullScreen && overlay && batteryExempt
                 && (!ReminderSettings.usageOnly(this) || usage)
                 && (!ReminderSettings.blockEnabled(this) || accessibility);
         LinearLayout banner = new LinearLayout(this);
@@ -254,9 +257,9 @@ public final class MainActivity extends Activity {
         banner.setPadding(dp(14), dp(11), dp(14), dp(11));
         banner.setBackground(round(ready ? 0xffe5f2e4 : 0xffffe7e4, 14));
         int statusColor = ready ? GREEN : 0xffa33b32;
-        TextView copy = label(ready ? "权限配置已完成\n提醒与休息拦截权限均已开启" : "权限配置未完成\n完成后提醒和 App 休息拦截才会正常工作", 13, statusColor, true);
+        TextView copy = label(ready ? "权限配置已完成\n提醒与休息拦截权限均已开启" : "权限需要检查\n点击重新核对通知、闹钟和后台权限", 13, statusColor, true);
         banner.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView go = label(ready ? "查看  ›" : "去设置  ›", 13, statusColor, true);
+        TextView go = label("检查权限  ›", 13, statusColor, true);
         banner.addView(go);
         banner.setOnClickListener(v -> showPermissionChecklist());
         LinearLayout.LayoutParams params = full();
@@ -266,13 +269,26 @@ public final class MainActivity extends Activity {
 
     private void showPermissionChecklist() {
         LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(20), dp(4), dp(20), 0);
-        boolean notification = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        boolean notification = notificationPermissionReady();
         AlertDialog guide = new AlertDialog.Builder(this).setTitle("完成系统配置")
-                .setView(list).setPositiveButton("完成", null).create();
+                .setView(list).setNeutralButton("重新检查", null).setPositiveButton("完成", null).create();
         TextView explanation = label("允许悬浮窗后，屏幕亮且未锁定时会覆盖当前应用；锁屏时由系统通知提醒。", 12, MUTED, false);
         explanation.setPadding(0, 0, 0, dp(8));
         list.addView(explanation, 0);
-        addPermissionRow(list, guide, "通知权限", notification, () -> { if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 91); });
+        addPermissionRow(list, guide, "通知权限", notification, () -> {
+            boolean runtimeGranted = Build.VERSION.SDK_INT < 33
+                    || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (Build.VERSION.SDK_INT >= 33 && !runtimeGranted) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 91);
+            } else {
+                openNotificationSettings();
+            }
+        });
+        addPermissionRow(list, guide, "精确闹钟", exactAlarmAllowed(), this::openExactAlarmSettings);
+        if (Build.VERSION.SDK_INT >= 34) {
+            addPermissionRow(list, guide, "锁屏全屏提醒", fullScreenIntentAllowed(), this::openFullScreenSettings);
+        }
         addPermissionRow(list, guide, "使用情况访问", UsageAccess.hasAccess(this), this::openUsageSettings);
         addPermissionRow(list, guide, "无障碍服务（读取当前 App 名称）", isWatchServiceEnabled(), this::openAccessibilitySettings);
         addPermissionRow(list, guide, "悬浮窗（其他 App 上显示提醒）", Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this), this::openOverlaySettings);
@@ -295,17 +311,70 @@ public final class MainActivity extends Activity {
         });
         list.addView(testOverlay);
         guide.show();
+        guide.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+            guide.dismiss();
+            render();
+            body.post(this::showPermissionChecklist);
+        });
     }
 
     private void addPermissionRow(LinearLayout parent, AlertDialog guide, String title, boolean ready, Runnable action) {
         TextView row = label((ready ? "✓ " : "○ ") + title + (ready ? "  已完成" : "  去设置"), 15, ready ? GREEN : 0xffa33b32, true);
         row.setPadding(0, dp(13), 0, dp(13));
-        if (!ready) row.setOnClickListener(v -> {
+        row.setOnClickListener(v -> {
             guide.dismiss();
             reopenPermissionGuide = true;
             action.run();
         });
         parent.addView(row);
+    }
+
+    private boolean notificationPermissionReady() {
+        boolean runtimeGranted = Build.VERSION.SDK_INT < 33
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        return runtimeGranted && NotificationManagerCompat.from(this).areNotificationsEnabled();
+    }
+
+    private boolean exactAlarmAllowed() {
+        if (Build.VERSION.SDK_INT < 31) return true;
+        android.app.AlarmManager alarms = getSystemService(android.app.AlarmManager.class);
+        return alarms != null && alarms.canScheduleExactAlarms();
+    }
+
+    private boolean fullScreenIntentAllowed() {
+        if (Build.VERSION.SDK_INT < 34) return true;
+        android.app.NotificationManager notifications = getSystemService(android.app.NotificationManager.class);
+        return notifications != null && notifications.canUseFullScreenIntent();
+    }
+
+    private void openNotificationSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
+        } catch (Exception unavailable) {
+            openAppDetails("无法打开通知设置");
+        }
+    }
+
+    private void openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        try {
+            startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception unavailable) {
+            openAppDetails("无法打开精确闹钟设置");
+        }
+    }
+
+    private void openFullScreenSettings() {
+        if (Build.VERSION.SDK_INT < 34) return;
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception unavailable) {
+            openAppDetails("无法打开全屏提醒设置");
+        }
     }
 
     private void addActionRow(LinearLayout parent, AlertDialog guide, String title, String detail, Runnable action) {
@@ -413,22 +482,16 @@ public final class MainActivity extends Activity {
     private void addRuleRow(LinearLayout parent, ReminderSettings.Rule rule) {
         LinearLayout item = row();
         item.setPadding(dp(2), dp(12), dp(2), dp(12));
-        if ("喝水".equals(rule.title)) {
-            WellnessAnimationView thirstyFace = new WellnessAnimationView(this, WellnessAnimationView.Mood.THIRSTY);
-            thirstyFace.setContentDescription("口渴的表情");
-            item.addView(thirstyFace, new LinearLayout.LayoutParams(dp(60), dp(60)));
-        } else {
-            TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
-            badge.setGravity(Gravity.CENTER);
-            badge.setBackground(round(iconTint(rule.title), 12));
-            item.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
-        }
+        TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackground(round(iconTint(rule.title), 12));
+        item.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setPadding(dp(11), 0, dp(6), 0);
         copy.addView(label(rule.title, 15, INK, true));
         int done = ReminderSettings.completedToday(this, rule.id);
-        copy.addView(label(clock(rule.start) + " - " + clock(rule.end) + "  ·  " + intervalText(rule.interval) + "  ·  今日 " + done + "/" + rule.dailyTarget, 12, MUTED, false));
+        copy.addView(label(clock(rule.start) + " - " + clock(rule.end) + "  ·  " + intervalText(rule.intervalSeconds) + "  ·  今日 " + done + "/" + rule.dailyTarget, 12, MUTED, false));
         String nextText;
         long nextAt = 0L;
         boolean ticking = false;
@@ -438,7 +501,7 @@ public final class MainActivity extends Activity {
             nextText = "提醒已暂停";
         } else {
             nextAt = ReminderScheduler.scheduledAt(this, rule.id);
-            if (nextAt <= System.currentTimeMillis()) {
+            if (nextAt <= 0L) {
                 nextAt = ReminderScheduler.nextTime(rule, System.currentTimeMillis());
             }
             ticking = true;
@@ -447,7 +510,7 @@ public final class MainActivity extends Activity {
         }
         TextView countdown = label(nextText, 12, done >= rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget);
         copy.addView(countdown);
-        if (ticking) startCountdown(countdown, nextAt, done >= rule.dailyTarget);
+        if (ticking) startCountdown(countdown, rule, done >= rule.dailyTarget);
         LinearLayout completionActions = row();
         TextView complete = new TextView(this);
         complete.setText("提前完成一次");
@@ -483,7 +546,7 @@ public final class MainActivity extends Activity {
         item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         Switch active = new Switch(this);
         active.setChecked(rule.enabled);
-        active.setOnCheckedChangeListener((button, checked) -> saveRule(new ReminderSettings.Rule(rule.id, rule.title, rule.start, rule.end, rule.interval, rule.dailyTarget, rule.remindAfterTarget, checked)));
+        active.setOnCheckedChangeListener((button, checked) -> saveRule(ReminderSettings.Rule.withIntervalSeconds(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds, rule.dailyTarget, rule.remindAfterTarget, checked)));
         item.addView(active);
         if (!rule.enabled) item.setAlpha(.58f);
         item.setOnClickListener(v -> editRule(rule));
@@ -499,11 +562,14 @@ public final class MainActivity extends Activity {
         return String.format(java.util.Locale.getDefault(), "还差%dh%02dmin%02ds提醒", hours, minutes, remainder);
     }
 
-    private void startCountdown(TextView view, long nextAt, boolean targetReached) {
+    private void startCountdown(TextView view, ReminderSettings.Rule rule, boolean targetReached) {
         Runnable ticker = new Runnable() {
             @Override public void run() {
                 if (!view.isAttachedToWindow()) return;
-                String value = countdownText(nextAt - System.currentTimeMillis());
+                long now = System.currentTimeMillis();
+                long nextAt = ReminderScheduler.scheduledAt(MainActivity.this, rule.id);
+                if (nextAt <= 0L) nextAt = ReminderScheduler.nextTime(rule, now);
+                String value = countdownText(nextAt - now);
                 if (targetReached) value = "目标已达成，仍提醒 · " + value;
                 view.setText(value);
                 view.setTextColor(targetReached ? GREEN : MUTED);
@@ -531,7 +597,7 @@ public final class MainActivity extends Activity {
         final int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
         final int[] start = {existing == null ? 9 * 60 : existing.start};
         final int[] end = {existing == null ? 18 * 60 : existing.end};
-        final int[] interval = {existing == null ? 30 : existing.interval};
+        final int[] interval = {existing == null ? 30 * 60 : existing.intervalSeconds};
         final int[] target = {existing == null ? 3 : existing.dailyTarget};
         final boolean[] remindAfterTarget = {existing != null && existing.remindAfterTarget};
         final boolean[] active = {existing == null || existing.enabled};
@@ -551,15 +617,26 @@ public final class MainActivity extends Activity {
         int[] values = {5, 10, 15, 20, 30, 45, 60, 90};
         String[] labels = new String[values.length];
         for (int i = 0; i < values.length; i++) labels[i] = "每 " + values[i] + " 分钟";
-        String[] intervalOptions = new String[labels.length + 1];
-        intervalOptions[0] = "自定义";
-        System.arraycopy(labels, 0, intervalOptions, 1, labels.length);
+        java.util.Set<String> savedIntervals = ReminderSettings.prefs(this)
+                .getStringSet("custom_item_intervals_seconds", java.util.Collections.emptySet());
+        ArrayList<Integer> customIntervals = new ArrayList<>();
+        for (String value : savedIntervals) {
+            try { customIntervals.add(Integer.parseInt(value)); } catch (NumberFormatException ignored) { }
+        }
+        customIntervals.sort(Integer::compareTo);
+        String[] intervalOptions = new String[customIntervals.size() + labels.length + 1];
+        for (int i = 0; i < customIntervals.size(); i++) intervalOptions[i] = "自定义 · " + intervalText(customIntervals.get(i));
+        intervalOptions[customIntervals.size()] = "新增自定义时间…";
+        System.arraycopy(labels, 0, intervalOptions, customIntervals.size() + 1, labels.length);
         intervalButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("提醒间隔")
                 .setItems(intervalOptions, (dialog, which) -> {
-                    if (which == 0) {
+                    if (which < customIntervals.size()) {
+                        interval[0] = customIntervals.get(which);
+                        intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
+                    } else if (which == customIntervals.size()) {
                         chooseCustomInterval(interval, intervalButton);
                     } else {
-                        interval[0] = values[which - 1];
+                        interval[0] = values[which - customIntervals.size() - 1] * 60;
                         intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
                     }
                 }).show());
@@ -602,7 +679,7 @@ public final class MainActivity extends Activity {
                     if (title.isEmpty()) { Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show(); return; }
                     ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
                     updated.removeIf(rule -> rule.id == id);
-                    updated.add(new ReminderSettings.Rule(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], active[0]));
+                    updated.add(ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], active[0]));
                     saveRules(updated);
                 });
         if (existing != null) dialog.setNeutralButton("删除", (d, w) -> {
@@ -616,25 +693,26 @@ public final class MainActivity extends Activity {
     private void chooseCustomInterval(int[] interval, Button intervalButton) {
         LinearLayout fields = row();
         fields.setGravity(Gravity.CENTER);
+        fields.setOrientation(LinearLayout.HORIZONTAL);
         fields.setPadding(dp(18), dp(12), dp(18), dp(4));
         NumberPicker hours = new NumberPicker(this);
         hours.setMinValue(0);
         hours.setMaxValue(23);
-        hours.setValue(interval[0] / 60);
+        hours.setValue(interval[0] / 3600);
         hours.setWrapSelectorWheel(false);
         NumberPicker minutes = new NumberPicker(this);
         minutes.setMinValue(0);
         minutes.setMaxValue(59);
-        minutes.setValue(interval[0] % 60);
+        minutes.setValue(interval[0] / 60 % 60);
+        NumberPicker seconds = new NumberPicker(this);
+        seconds.setMinValue(0);
+        seconds.setMaxValue(59);
+        seconds.setWrapSelectorWheel(false);
+        seconds.setValue(interval[0] % 60);
         minutes.setWrapSelectorWheel(false);
-        fields.addView(hours, new LinearLayout.LayoutParams(dp(88), dp(132)));
-        TextView hourLabel = label("小时", 14, INK, true);
-        hourLabel.setGravity(Gravity.CENTER_VERTICAL);
-        fields.addView(hourLabel);
-        fields.addView(minutes, new LinearLayout.LayoutParams(dp(88), dp(132)));
-        TextView minuteLabel = label("分钟", 14, INK, true);
-        minuteLabel.setGravity(Gravity.CENTER_VERTICAL);
-        fields.addView(minuteLabel);
+        addIntervalWheel(fields, hours, "小时");
+        addIntervalWheel(fields, minutes, "分钟");
+        addIntervalWheel(fields, seconds, "秒");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("自定义提醒间隔")
@@ -643,24 +721,42 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("确定", null)
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            int totalMinutes = hours.getValue() * 60 + minutes.getValue();
-            if (totalMinutes == 0) {
-                Toast.makeText(this, "提醒间隔至少为 1 分钟", Toast.LENGTH_SHORT).show();
+            int totalSeconds = hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue();
+            if (totalSeconds == 0) {
+                Toast.makeText(this, "提醒间隔至少为 1 秒", Toast.LENGTH_SHORT).show();
                 return;
             }
-            interval[0] = totalMinutes;
-            intervalButton.setText("提醒间隔  " + intervalText(totalMinutes));
+            interval[0] = totalSeconds;
+            java.util.Set<String> saved = new java.util.HashSet<>(ReminderSettings.prefs(this)
+                    .getStringSet("custom_item_intervals_seconds", java.util.Collections.emptySet()));
+            saved.add(Integer.toString(totalSeconds));
+            ReminderSettings.prefs(this).edit().putStringSet("custom_item_intervals_seconds", saved).commit();
+            intervalButton.setText("提醒间隔  " + intervalText(totalSeconds));
             dialog.dismiss();
         }));
         dialog.show();
     }
 
-    private String intervalText(int minutes) {
-        int hours = minutes / 60;
-        int remainder = minutes % 60;
-        if (hours == 0) return "每 " + remainder + " 分钟";
-        if (remainder == 0) return "每 " + hours + " 小时";
-        return "每 " + hours + " 小时 " + remainder + " 分钟";
+    private String intervalText(int seconds) {
+        int hours = seconds / 3600;
+        int minutes = seconds / 60 % 60;
+        int remainder = seconds % 60;
+        StringBuilder result = new StringBuilder("每 ");
+        if (hours > 0) result.append(hours).append(" 小时 ");
+        if (minutes > 0) result.append(minutes).append(" 分钟 ");
+        if (remainder > 0 || (hours == 0 && minutes == 0)) result.append(remainder).append(" 秒");
+        return result.toString().trim();
+    }
+
+    private void addIntervalWheel(LinearLayout parent, NumberPicker picker, String unit) {
+        LinearLayout column = new LinearLayout(this);
+        column.setGravity(Gravity.CENTER);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.addView(picker, new LinearLayout.LayoutParams(dp(76), dp(112)));
+        TextView label = label(unit, 13, MUTED, true);
+        label.setGravity(Gravity.CENTER);
+        column.addView(label, new LinearLayout.LayoutParams(-1, dp(24)));
+        parent.addView(column, new LinearLayout.LayoutParams(0, -2, 1));
     }
 
     private TextView timeField(String title, int minute) {
@@ -696,6 +792,18 @@ public final class MainActivity extends Activity {
             if (!isWatchServiceEnabled()) openAccessibilitySettings();
         }
         render();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 91) {
+            render();
+            if (reopenPermissionGuide) {
+                reopenPermissionGuide = false;
+                showPermissionChecklist();
+            }
+        }
     }
 
     private void openUsageSettings() {

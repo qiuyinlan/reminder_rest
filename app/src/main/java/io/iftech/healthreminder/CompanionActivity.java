@@ -3,6 +3,7 @@ package io.iftech.healthreminder;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.Color;
@@ -28,7 +29,7 @@ public final class CompanionActivity extends Activity {
     private TextView currentTime;
     private TextView timer;
     private TextView musicButton;
-    /* private boolean focusMode; */
+    private boolean focusMode;
     private final java.util.ArrayList<TextView> soundOptions = new java.util.ArrayList<>();
     private ObjectAnimator breatheX;
     private ObjectAnimator breatheY;
@@ -44,22 +45,27 @@ public final class CompanionActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        hideSystemBars();
-        /*
         boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
         focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
                 : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);
-        */
+        if (focusMode) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (focusMode) hideSystemBars();
         startService(new Intent(this, CompanionAudioService.class)
-                .setAction(CompanionAudioService.ACTION_START));
+                .setAction(CompanionAudioService.ACTION_START)
+                .putExtra(CompanionAudioService.EXTRA_FOCUS_MODE, focusMode));
         render();
     }
 
     @Override protected void onResume() {
         super.onResume();
+        if (focusMode && android.os.Build.VERSION.SDK_INT >= 23) {
+            android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (manager == null || manager.getLockTaskModeState() == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                try { startLockTask(); } catch (RuntimeException ignored) { }
+            }
+        }
         handler.removeCallbacks(ticker);
         ticker.run();
         updateMusicButton();
@@ -72,7 +78,7 @@ public final class CompanionActivity extends Activity {
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemBars();
+        if (hasFocus && focusMode) hideSystemBars();
     }
 
     @Override protected void onDestroy() {
@@ -92,12 +98,10 @@ public final class CompanionActivity extends Activity {
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(-1, -1);
         root.addView(content, contentParams);
 
-        TextView title = text("陪伴", 22, GREEN, true);
-        /* TextView title = text(focusMode ? "专注" : "陪伴", 22, GREEN, true); */
+        TextView title = text(focusMode ? "专注陪伴" : "轻松陪伴", 22, GREEN, true);
         content.addView(title);
-        TextView subtitle = text("不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false);
-        /* TextView subtitle = text(focusMode ? "留一点安静时间，把注意力放回手边。"
-                : "不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false); */
+        TextView subtitle = text(focusMode ? "留一点安静时间，把注意力放回手边。"
+                : "不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false);
         subtitle.setPadding(0, dp(8), 0, dp(24));
         content.addView(subtitle);
 
@@ -116,8 +120,7 @@ public final class CompanionActivity extends Activity {
         breatheY.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         breatheY.start();
 
-        TextView breatheHint = text("吸气……呼气……", 17, GREEN, true);
-        /* TextView breatheHint = text(focusMode ? "专注进行中" : "吸气……呼气……", 17, GREEN, true); */
+        TextView breatheHint = text(focusMode ? "专注进行中" : "吸气……呼气……", 17, GREEN, true);
         breatheHint.setPadding(0, dp(20), 0, dp(10));
         content.addView(breatheHint);
 
@@ -132,8 +135,7 @@ public final class CompanionActivity extends Activity {
         currentTime.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         currentTime.setGravity(Gravity.CENTER);
         clockPanel.addView(currentTime);
-        timer = text("已陪伴 00:00:00", 13, 0xff617466, true);
-        /* timer = text((focusMode ? "已专注 " : "已陪伴 ") + "00:00:00", 13, 0xff617466, true); */
+        timer = text((focusMode ? "已专注 " : "已陪伴 ") + "00:00:00", 13, 0xff617466, true);
         timer.setGravity(Gravity.CENTER);
         timer.setPadding(0, dp(3), 0, 0);
         clockPanel.addView(timer);
@@ -164,7 +166,6 @@ public final class CompanionActivity extends Activity {
         content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
 
         TextView end = text("结束陪伴", 16, Color.WHITE, true);
-        /* TextView end = text(focusMode ? "结束专注" : "结束陪伴", 16, Color.WHITE, true); */
         end.setGravity(Gravity.CENTER);
         end.setBackground(round(GREEN, 28));
         end.setOnClickListener(v -> endSession());
@@ -233,13 +234,32 @@ public final class CompanionActivity extends Activity {
     }
 
     private void endSession() {
-        startService(new Intent(this, CompanionAudioService.class).setAction(CompanionAudioService.ACTION_STOP));
+        if (!focusMode) {
+            stopCompanionSession();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setMessage("真的要结束了吗？")
+                .setNegativeButton("再陪伴一会", null)
+                .setPositiveButton("结束", (dialog, which) -> stopCompanionSession())
+                .show();
+    }
+
+    private void stopCompanionSession() {
+        startService(new Intent(this, CompanionAudioService.class)
+                .setAction(CompanionAudioService.ACTION_STOP));
+        if (focusMode && android.os.Build.VERSION.SDK_INT >= 23) {
+            android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (manager != null && manager.getLockTaskModeState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                try { stopLockTask(); } catch (RuntimeException ignored) { }
+            }
+        }
         finish();
         overridePendingTransition(0, 0);
     }
 
     private String formatDuration(long seconds) {
-        return "已陪伴 " + String.format(Locale.getDefault(), "%02d:%02d:%02d", seconds / 3600,
+        return (focusMode ? "已专注 " : "已陪伴 ") + String.format(Locale.getDefault(), "%02d:%02d:%02d", seconds / 3600,
                 (seconds % 3600) / 60, seconds % 60);
     }
 
@@ -247,6 +267,14 @@ public final class CompanionActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+
+    @Override public void onBackPressed() {
+        if (focusMode) {
+            endSession();
+            return;
+        }
+        super.onBackPressed();
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
