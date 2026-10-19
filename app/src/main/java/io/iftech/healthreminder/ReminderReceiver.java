@@ -90,7 +90,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 && (Build.VERSION.SDK_INT < 33
                 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
         Uri alarmSound = alarmSound(context);
-        boolean serviceAlarm = alarmMode && !notificationsEnabled && (soundEnabled || vibrate)
+        boolean serviceAlarm = alarmMode && (soundEnabled || vibrate)
                 && AlarmRingtoneService.start(context, alarmSound, soundEnabled, vibrate);
         if (vibrate && !notificationsEnabled && !serviceAlarm) vibrateForAlarm(context);
         String channelId = createChannel(context, alarmMode,
