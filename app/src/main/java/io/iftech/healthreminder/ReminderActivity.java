@@ -116,7 +116,7 @@ public final class ReminderActivity extends Activity {
         if (isTypingReminder(action)) {
             animation.addView(new TypingSceneView(this), new FrameLayout.LayoutParams(-1, -1));
         } else {
-            WellnessAnimationView.Mood mood = isWaterReminder(action) ? WellnessAnimationView.Mood.THIRSTY
+            WellnessAnimationView.Mood mood = isWaterReminder(action) ? WellnessAnimationView.Mood.SEED
                     : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
             WellnessAnimationView face = new WellnessAnimationView(this,
                     mood);

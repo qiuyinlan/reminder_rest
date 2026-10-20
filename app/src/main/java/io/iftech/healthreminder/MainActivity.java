@@ -113,7 +113,7 @@ public final class MainActivity extends Activity {
         TextView settingsButton = label("设置  ›", 13, INK, true);
         settingsButton.setGravity(Gravity.CENTER);
         settingsButton.setPadding(dp(13), dp(8), dp(13), dp(8));
-        settingsButton.setBackground(round(Color.WHITE, 18));
+        settingsButton.setBackground(outline(0xfffbfdfc, 0xffe1ece7, 18));
         settingsButton.setContentDescription("设置");
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         top.addView(settingsButton);
@@ -140,8 +140,8 @@ public final class MainActivity extends Activity {
         body.addView(sectionHead);
         LinearLayout schedule = new LinearLayout(this);
         schedule.setOrientation(LinearLayout.VERTICAL);
-        schedule.setPadding(dp(8), dp(8), dp(8), dp(1));
-        schedule.setBackground(diffuseCardBackground());
+        schedule.setPadding(0, 0, 0, 0);
+        schedule.setBackgroundColor(Color.TRANSPARENT);
         boolean addedBuiltIn = false;
         for (ReminderSettings.Rule rule : rules) {
             addRuleRow(schedule, rule);
@@ -227,7 +227,7 @@ public final class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(14), dp(14), dp(12));
-        card.setBackground(round(Color.WHITE, 14));
+        card.setBackground(homeStatusBackground());
 
         LinearLayout overview = row();
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.SAD);
@@ -303,7 +303,7 @@ public final class MainActivity extends Activity {
         LinearLayout metric = new LinearLayout(this);
         metric.setOrientation(LinearLayout.VERTICAL);
         metric.setPadding(dp(10), dp(8), dp(10), dp(8));
-        metric.setBackground(round(MINT_PALE, 10));
+        metric.setBackground(round("今日完成".equals(title) ? 0xffedf2fa : 0xffe9f5ee, 12));
         metric.addView(label(title, 11, MUTED, false));
         TextView amount = label(value, 17, INK, true);
         amount.setPadding(0, dp(2), 0, 0);
@@ -325,7 +325,8 @@ public final class MainActivity extends Activity {
         LinearLayout banner = row();
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(11), dp(9), dp(12), dp(9));
-        banner.setBackground(round(ready ? Color.WHITE : 0xfffff1ee, 12));
+        banner.setBackground(outline(ready ? 0xffeff8f2 : 0xfffff1e9,
+                ready ? 0xffdcece2 : 0xfff3dfd1, 14));
         int statusColor = ready ? INK : 0xffa33b32;
         TextView mark = label(ready ? "✓" : "!", 15, ready ? GREEN : statusColor, true);
         mark.setGravity(Gravity.CENTER);
@@ -565,9 +566,9 @@ public final class MainActivity extends Activity {
         int done = ReminderSettings.completedToday(this, rule.id);
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(dp(10), dp(10), dp(10), dp(9));
-        item.setBackground(round(Color.WHITE, 15));
-        item.setElevation(dp(2));
+        item.setPadding(dp(12), dp(11), dp(12), dp(10));
+        item.setBackground(outline(iconTint(rule.title), iconBorder(rule.title), 16));
+        item.setElevation(dp(1));
 
         LinearLayout main = row();
         TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
@@ -653,7 +654,7 @@ public final class MainActivity extends Activity {
         item.setOnClickListener(v -> openItemEditor(rule.id));
         item.setOnLongClickListener(v -> { openItemEditor(rule.id); return true; });
         LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-1, -2);
-        itemParams.bottomMargin = dp(7);
+        itemParams.bottomMargin = dp(9);
         parent.addView(item, itemParams);
     }
 
@@ -996,17 +997,26 @@ public final class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(4), dp(14), dp(4));
-        card.setBackground(round(Color.WHITE, 12));
+        card.setBackground(outline(0xffeff6f3, 0xffe1ebe7, 15));
         return card;
     }
 
-    private GradientDrawable diffuseCardBackground() {
+    private GradientDrawable homeStatusBackground() {
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffedf7f3, 0xfffafbfb, 0xffeff3f8});
-        background.setCornerRadius(dp(19));
-        background.setStroke(dp(1), 0xffe5eeeb);
+                new int[]{0xffe7f5ec, 0xfff2f7f7, 0xffeaf0f8});
+        background.setCornerRadius(dp(18));
+        background.setStroke(dp(1), 0xffdce9e4);
         return background;
+    }
+
+    private int iconBorder(String title) {
+        if (title.contains("水")) return 0xffd1e7e9;
+        if (title.contains("眼")) return 0xffdfe3f1;
+        if (title.contains("走") || title.contains("活动")) return 0xffd6e9dd;
+        if (title.contains("颈") || title.contains("肩")) return 0xffeee3c9;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffe8ddec;
+        return 0xffeedbd7;
     }
 
     private GradientDrawable outline(int fillColor, int strokeColor, int radius) {

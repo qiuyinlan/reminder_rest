@@ -119,7 +119,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         summary.setPadding(dp(16), dp(14), dp(16), dp(14));
-        summary.setBackground(round(MINT_LIGHT, 12));
+        summary.setBackground(surface(new int[]{0xffe5f4eb, 0xfff0f6f8}, 16, 0xffdcebe3));
         LinearLayout summaryTop = new LinearLayout(this);
         summaryTop.setGravity(Gravity.CENTER_VERTICAL);
         TextView summaryTitle = text("今天的完成进度", 14, INK, true);
@@ -156,19 +156,27 @@ public final class ItemsActivity extends Activity {
             int done = ReminderSettings.completedToday(this, rule.id);
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(15), dp(14), dp(15), dp(13));
-            card.setBackground(round(Color.WHITE, 12));
+            card.setPadding(dp(14), dp(13), dp(14), dp(12));
+            card.setBackground(categorySurface(rule.title));
+            card.setElevation(dp(1));
             LinearLayout details = new LinearLayout(this);
             details.setOrientation(LinearLayout.VERTICAL);
             LinearLayout titleLine = new LinearLayout(this);
             titleLine.setGravity(Gravity.CENTER_VERTICAL);
-            titleLine.addView(text(rule.title, 16, INK, true),
-                    new LinearLayout.LayoutParams(0, -2, 1));
+            TextView marker = text(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1),
+                    13, categoryInk(rule.title), true);
+            marker.setGravity(Gravity.CENTER);
+            marker.setBackground(round(categoryTint(rule.title), 10));
+            titleLine.addView(marker, new LinearLayout.LayoutParams(dp(32), dp(32)));
+            TextView itemTitle = text(rule.title, 16, INK, true);
+            LinearLayout.LayoutParams itemTitleParams = new LinearLayout.LayoutParams(0, -2, 1);
+            itemTitleParams.leftMargin = dp(9);
+            titleLine.addView(itemTitle, itemTitleParams);
             TextView count = text(done >= rule.dailyTarget ? "已达标" : done + " / " + rule.dailyTarget,
-                    12, GREEN, true);
+                    12, categoryInk(rule.title), true);
             count.setGravity(Gravity.CENTER);
             count.setPadding(dp(9), dp(5), dp(9), dp(5));
-            count.setBackground(round(MINT_LIGHT, 16));
+            count.setBackground(round(categoryTint(rule.title), 16));
             titleLine.addView(count);
             details.addView(titleLine);
             ProgressBar itemProgress = progressBar(rule.dailyTarget, done);
@@ -178,9 +186,9 @@ public final class ItemsActivity extends Activity {
             LinearLayout meta = new LinearLayout(this);
             meta.setGravity(Gravity.CENTER_VERTICAL);
             meta.setPadding(0, dp(10), 0, 0);
-            TextView schedule = text(scheduleSummary(rule), 12, GREEN, false);
+            TextView schedule = text(scheduleSummary(rule), 12, categoryInk(rule.title), false);
             schedule.setPadding(dp(9), dp(5), dp(9), dp(5));
-            schedule.setBackground(round(MINT_PALE, 8));
+            schedule.setBackground(round(categoryTint(rule.title), 9));
             meta.addView(schedule, new LinearLayout.LayoutParams(0, -2, 1));
             TextView targetBehavior = text(rule.remindAfterTarget ? "继续提醒" : "达标停止", 11, MUTED, false);
             targetBehavior.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
@@ -197,7 +205,7 @@ public final class ItemsActivity extends Activity {
             TextView empty = text("还没有提醒事项", 15, MUTED, true);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
-            empty.setBackground(round(Color.WHITE, 12));
+            empty.setBackground(surface(new int[]{0xffedf6f1, 0xfff1f4f8}, 14, 0xffe1ebe7));
             list.addView(empty);
         }
     }
@@ -210,6 +218,49 @@ public final class ItemsActivity extends Activity {
         progress.setProgressTintList(ColorStateList.valueOf(MINT));
         progress.setProgressBackgroundTintList(ColorStateList.valueOf(LINE));
         return progress;
+    }
+
+    private int categoryInk(String title) {
+        if (title.contains("水")) return 0xff398b98;
+        if (title.contains("眼")) return 0xff687bb2;
+        if (title.contains("走") || title.contains("活动")) return 0xff388c6d;
+        if (title.contains("颈") || title.contains("肩")) return 0xffad8242;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff9a70a3;
+        return 0xffbc7067;
+    }
+
+    private int categoryTint(String title) {
+        if (title.contains("水")) return 0xffe4f2f4;
+        if (title.contains("眼")) return 0xffedf0fa;
+        if (title.contains("走") || title.contains("活动")) return 0xffe6f4ec;
+        if (title.contains("颈") || title.contains("肩")) return 0xfff8f0df;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xfff3ecf6;
+        return 0xfff8edeb;
+    }
+
+    private GradientDrawable categorySurface(String title) {
+        int tint = categoryTint(title);
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{tint, 0xfffbfcfb});
+        background.setCornerRadius(dp(15));
+        background.setStroke(dp(1), categoryBorder(title));
+        return background;
+    }
+
+    private int categoryBorder(String title) {
+        if (title.contains("水")) return 0xffd1e7e9;
+        if (title.contains("眼")) return 0xffdfe3f1;
+        if (title.contains("走") || title.contains("活动")) return 0xffd6e9dd;
+        if (title.contains("颈") || title.contains("肩")) return 0xffeee3c9;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffe8ddec;
+        return 0xffeedbd7;
+    }
+
+    private GradientDrawable surface(int[] colors, int radius, int stroke) {
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
+        background.setCornerRadius(dp(radius));
+        background.setStroke(dp(1), stroke);
+        return background;
     }
 
     private String scheduleSummary(ReminderSettings.Rule rule) {

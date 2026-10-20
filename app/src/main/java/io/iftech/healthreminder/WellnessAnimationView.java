@@ -10,7 +10,7 @@ import android.view.View;
 import android.view.animation.LinearInterpolator;
 
 final class WellnessAnimationView extends View {
-    enum Mood { SAD, TIRED, BREATHING, THIRSTY, WATER }
+    enum Mood { SAD, TIRED, BREATHING, THIRSTY, SEED, WATER }
 
     private final Mood mood;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -48,7 +48,71 @@ final class WellnessAnimationView extends View {
         canvas.save();
         canvas.translate((getWidth() - size * scale) / 2f, (getHeight() - size * scale) / 2f);
         canvas.scale(scale, scale);
-        if (mood == Mood.WATER) drawWater(canvas); else drawFace(canvas);
+        if (mood == Mood.WATER) drawWater(canvas);
+        else if (mood == Mood.SEED) drawSeed(canvas);
+        else drawFace(canvas);
+        canvas.restore();
+    }
+
+    private void drawSeed(Canvas canvas) {
+        float cycle = (float) Math.sin(phase * Math.PI * 2);
+        canvas.save();
+        canvas.translate(0, cycle * 4f);
+
+        // A soft bean-shaped body with a sprout that sways independently.
+        fill(0xff73bd79);
+        canvas.drawOval(new RectF(35, 55, 145, 157), paint);
+        fill(0xff91cf83);
+        canvas.drawOval(new RectF(43, 61, 137, 151), paint);
+        fill(0xffb6df91);
+        canvas.drawOval(new RectF(52, 67, 91, 137), paint);
+
+        canvas.save();
+        canvas.rotate(cycle * 9f, 90, 62);
+        stroke(0xff579b61, 6);
+        canvas.drawLine(90, 68, 90, 34, paint);
+        fill(0xff59ae70);
+        Path leaf = new Path();
+        leaf.moveTo(89, 46);
+        leaf.cubicTo(62, 42, 57, 22, 60, 17);
+        leaf.cubicTo(79, 16, 91, 27, 91, 42);
+        leaf.close();
+        canvas.drawPath(leaf, paint);
+        Path leafRight = new Path();
+        leafRight.moveTo(92, 40);
+        leafRight.cubicTo(96, 19, 116, 12, 126, 17);
+        leafRight.cubicTo(125, 35, 110, 45, 92, 46);
+        leafRight.close();
+        fill(0xff79c77b);
+        canvas.drawPath(leafRight, paint);
+        stroke(0xff9cdaa0, 2);
+        canvas.drawLine(68, 23, 85, 39, paint);
+        canvas.drawLine(117, 22, 99, 39, paint);
+        canvas.restore();
+
+        // Tiny arms lift as the seed bobs, giving the character a welcoming motion.
+        float armLift = cycle * 3f;
+        stroke(0xff579b61, 5);
+        canvas.drawLine(43, 112, 28, 102 - armLift, paint);
+        canvas.drawLine(137, 112, 152, 102 - armLift, paint);
+        fill(0xff3d5946);
+        canvas.drawCircle(70, 103, 4, paint);
+        canvas.drawCircle(110, 103, 4, paint);
+        stroke(0xff47794f, 3);
+        canvas.drawArc(new RectF(78, 108, 102, 126), 20, 140, false, paint);
+        fill(0xffef9d91);
+        canvas.drawOval(new RectF(55, 111, 68, 117), paint);
+        canvas.drawOval(new RectF(112, 111, 125, 117), paint);
+
+        float dropY = (phase % .5f) * 18f;
+        Path drop = new Path();
+        drop.moveTo(155, 55 + dropY);
+        drop.cubicTo(151, 62 + dropY, 147, 67 + dropY, 147, 72 + dropY);
+        drop.cubicTo(147, 78 + dropY, 155, 80 + dropY, 159, 75 + dropY);
+        drop.cubicTo(163, 70 + dropY, 159, 63 + dropY, 155, 55 + dropY);
+        drop.close();
+        fill(0xff5db9c1);
+        canvas.drawPath(drop, paint);
         canvas.restore();
     }
 

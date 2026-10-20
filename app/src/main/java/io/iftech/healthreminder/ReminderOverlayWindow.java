@@ -72,7 +72,7 @@ final class ReminderOverlayWindow {
         root.addView(new View(context), new LinearLayout.LayoutParams(1, 0, 1));
 
         WellnessAnimationView.Mood mood = action.contains("喝水") || action.contains("饮水") || action.contains("补水")
-                ? WellnessAnimationView.Mood.THIRSTY
+                ? WellnessAnimationView.Mood.SEED
                 : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
         WellnessAnimationView face = new WellnessAnimationView(context, mood);
         FrameLayout scene = new FrameLayout(context);
