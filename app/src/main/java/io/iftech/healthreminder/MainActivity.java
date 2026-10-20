@@ -53,6 +53,8 @@ public final class MainActivity extends Activity {
     private LinearLayout body;
     private ScrollView scroll;
     private boolean reopenPermissionGuide;
+    private TextView completedMetric;
+    private ProgressBar todayProgress;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -285,6 +287,7 @@ public final class MainActivity extends Activity {
         progress.setProgress(Math.min(completed, Math.max(1, target)));
         progress.setProgressTintList(ColorStateList.valueOf(GREEN));
         progress.setProgressBackgroundTintList(ColorStateList.valueOf(LINE));
+        todayProgress = progress;
         LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(4));
         progressParams.topMargin = dp(9);
         card.addView(progress, progressParams);
@@ -307,6 +310,7 @@ public final class MainActivity extends Activity {
         metric.addView(label(title, 11, MUTED, false));
         TextView amount = label(value, 17, INK, true);
         amount.setPadding(0, dp(2), 0, 0);
+        if ("今日完成".equals(title)) completedMetric = amount;
         metric.addView(amount);
         return metric;
     }
@@ -622,14 +626,14 @@ public final class MainActivity extends Activity {
         TextView countdown = label(nextText, 11, done >= rule.dailyTarget ? INK : MUTED, done >= rule.dailyTarget);
         countdown.setSingleLine(true);
         countdown.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        if (ticking) startCountdown(countdown, rule, done >= rule.dailyTarget);
+        if (ticking) startCountdown(countdown, rule);
         LinearLayout actions = row();
         LinearLayout.LayoutParams actionsParams = full();
         actionsParams.topMargin = dp(7);
         item.addView(actions, actionsParams);
         actions.addView(countdown, new LinearLayout.LayoutParams(0, dp(30), 1));
         TextView complete = new TextView(this);
-        complete.setText("提前完成");
+        complete.setText("提前完成一次");
         complete.setTextSize(11);
         complete.setTextColor(iconColor(rule.title));
         complete.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -645,9 +649,34 @@ public final class MainActivity extends Activity {
             ReminderScheduler.resetNext(this, rule.id);
             String recordId = java.util.UUID.randomUUID().toString();
             ReminderRecord.finish(this, recordId, rule.title, ReminderRecord.KIND_DONE,
-                    now, now, "提前完成");
+                    now, now, "提前完成一次");
             ReminderScheduler.update(this);
-            render();
+            int updatedDone = ReminderSettings.completedToday(this, rule.id);
+            targetBadge.setText(updatedDone >= rule.dailyTarget ? "达标" : updatedDone + "/" + rule.dailyTarget);
+
+            int allDone = 0;
+            int allTarget = 0;
+            for (ReminderSettings.Rule current : ReminderSettings.rules(this)) {
+                allDone += ReminderSettings.completedToday(this, current.id);
+                allTarget += current.dailyTarget;
+            }
+            if (completedMetric != null) completedMetric.setText(allDone + " / " + allTarget + " 次");
+            if (todayProgress != null) {
+                todayProgress.setMax(Math.max(1, allTarget));
+                todayProgress.setProgress(Math.min(allDone, Math.max(1, allTarget)));
+            }
+
+            boolean targetReached = updatedDone >= rule.dailyTarget;
+            if (targetReached && !rule.remindAfterTarget) {
+                countdown.setText("✓ 今日目标已完成");
+                countdown.setTextColor(INK);
+            } else {
+                long refreshedNextAt = ReminderScheduler.scheduledAt(this, rule.id);
+                if (refreshedNextAt <= 0L) refreshedNextAt = ReminderScheduler.nextTime(rule, now);
+                countdown.setText((targetReached ? "目标已达成，仍提醒 · " : "")
+                        + countdownText(refreshedNextAt - now));
+                countdown.setTextColor(targetReached ? INK : MUTED);
+            }
         });
         actions.addView(complete);
         item.setOnClickListener(v -> openItemEditor(rule.id));
@@ -706,11 +735,13 @@ public final class MainActivity extends Activity {
         return String.format(java.util.Locale.getDefault(), "还差%dh%02dmin%02ds提醒", hours, minutes, remainder);
     }
 
-    private void startCountdown(TextView view, ReminderSettings.Rule rule, boolean targetReached) {
+    private void startCountdown(TextView view, ReminderSettings.Rule rule) {
         Runnable ticker = new Runnable() {
             @Override public void run() {
                 if (!view.isAttachedToWindow()) return;
                 long now = System.currentTimeMillis();
+                int done = ReminderSettings.completedToday(MainActivity.this, rule.id);
+                boolean targetReached = done >= rule.dailyTarget;
                 long nextAt = ReminderScheduler.scheduledAt(MainActivity.this, rule.id);
                 if (nextAt <= 0L) nextAt = ReminderScheduler.nextTime(rule, now);
                 String value = countdownText(nextAt - now);
