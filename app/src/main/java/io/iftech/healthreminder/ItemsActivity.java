@@ -67,6 +67,19 @@ public final class ItemsActivity extends Activity {
         add.setOnClickListener(v -> editRule(null));
         setContentView(frame);
         renderItems();
+        if (state == null) {
+            if (getIntent().getBooleanExtra("new_item", false)) {
+                editRule(null);
+            } else {
+                int editId = getIntent().getIntExtra("edit_id", -1);
+                for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
+                    if (rule.id == editId) {
+                        editRule(rule);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     @Override protected void onResume() { super.onResume(); if (list != null) renderItems(); }
@@ -90,7 +103,7 @@ public final class ItemsActivity extends Activity {
             TextView name = text(rule.title, 16, INK, true);
             TextView progress = text(done >= rule.dailyTarget ? "✓ 已完成  " + done + "/" + rule.dailyTarget : "今日完成  " + done + "/" + rule.dailyTarget + " 次", 16, GREEN, true);
             progress.setPadding(0, dp(7), 0, 0);
-            TextView schedule = text(MainActivity.clock(rule.start) + " - " + MainActivity.clock(rule.end) + "  ·  " + intervalText(rule.intervalSeconds), 12, MUTED, false);
+            TextView schedule = text(scheduleSummary(rule), 12, MUTED, false);
             schedule.setPadding(0, dp(5), 0, 0);
             TextView afterTarget = text(rule.remindAfterTarget ? "达标后：继续提醒" : "达标后：停止提醒", 12, MUTED, false);
             afterTarget.setPadding(0, dp(4), 0, 0);
@@ -114,6 +127,19 @@ public final class ItemsActivity extends Activity {
         if (ReminderSettings.rules(this).isEmpty()) list.addView(text("点击右下角 + 添加提醒事项", 14, MUTED, false));
     }
 
+    private String scheduleSummary(ReminderSettings.Rule rule) {
+        if (!rule.specificTimeMode) {
+            return MainActivity.clock(rule.start) + " - " + MainActivity.clock(rule.end)
+                    + "  ·  " + intervalText(rule.intervalSeconds);
+        }
+        StringBuilder summary = new StringBuilder("指定时间  ");
+        for (int i = 0; i < rule.timePointsSeconds.size(); i++) {
+            if (i > 0) summary.append("、");
+            summary.append(timePointText(rule.timePointsSeconds.get(i)));
+        }
+        return summary.toString();
+    }
+
     private void editRule(ReminderSettings.Rule existing) {
         int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
         int[] start = {existing == null ? 9 * 60 : existing.start};
@@ -122,6 +148,9 @@ public final class ItemsActivity extends Activity {
         int[] target = {existing == null ? 3 : existing.dailyTarget};
         boolean[] enabled = {existing == null || existing.enabled};
         boolean[] remindAfterTarget = {existing != null && existing.remindAfterTarget};
+        boolean[] specificTimeMode = {existing != null && existing.specificTimeMode};
+        ArrayList<Integer> timePoints = new ArrayList<>();
+        if (existing != null) timePoints.addAll(existing.timePointsSeconds);
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(20), dp(6), dp(20), 0);
@@ -130,15 +159,64 @@ public final class ItemsActivity extends Activity {
         name.setHint("事项名称");
         name.setText(existing == null ? "" : existing.title);
         form.addView(name);
+        TextView modeLabel = text("提醒方式", 14, INK, true);
+        modeLabel.setPadding(0, dp(8), 0, 0);
+        form.addView(modeLabel);
+        RadioGroup modes = new RadioGroup(this);
+        modes.setOrientation(RadioGroup.HORIZONTAL);
+        int intervalModeId = View.generateViewId();
+        int specificModeId = View.generateViewId();
+        RadioButton intervalMode = new RadioButton(this);
+        intervalMode.setId(intervalModeId);
+        intervalMode.setText("按间隔");
+        RadioButton specificMode = new RadioButton(this);
+        specificMode.setId(specificModeId);
+        specificMode.setText("指定时间点");
+        modes.addView(intervalMode, new RadioGroup.LayoutParams(0, -2, 1));
+        modes.addView(specificMode, new RadioGroup.LayoutParams(0, -2, 1));
+        modes.check(specificTimeMode[0] ? specificModeId : intervalModeId);
+        form.addView(modes);
+
+        LinearLayout intervalSection = new LinearLayout(this);
+        intervalSection.setOrientation(LinearLayout.VERTICAL);
         TextView from = timeField("开始时间", start[0]);
         TextView to = timeField("结束时间", end[0]);
         from.setOnClickListener(v -> new TimePickerDialog(this, (picker, hour, minute) -> { start[0] = hour * 60 + minute; from.setText("开始时间\n" + MainActivity.clock(start[0])); }, start[0] / 60, start[0] % 60, true).show());
         to.setOnClickListener(v -> new TimePickerDialog(this, (picker, hour, minute) -> { end[0] = hour * 60 + minute; to.setText("结束时间\n" + MainActivity.clock(end[0])); }, end[0] / 60, end[0] % 60, true).show());
-        form.addView(from); form.addView(to);
+        intervalSection.addView(from); intervalSection.addView(to);
         Button intervalButton = new Button(this); intervalButton.setAllCaps(false);
         intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
         intervalButton.setOnClickListener(v -> chooseInterval(interval, intervalButton));
-        form.addView(intervalButton);
+        intervalSection.addView(intervalButton);
+        form.addView(intervalSection);
+
+        LinearLayout timePointSection = new LinearLayout(this);
+        timePointSection.setOrientation(LinearLayout.VERTICAL);
+        TextView timePointLabel = text("每天的提醒时间", 14, INK, true);
+        timePointLabel.setPadding(0, dp(7), 0, dp(3));
+        timePointSection.addView(timePointLabel);
+        TextView timePointHint = text("每个时间点每天提醒一次", 12, MUTED, false);
+        timePointSection.addView(timePointHint);
+        LinearLayout timePointRows = new LinearLayout(this);
+        timePointRows.setOrientation(LinearLayout.VERTICAL);
+        timePointSection.addView(timePointRows);
+        Button addTimePoint = new Button(this);
+        addTimePoint.setAllCaps(false);
+        addTimePoint.setText("＋ 添加时间点");
+        addTimePoint.setOnClickListener(v -> showTimePointPicker(timePoints, timePointRows));
+        timePointSection.addView(addTimePoint);
+        form.addView(timePointSection);
+        renderTimePoints(timePoints, timePointRows);
+        Runnable updateModeViews = () -> {
+            intervalSection.setVisibility(specificTimeMode[0] ? View.GONE : View.VISIBLE);
+            timePointSection.setVisibility(specificTimeMode[0] ? View.VISIBLE : View.GONE);
+        };
+        modes.setOnCheckedChangeListener((group, checkedId) -> {
+            specificTimeMode[0] = checkedId == specificModeId;
+            updateModeViews.run();
+        });
+        updateModeViews.run();
+
         Button targetButton = new Button(this); targetButton.setAllCaps(false); targetButton.setText("每日目标  " + target[0] + " 次");
         targetButton.setOnClickListener(v -> {
             EditText input = new EditText(this); input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER); input.setText(String.valueOf(target[0]));
@@ -154,16 +232,35 @@ public final class ItemsActivity extends Activity {
         goalOptions.check(remindAfterTarget[0] ? 2 : 1); goalOptions.setOnCheckedChangeListener((group, checkedId) -> remindAfterTarget[0] = checkedId == 2); form.addView(goalOptions);
         Switch enabledSwitch = new Switch(this); enabledSwitch.setText("启用此事项"); enabledSwitch.setChecked(enabled[0]);
         enabledSwitch.setOnCheckedChangeListener((button, checked) -> enabled[0] = checked); form.addView(enabledSwitch);
+        ScrollView formScroll = new ScrollView(this);
+        formScroll.addView(form);
         AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
-                .setView(form).setNegativeButton("取消", null).setPositiveButton("保存", (dialog, which) -> {
-                    String title = name.getText().toString().trim();
-                    if (title.isEmpty()) { Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show(); return; }
-                    ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this)); updated.removeIf(rule -> rule.id == id);
-                    updated.add(ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], enabled[0]));
-                    ReminderSettings.saveRules(this, updated); renderItems();
-                });
+                .setView(formScroll).setNegativeButton("取消", null).setPositiveButton("保存", null);
         if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> { ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this)); updated.removeIf(rule -> rule.id == id); ReminderSettings.saveRules(this, updated); renderItems(); });
-        builder.show();
+        AlertDialog editor = builder.create();
+        editor.setOnShowListener(ignored -> editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String title = name.getText().toString().trim();
+            if (title.isEmpty()) {
+                Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (specificTimeMode[0] && timePoints.isEmpty()) {
+                Toast.makeText(this, "请至少添加一个提醒时间", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
+            updated.removeIf(rule -> rule.id == id);
+            ReminderSettings.Rule rule = specificTimeMode[0]
+                    ? ReminderSettings.Rule.withSpecificTimes(id, title, start[0], end[0], interval[0],
+                    timePoints, target[0], remindAfterTarget[0], enabled[0])
+                    : ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0],
+                    target[0], remindAfterTarget[0], enabled[0]);
+            updated.add(rule);
+            ReminderSettings.saveRules(this, updated);
+            renderItems();
+            editor.dismiss();
+        }));
+        editor.show();
     }
 
     private void showItemHistory(ReminderSettings.Rule rule) {
@@ -543,6 +640,84 @@ public final class ItemsActivity extends Activity {
         label.setGravity(Gravity.CENTER);
         column.addView(label, new LinearLayout.LayoutParams(-1, dp(24)));
         parent.addView(column, new LinearLayout.LayoutParams(0, -2, 1));
+    }
+
+    private void showTimePointPicker(ArrayList<Integer> timePoints, LinearLayout rows) {
+        Calendar initial = Calendar.getInstance();
+        initial.add(Calendar.MINUTE, 1);
+        initial.set(Calendar.SECOND, 0);
+        initial.set(Calendar.MILLISECOND, 0);
+
+        LinearLayout fields = new LinearLayout(this);
+        fields.setGravity(Gravity.CENTER);
+        fields.setOrientation(LinearLayout.HORIZONTAL);
+        fields.setPadding(dp(12), dp(8), dp(12), dp(8));
+        fields.setBackground(round(0xfff1f6ef, 12));
+        NumberPicker hours = timePointWheel(0, 23, initial.get(Calendar.HOUR_OF_DAY));
+        NumberPicker minutes = timePointWheel(0, 59, initial.get(Calendar.MINUTE));
+        NumberPicker seconds = timePointWheel(0, 59, 0);
+        addIntervalWheel(fields, hours, "时");
+        addIntervalWheel(fields, minutes, "分");
+        addIntervalWheel(fields, seconds, "秒");
+
+        AlertDialog picker = new AlertDialog.Builder(this).setTitle("选择提醒时间")
+                .setView(fields).setNegativeButton("取消", null).setPositiveButton("添加", null).create();
+        picker.setOnShowListener(ignored -> picker.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int point = hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue();
+            if (timePoints.contains(point)) {
+                Toast.makeText(this, "这个时间点已添加", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            timePoints.add(point);
+            Collections.sort(timePoints);
+            renderTimePoints(timePoints, rows);
+            picker.dismiss();
+        }));
+        picker.show();
+    }
+
+    private NumberPicker timePointWheel(int min, int max, int value) {
+        NumberPicker picker = new NumberPicker(this);
+        picker.setMinValue(min);
+        picker.setMaxValue(max);
+        picker.setValue(value);
+        picker.setWrapSelectorWheel(true);
+        picker.setFormatter(number -> String.format(Locale.ROOT, "%02d", number));
+        return picker;
+    }
+
+    private void renderTimePoints(List<Integer> timePoints, LinearLayout rows) {
+        rows.removeAllViews();
+        if (timePoints.isEmpty()) {
+            TextView empty = text("尚未添加时间点", 13, MUTED, false);
+            empty.setPadding(dp(4), dp(8), 0, dp(8));
+            rows.addView(empty);
+            return;
+        }
+        for (int point : timePoints) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(12), 0, dp(4), 0);
+            row.setBackground(round(0xfff1f6ef, 8));
+            TextView value = text(timePointText(point), 16, INK, true);
+            row.addView(value, new LinearLayout.LayoutParams(0, dp(46), 1));
+            Button remove = new Button(this);
+            remove.setAllCaps(false);
+            remove.setMinHeight(dp(40));
+            remove.setText("删除");
+            remove.setOnClickListener(v -> {
+                timePoints.remove(Integer.valueOf(point));
+                renderTimePoints(timePoints, rows);
+            });
+            row.addView(remove, new LinearLayout.LayoutParams(-2, dp(46)));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.topMargin = dp(5);
+            rows.addView(row, params);
+        }
+    }
+
+    private String timePointText(int seconds) {
+        return String.format(Locale.ROOT, "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60);
     }
 
     private String intervalText(int seconds) {

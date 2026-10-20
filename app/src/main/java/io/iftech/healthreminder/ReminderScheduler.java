@@ -60,7 +60,8 @@ final class ReminderScheduler {
                 long now = System.currentTimeMillis();
                 if (next <= 0L) {
                     next = calculateNext(context, rule);
-                } else if (next <= now && (!ReminderSettings.isWithinWindow(rule, now)
+                } else if (next <= now && (rule.specificTimeMode
+                        || !ReminderSettings.isWithinWindow(rule, now)
                         || (!rule.remindAfterTarget
                         && ReminderSettings.completedToday(context, rule.id) >= rule.dailyTarget))) {
                     next = calculateNext(context, rule);
@@ -81,6 +82,20 @@ final class ReminderScheduler {
 
     static long scheduledAt(Context context, int ruleId) {
         return context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE).getLong(scheduleKey(ruleId), 0L);
+    }
+
+    static void refreshSchedulesForClockChange(Context context) {
+        android.content.SharedPreferences.Editor editor = schedulePrefs(context).edit();
+        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+            if (rule.enabled) {
+                editor.putLong(scheduleKey(rule.id), calculateNext(context, rule))
+                        .remove(remainingKey(rule.id));
+            } else {
+                editor.remove(scheduleKey(rule.id)).remove(remainingKey(rule.id));
+            }
+        }
+        editor.apply();
+        update(context);
     }
 
     static boolean screenOffAlarmSessionActive(Context context, int ruleId) {
@@ -169,8 +184,9 @@ final class ReminderScheduler {
             }
             long remaining = prefs.getLong(remainingKey(rule.id), -1L);
             long scheduled = scheduledAt(context, rule.id);
-            if (remaining >= 0L || scheduled > 0L) {
-                long next = remaining >= 0L ? now + remaining
+            if (remaining >= 0L || scheduled > 0L || rule.specificTimeMode) {
+                long next = rule.specificTimeMode ? calculateNext(context, rule)
+                        : remaining >= 0L ? now + remaining
                         : scheduled > now ? scheduled : calculateNext(context, rule);
                 setScheduledAt(context, rule.id, next);
                 alarms.cancel(pendingIntent(context, rule.id, null));
@@ -249,6 +265,9 @@ final class ReminderScheduler {
     private static long calculateNext(Context context, ReminderSettings.Rule rule) {
         long now = System.currentTimeMillis();
         if (!rule.remindAfterTarget && ReminderSettings.completedToday(context, rule.id) >= rule.dailyTarget) {
+            if (rule.specificTimeMode && !rule.timePointsSeconds.isEmpty()) {
+                return ReminderScheduleMath.nextTime(rule.timePointsSeconds, now, true);
+            }
             Calendar tomorrowStart = Calendar.getInstance();
             tomorrowStart.setTimeInMillis(now);
             tomorrowStart.add(Calendar.DAY_OF_YEAR, 1);
@@ -257,6 +276,9 @@ final class ReminderScheduler {
             tomorrowStart.set(Calendar.SECOND, 0);
             tomorrowStart.set(Calendar.MILLISECOND, 0);
             return nextTime(rule, tomorrowStart.getTimeInMillis());
+        }
+        if (rule.specificTimeMode && !rule.timePointsSeconds.isEmpty()) {
+            return ReminderScheduleMath.nextTime(rule.timePointsSeconds, now, false);
         }
         return nextTime(rule, now);
     }

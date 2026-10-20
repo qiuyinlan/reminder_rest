@@ -71,7 +71,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
             ReminderScheduler.pauseForScreenOff(context);
             return;
         }
-        if (ReminderSettings.usageOnly(context)) {
+        if (ReminderSettings.usageOnly(context) && !rule.specificTimeMode) {
             long recent = UsageAccess.recentMillis(context, System.currentTimeMillis() - rule.intervalSeconds * 1_000L, System.currentTimeMillis());
             if (recent == 0) {
                 scheduleNextSafely(context, rule.id);

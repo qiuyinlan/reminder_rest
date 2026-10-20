@@ -52,14 +52,21 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        boolean newItem = getIntent().getBooleanExtra("new_item", false);
+        int editId = getIntent().getIntExtra("edit_id", -1);
+        if (newItem || editId >= 0) {
+            Intent editor = new Intent(this, ItemsActivity.class);
+            if (newItem) editor.putExtra("new_item", true);
+            if (editId >= 0) editor.putExtra("edit_id", editId);
+            startActivity(editor);
+            finish();
+            return;
+        }
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         ReminderScheduler.update(this);
         render();
-        if (getIntent().getBooleanExtra("new_item", false)) editRule(null);
-        int editId = getIntent().getIntExtra("edit_id", -1);
-        if (editId >= 0) for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) if (rule.id == editId) { editRule(rule); break; }
     }
 
     @Override
@@ -491,7 +498,7 @@ public final class MainActivity extends Activity {
         copy.setPadding(dp(11), 0, dp(6), 0);
         copy.addView(label(rule.title, 15, INK, true));
         int done = ReminderSettings.completedToday(this, rule.id);
-        copy.addView(label(clock(rule.start) + " - " + clock(rule.end) + "  ·  " + intervalText(rule.intervalSeconds) + "  ·  今日 " + done + "/" + rule.dailyTarget, 12, MUTED, false));
+        copy.addView(label(scheduleSummary(rule) + "  ·  今日 " + done + "/" + rule.dailyTarget, 12, MUTED, false));
         String nextText;
         long nextAt = 0L;
         boolean ticking = false;
@@ -546,12 +553,30 @@ public final class MainActivity extends Activity {
         item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         Switch active = new Switch(this);
         active.setChecked(rule.enabled);
-        active.setOnCheckedChangeListener((button, checked) -> saveRule(ReminderSettings.Rule.withIntervalSeconds(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds, rule.dailyTarget, rule.remindAfterTarget, checked)));
+        active.setOnCheckedChangeListener((button, checked) -> saveRule(rule.withEnabled(checked)));
         item.addView(active);
         if (!rule.enabled) item.setAlpha(.58f);
-        item.setOnClickListener(v -> editRule(rule));
-        item.setOnLongClickListener(v -> { editRule(rule); return true; });
+        item.setOnClickListener(v -> openItemEditor(rule.id));
+        item.setOnLongClickListener(v -> { openItemEditor(rule.id); return true; });
         parent.addView(item, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private String scheduleSummary(ReminderSettings.Rule rule) {
+        if (!rule.specificTimeMode) {
+            return clock(rule.start) + " - " + clock(rule.end) + "  ·  " + intervalText(rule.intervalSeconds);
+        }
+        StringBuilder summary = new StringBuilder("每天 ");
+        for (int i = 0; i < rule.timePointsSeconds.size(); i++) {
+            if (i > 0) summary.append("、");
+            int point = rule.timePointsSeconds.get(i);
+            summary.append(String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d",
+                    point / 3600, point / 60 % 60, point % 60));
+        }
+        return summary.toString();
+    }
+
+    private void openItemEditor(int ruleId) {
+        startActivity(new Intent(this, ItemsActivity.class).putExtra("edit_id", ruleId));
     }
 
     private String countdownText(long remainingMillis) {

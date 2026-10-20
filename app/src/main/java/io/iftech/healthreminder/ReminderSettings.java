@@ -12,6 +12,7 @@ import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 final class ReminderSettings {
     static final String[] TYPES = {"喝水", "护眼", "走动", "放松颈椎"};
@@ -29,6 +30,8 @@ final class ReminderSettings {
         final int dailyTarget;
         final boolean remindAfterTarget;
         final boolean enabled;
+        final boolean specificTimeMode;
+        final List<Integer> timePointsSeconds;
 
         Rule(int id, String title, int start, int end, int interval, boolean enabled) {
             this(id, title, start, end, interval, 3, false, enabled);
@@ -41,6 +44,13 @@ final class ReminderSettings {
         }
         private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
                      int dailyTarget, boolean remindAfterTarget, boolean enabled) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, false, new ArrayList<>());
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds) {
             this.id = id;
             this.title = title;
             this.start = start;
@@ -50,12 +60,35 @@ final class ReminderSettings {
             this.dailyTarget = Math.max(1, dailyTarget);
             this.remindAfterTarget = remindAfterTarget;
             this.enabled = enabled;
+            this.specificTimeMode = specificTimeMode;
+            TreeSet<Integer> sortedTimes = new TreeSet<>();
+            if (timePointsSeconds != null) {
+                for (int seconds : timePointsSeconds) {
+                    if (seconds >= 0 && seconds < 24 * 60 * 60) sortedTimes.add(seconds);
+                }
+            }
+            this.timePointsSeconds = java.util.Collections.unmodifiableList(new ArrayList<>(sortedTimes));
         }
 
         static Rule withIntervalSeconds(int id, String title, int start, int end, int intervalSeconds,
                                         int dailyTarget, boolean remindAfterTarget, boolean enabled) {
             return new Rule(id, title, start, end, Math.max(1, (intervalSeconds + 59) / 60), intervalSeconds,
                     dailyTarget, remindAfterTarget, enabled);
+        }
+
+        static Rule withSpecificTimes(int id, String title, int start, int end, int intervalSeconds,
+                                      List<Integer> timePointsSeconds, int dailyTarget,
+                                      boolean remindAfterTarget, boolean enabled) {
+            return new Rule(id, title, start, end, Math.max(1, (intervalSeconds + 59) / 60), intervalSeconds,
+                    dailyTarget, remindAfterTarget, enabled, true, timePointsSeconds);
+        }
+
+        Rule withEnabled(boolean value) {
+            return specificTimeMode
+                    ? withSpecificTimes(id, title, start, end, intervalSeconds, timePointsSeconds,
+                    dailyTarget, remindAfterTarget, value)
+                    : withIntervalSeconds(id, title, start, end, intervalSeconds,
+                    dailyTarget, remindAfterTarget, value);
         }
     }
 
@@ -96,9 +129,22 @@ final class ReminderSettings {
                 JSONObject item = array.getJSONObject(i);
                 int intervalSeconds = item.has("intervalSeconds")
                         ? item.getInt("intervalSeconds") : item.getInt("interval") * 60;
-                result.add(Rule.withIntervalSeconds(item.getInt("id"), item.getString("title"), item.getInt("start"),
+                Rule rule = Rule.withIntervalSeconds(item.getInt("id"), item.getString("title"), item.getInt("start"),
                         item.getInt("end"), intervalSeconds, item.optInt("dailyTarget", 3),
-                        item.optBoolean("remindAfterTarget", false), item.optBoolean("enabled", true)));
+                        item.optBoolean("remindAfterTarget", false), item.optBoolean("enabled", true));
+                if ("times".equals(item.optString("scheduleMode", "interval"))) {
+                    ArrayList<Integer> times = new ArrayList<>();
+                    JSONArray points = item.optJSONArray("timePointsSeconds");
+                    if (points != null) {
+                        for (int j = 0; j < points.length(); j++) {
+                            int seconds = points.optInt(j, -1);
+                            if (seconds >= 0 && seconds < 24 * 60 * 60) times.add(seconds);
+                        }
+                    }
+                    rule = Rule.withSpecificTimes(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds,
+                            times, rule.dailyTarget, rule.remindAfterTarget, rule.enabled);
+                }
+                result.add(rule);
             }
         } catch (JSONException ignored) { }
         return result;
@@ -144,7 +190,9 @@ final class ReminderSettings {
         return first.id == second.id && first.title.equals(second.title)
                 && first.start == second.start && first.end == second.end
                 && first.intervalSeconds == second.intervalSeconds && first.dailyTarget == second.dailyTarget
-                && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled;
+                && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled
+                && first.specificTimeMode == second.specificTimeMode
+                && first.timePointsSeconds.equals(second.timePointsSeconds);
     }
 
     private static void writeRules(Context context, List<Rule> rules) {
@@ -161,6 +209,10 @@ final class ReminderSettings {
                 item.put("dailyTarget", rule.dailyTarget);
                 item.put("remindAfterTarget", rule.remindAfterTarget);
                 item.put("enabled", rule.enabled);
+                item.put("scheduleMode", rule.specificTimeMode ? "times" : "interval");
+                JSONArray timePoints = new JSONArray();
+                for (int seconds : rule.timePointsSeconds) timePoints.put(seconds);
+                item.put("timePointsSeconds", timePoints);
                 array.put(item);
             } catch (JSONException ignored) { }
         }
