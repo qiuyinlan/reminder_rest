@@ -85,7 +85,7 @@ final class ReminderOverlayWindow {
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = dp(context, 20);
         root.addView(title, titleParams);
-        TextView plea = text(context, ReminderActivity.pleaFor(action), 16, TEXT_MUTED, false);
+        TextView plea = text(context, ReminderSettings.reminderMessage(context, ruleId, action), 16, TEXT_MUTED, false);
         plea.setGravity(Gravity.CENTER);
         plea.setLineSpacing(dp(context, 3), 1f);
         plea.setPadding(dp(context, 8), dp(context, 10), dp(context, 8), 0);
@@ -122,14 +122,18 @@ final class ReminderOverlayWindow {
         laterParams.topMargin = dp(context, 8);
         root.addView(later, laterParams);
 
+        android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(root, new android.widget.ScrollView.LayoutParams(-1, -2));
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 -1, -1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
         try {
-            manager.addView(root, params);
-            currentView = root;
+            manager.addView(scroll, params);
+            currentView = scroll;
             currentManager = manager;
             return true;
         } catch (WindowManager.BadTokenException | SecurityException error) {

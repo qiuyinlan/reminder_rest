@@ -141,7 +141,7 @@ public final class ReminderActivity extends Activity {
         TextView title = text(titleFor(action), isTypingReminder(action) ? 25 : 27, TEXT_PRIMARY, true);
         title.setGravity(Gravity.CENTER);
         reminderCard.addView(title);
-        TextView plea = text(pleaFor(action), 16, TEXT_MUTED, false);
+        TextView plea = text(ReminderSettings.reminderMessage(this, ruleId, action), 16, TEXT_MUTED, false);
         plea.setGravity(Gravity.CENTER);
         plea.setLineSpacing(dp(3), 1f);
         LinearLayout.LayoutParams pleaParams = new LinearLayout.LayoutParams(-1, -2);
@@ -466,7 +466,7 @@ public final class ReminderActivity extends Activity {
         if (isPostureReminder(action)) return "坐直了吗？";
         switch (action) {
             case "护眼": return "看看远处吧";
-            default: return "休息一小会儿";
+            default: return action;
         }
     }
 
@@ -476,20 +476,20 @@ public final class ReminderActivity extends Activity {
         if (isPostureReminder(action)) return "手肘自然弯曲，把键盘放近些；肩膀放松，别让肩颈一直受力。";
         switch (action) {
             case "护眼": return "眼睛有点累啦，看看远处 20 秒。";
-            default: return "你已经认真一阵子了，歇一歇吧。";
+            default: return "该去完成「" + action + "」啦，给自己一点行动的时间吧。";
         }
     }
 
     static boolean isWaterReminder(String action) {
-        return action.contains("喝水") || action.contains("饮水") || action.contains("补水");
+        return "喝水".equals(action) || "饮水".equals(action) || "补水".equals(action);
     }
 
     static boolean isWalkingReminder(String action) {
-        return action.contains("走") || action.contains("久坐") || action.contains("活动");
+        return "走动".equals(action) || "走走".equals(action) || "起来走走".equals(action);
     }
 
     static boolean isPostureReminder(String action) {
-        return action.contains("颈") || action.contains("肩") || action.contains("坐姿") || action.contains("打字") || action.contains("姿势");
+        return "放松颈椎".equals(action) || "颈椎".equals(action);
     }
 
     private boolean isTypingReminder(String action) {

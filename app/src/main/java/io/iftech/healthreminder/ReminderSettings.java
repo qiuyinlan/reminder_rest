@@ -23,6 +23,7 @@ final class ReminderSettings {
     static final class Rule {
         final int id;
         final String title;
+        final String reminderMessage;
         final int start;
         final int end;
         final int interval;
@@ -51,8 +52,16 @@ final class ReminderSettings {
         private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
                      int dailyTarget, boolean remindAfterTarget, boolean enabled,
                      boolean specificTimeMode, List<Integer> timePointsSeconds) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, specificTimeMode, timePointsSeconds, "");
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds, String reminderMessage) {
             this.id = id;
             this.title = title;
+            this.reminderMessage = reminderMessage == null ? "" : reminderMessage.trim();
             this.start = start;
             this.end = end;
             this.interval = interval;
@@ -83,13 +92,16 @@ final class ReminderSettings {
                     dailyTarget, remindAfterTarget, enabled, true, timePointsSeconds);
         }
 
-        Rule withEnabled(boolean value) {
-            return specificTimeMode
-                    ? withSpecificTimes(id, title, start, end, intervalSeconds, timePointsSeconds,
-                    dailyTarget, remindAfterTarget, value)
-                    : withIntervalSeconds(id, title, start, end, intervalSeconds,
-                    dailyTarget, remindAfterTarget, value);
+        Rule withReminderMessage(String message) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message);
         }
+
+        Rule withEnabled(boolean value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, value, specificTimeMode, timePointsSeconds, reminderMessage);
+        }
+
     }
 
     private ReminderSettings() { }
@@ -144,7 +156,7 @@ final class ReminderSettings {
                     rule = Rule.withSpecificTimes(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds,
                             times, rule.dailyTarget, rule.remindAfterTarget, rule.enabled);
                 }
-                result.add(rule);
+                result.add(rule.withReminderMessage(item.optString("reminderMessage", "")));
             }
         } catch (JSONException ignored) { }
         return result;
@@ -202,6 +214,7 @@ final class ReminderSettings {
             try {
                 item.put("id", rule.id);
                 item.put("title", rule.title);
+                item.put("reminderMessage", rule.reminderMessage);
                 item.put("start", rule.start);
                 item.put("end", rule.end);
                 item.put("interval", rule.interval);
@@ -217,6 +230,12 @@ final class ReminderSettings {
             } catch (JSONException ignored) { }
         }
         prefs(context).edit().putString(RULES_KEY, array.toString()).apply();
+    }
+
+    static String reminderMessage(Context context, int ruleId, String action) {
+        Rule rule = findRule(rules(context), ruleId);
+        return rule != null && !rule.reminderMessage.isEmpty()
+                ? rule.reminderMessage : ReminderActivity.pleaFor(action);
     }
 
     static int nextRuleId(Context context) {

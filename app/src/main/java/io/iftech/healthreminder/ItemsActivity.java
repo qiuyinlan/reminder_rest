@@ -300,6 +300,16 @@ public final class ItemsActivity extends Activity {
         name.setHint("例如：喝水、站起来活动");
         name.setText(existing == null ? "" : existing.title);
         form.addView(name);
+        form.addView(editorLabel("霸屏提醒语句", true));
+        EditText reminderMessage = styledInput(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        reminderMessage.setHint("选填，留空使用事项默认文案");
+        reminderMessage.setMinLines(2);
+        reminderMessage.setMaxLines(4);
+        reminderMessage.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(120)});
+        reminderMessage.setText(existing == null ? "" : existing.reminderMessage);
+        form.addView(reminderMessage);
+
 
         form.addView(editorLabel("提醒方式", true));
         LinearLayout modes = new LinearLayout(this);
@@ -473,7 +483,7 @@ public final class ItemsActivity extends Activity {
                     timePoints, target[0], remindAfterTarget[0], enabled[0])
                     : ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0],
                     target[0], remindAfterTarget[0], enabled[0]);
-            updated.add(rule);
+            updated.add(rule.withReminderMessage(reminderMessage.getText().toString()));
             ReminderSettings.saveRules(this, updated);
             renderItems();
             editor.dismiss();
