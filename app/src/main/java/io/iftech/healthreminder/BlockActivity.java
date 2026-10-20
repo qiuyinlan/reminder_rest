@@ -11,9 +11,15 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class BlockActivity extends Activity {
+    private static final int PAGE_BACKGROUND = 0xfff5faf8;
+    private static final int SOFT_BACKGROUND = 0xffe2f7ef;
+    private static final int ACCENT = 0xff62c79f;
+    private static final int TEXT_PRIMARY = 0xff2a2f2d;
+    private static final int TEXT_MUTED = 0xff78827e;
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -28,37 +34,55 @@ public final class BlockActivity extends Activity {
     }
 
     private void render() {
-        getWindow().setStatusBarColor(0xffe4f2e3);
-        getWindow().setNavigationBarColor(0xffe4f2e3);
+        getWindow().setStatusBarColor(PAGE_BACKGROUND);
+        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xffe4f2e3);
+        root.setBackgroundColor(PAGE_BACKGROUND);
         setContentView(root);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
-        content.setPadding(dp(24), dp(36), dp(24), dp(24));
+        content.setPadding(dp(20), dp(12), dp(20), dp(14));
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
-        TextView title = text("先休息一下，好不好？", 26, 0xff23342a, true);
+
+        ScrollView pageScroll = new ScrollView(this);
+        pageScroll.setFillViewport(false);
+        pageScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout blockCard = new LinearLayout(this);
+        blockCard.setOrientation(LinearLayout.VERTICAL);
+        blockCard.setGravity(Gravity.CENTER_HORIZONTAL);
+        blockCard.setPadding(dp(20), dp(20), dp(20), dp(22));
+        blockCard.setBackground(round(Color.WHITE, 20));
+        pageScroll.addView(blockCard, new ScrollView.LayoutParams(-1, -2));
+        content.addView(pageScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        TextView title = text("先休息一下，好不好？", 26, TEXT_PRIMARY, true);
         title.setGravity(Gravity.CENTER);
-        content.addView(title);
+        blockCard.addView(title);
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.SAD);
-        LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(260), dp(260));
-        faceParams.topMargin = dp(20);
-        content.addView(face, faceParams);
-        TextView plea = text("这个应用正在你的休息名单里。\n起来喝口水、看看远处，再回来也不迟。", 17, 0xff53685a, false);
+        FrameLayout scene = new FrameLayout(this);
+        scene.setBackground(round(SOFT_BACKGROUND, 18));
+        scene.addView(face, new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER));
+        LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(-1, dp(205));
+        faceParams.topMargin = dp(14);
+        faceParams.bottomMargin = dp(16);
+        blockCard.addView(scene, faceParams);
+        TextView plea = text("这个应用正在你的休息名单里。\n起来喝口水、看看远处，再回来也不迟。", 16, TEXT_MUTED, false);
         plea.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams pleaParams = new LinearLayout.LayoutParams(-1, -2);
         pleaParams.topMargin = dp(14);
-        content.addView(plea, pleaParams);
+        blockCard.addView(plea, pleaParams);
         View spacer = new View(this);
-        content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
+        content.addView(spacer, new LinearLayout.LayoutParams(1, 0));
         Button home = button("先回到桌面", true);
         home.setOnClickListener(v -> leaveForBreak());
         content.addView(home, new LinearLayout.LayoutParams(-1, dp(54)));
         Button continueApp = button("我知道了，继续打开", false);
         continueApp.setOnClickListener(v -> continueBlockedApp());
-        content.addView(continueApp, new LinearLayout.LayoutParams(-1, dp(54)));
+        LinearLayout.LayoutParams continueParams = new LinearLayout.LayoutParams(-1, dp(54));
+        continueParams.topMargin = dp(8);
+        content.addView(continueApp, continueParams);
     }
 
     @Override
@@ -91,12 +115,22 @@ public final class BlockActivity extends Activity {
         button.setText(title);
         button.setAllCaps(false);
         button.setTextSize(15);
-        button.setTextColor(primary ? Color.WHITE : 0xff277049);
+        button.setTextColor(primary ? Color.WHITE : ACCENT);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setMinHeight(dp(54));
+        button.setPadding(dp(12), 0, dp(12), 0);
         GradientDrawable background = new GradientDrawable();
-        background.setColor(primary ? 0xff277049 : 0xffd4e8d2);
-        background.setCornerRadius(dp(16));
+        background.setColor(primary ? ACCENT : SOFT_BACKGROUND);
+        background.setCornerRadius(dp(18));
         button.setBackground(background);
         return button;
+    }
+
+    private GradientDrawable round(int color, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+        return drawable;
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

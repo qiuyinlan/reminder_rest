@@ -16,8 +16,9 @@ final class BottomNavigationBar {
     static final int COMPANION = 2;
     static final int STATS = 3;
 
-    private static final int GREEN = 0xff277049;
-    private static final int MUTED = 0xff6f8073;
+    private static final int GREEN = 0xff62c79f;
+    private static final int BAR = 0xffffffff;
+    private static final int MUTED = 0xff9aa39f;
     private static final String[] LABELS = {"首页", "事项", "陪伴", "统计"};
 
     private BottomNavigationBar() { }
@@ -25,7 +26,7 @@ final class BottomNavigationBar {
     static LinearLayout create(Activity activity, int selected, Runnable... actions) {
         LinearLayout bar = new LinearLayout(activity);
         bar.setGravity(Gravity.CENTER);
-        bar.setBackgroundColor(0xffffffff);
+        bar.setBackgroundColor(BAR);
         for (int i = 0; i < LABELS.length; i++) {
             final int index = i;
             int color = i == selected ? GREEN : MUTED;

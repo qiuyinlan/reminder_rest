@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -25,13 +26,27 @@ import java.util.List;
 import java.util.Set;
 
 public final class AppPickerActivity extends Activity {
+    private static final int GREEN = 0xff62c79f;
+    private static final int MINT_LIGHT = 0xffe2f7ef;
+    private static final int MINT_PALE = 0xffeff9f5;
+    private static final int INK = 0xff2a2f2d;
+    private static final int MUTED = 0xff78827e;
+    private static final int PAPER = 0xfff5faf8;
+    private static final int LINE = 0xffe7f0ec;
+
     private final Set<String> selected = new HashSet<>();
     private LinearLayout list;
+    private TextView selectionCount;
+    private int visibleSelectionCount;
     private boolean blockMode;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().setStatusBarColor(PAPER);
+        getWindow().setNavigationBarColor(Color.WHITE);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         blockMode = "block".equals(getIntent().getStringExtra("mode"));
         selected.addAll(blockMode ? ReminderSettings.blockPackages(this) : ReminderSettings.whitelist(this));
         render();
@@ -40,40 +55,95 @@ public final class AppPickerActivity extends Activity {
     private void render() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(18), dp(20), dp(10));
-        root.setBackgroundColor(0xfff4f8f1);
+        root.setPadding(dp(19), dp(10), dp(19), dp(14));
+        root.setBackgroundColor(PAPER);
         setContentView(root);
-        LinearLayout titleRow = new LinearLayout(this);
-        titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text(blockMode ? "选择限制应用" : "白名单应用", 23, 0xff23342a, true);
-        titleRow.addView(title, new LinearLayout.LayoutParams(0, dp(42), 1));
-        TextView done = text("完成", 15, 0xff277049, true);
-        titleRow.addView(done);
-        done.setOnClickListener(v -> {
-            if (blockMode) {
-                ReminderSettings.prefs(this).edit()
-                        .putStringSet("block_packages", new HashSet<>(selected))
-                        .putBoolean("block_selection_configured", true)
-                        .apply();
-            } else {
-                ReminderSettings.saveWhitelist(this, selected);
-            }
-            finish();
-        });
-        root.addView(titleRow);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = text("‹", 29, INK, false);
+        back.setGravity(Gravity.CENTER);
+        back.setBackground(round(Color.WHITE, 14));
+        back.setContentDescription("返回");
+        back.setOnClickListener(v -> finish());
+        header.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView title = text(blockMode ? "限制应用" : "白名单应用", 23, INK, true);
+        title.setPadding(dp(12), 0, 0, 0);
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        root.addView(header);
+
+        LinearLayout intro = new LinearLayout(this);
+        intro.setGravity(Gravity.CENTER_VERTICAL);
+        intro.setPadding(dp(15), dp(14), dp(15), dp(14));
+        intro.setBackground(round(MINT_LIGHT, 17));
+        LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
+        introParams.topMargin = dp(18);
+        root.addView(intro, introParams);
+
+        TextView introIcon = text(blockMode ? "拦" : "免", 16, GREEN, true);
+        introIcon.setGravity(Gravity.CENTER);
+        introIcon.setBackground(round(Color.WHITE, 13));
+        LinearLayout.LayoutParams introIconParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        introIconParams.rightMargin = dp(12);
+        intro.addView(introIcon, introIconParams);
+
+        LinearLayout introCopy = new LinearLayout(this);
+        introCopy.setOrientation(LinearLayout.VERTICAL);
+        introCopy.addView(text(blockMode ? "只在设定时段内拦截" : "所选应用始终放行", 15, INK, true));
         TextView description = text(blockMode
-                ? "选中的应用只在设定时段内拦截；白名单中的应用始终放行。"
-                : "这些应用不计入屏幕使用统计，也不会触发提醒。", 13, 0xff65776a, false);
-        description.setPadding(0, dp(4), 0, dp(12));
-        root.addView(description);
-        ScrollView scroll = new ScrollView(this);
+                        ? "白名单中的应用仍会始终放行。"
+                        : "所选应用不计入屏幕使用统计，也不会触发提醒。",
+                12, MUTED, false);
+        description.setPadding(0, dp(4), 0, 0);
+        introCopy.addView(description);
+        intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout listHeader = new LinearLayout(this);
+        listHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams listHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        listHeaderParams.topMargin = dp(21);
+        listHeaderParams.bottomMargin = dp(9);
+        root.addView(listHeader, listHeaderParams);
+        listHeader.addView(text("应用列表", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        selectionCount = text("已选 0 个", 11, GREEN, true);
+        selectionCount.setGravity(Gravity.CENTER);
+        selectionCount.setPadding(dp(10), dp(6), dp(10), dp(6));
+        selectionCount.setBackground(round(MINT_PALE, 12));
+        listHeader.addView(selectionCount);
+
+        ScrollView listScroll = new ScrollView(this);
+        listScroll.setFillViewport(true);
+        listScroll.setClipToPadding(false);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(8), dp(5), dp(8), dp(5));
-        list.setBackground(background(Color.WHITE, 16));
-        scroll.addView(list);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        list.setPadding(dp(8), dp(4), dp(8), dp(4));
+        list.setBackground(round(Color.WHITE, 17));
+        list.setElevation(dp(1));
+        listScroll.addView(list, new ScrollView.LayoutParams(-1, -2));
+        root.addView(listScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         addApps();
+
+        TextView done = text("完成", 15, Color.WHITE, true);
+        done.setGravity(Gravity.CENTER);
+        done.setBackground(solid(GREEN, 16));
+        done.setElevation(dp(1));
+        done.setOnClickListener(v -> saveAndClose());
+        LinearLayout.LayoutParams doneParams = new LinearLayout.LayoutParams(-1, dp(50));
+        doneParams.topMargin = dp(12);
+        root.addView(done, doneParams);
+    }
+
+    private void saveAndClose() {
+        if (blockMode) {
+            ReminderSettings.prefs(this).edit()
+                    .putStringSet("block_packages", new HashSet<>(selected))
+                    .putBoolean("block_selection_configured", true)
+                    .apply();
+        } else {
+            ReminderSettings.saveWhitelist(this, selected);
+        }
+        finish();
     }
 
     private void addApps() {
@@ -97,39 +167,72 @@ public final class AppPickerActivity extends Activity {
                 if (resolved != null) apps.add(resolved);
             }
         }
-        Collections.sort(apps, Comparator.comparing(info -> info.loadLabel(pm).toString(), String.CASE_INSENSITIVE_ORDER));
+        Collections.sort(apps, Comparator.comparing(
+                info -> info.loadLabel(pm).toString(), String.CASE_INSENSITIVE_ORDER));
+
         if (blockMode && !hasSavedBlockSelection()) {
             for (ResolveInfo app : apps) selected.add(app.activityInfo.packageName);
         }
+        visibleSelectionCount = 0;
+        for (ResolveInfo app : apps) {
+            if (selected.contains(app.activityInfo.packageName)) visibleSelectionCount++;
+        }
+        updateSelectionCount();
+
+        if (apps.isEmpty()) {
+            TextView empty = text("没有找到可启动的应用", 14, MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            list.addView(empty, new LinearLayout.LayoutParams(-1, dp(120)));
+            return;
+        }
+
         for (ResolveInfo app : apps) {
             String pkg = app.activityInfo.packageName;
+            String appName = app.loadLabel(pm).toString();
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(6), dp(8), dp(6), dp(8));
+            row.setMinimumHeight(dp(60));
+            row.setPadding(dp(8), dp(7), dp(8), dp(7));
+
             ImageView icon = new ImageView(this);
             icon.setImageDrawable(app.loadIcon(pm));
             row.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
-            TextView name = text(app.loadLabel(pm).toString(), 15, 0xff23342a, true);
+
+            TextView name = text(appName, 14, INK, true);
             name.setPadding(dp(10), 0, dp(4), 0);
             row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+
             CheckBox check = new CheckBox(this);
-            check.setButtonTintList(android.content.res.ColorStateList.valueOf(0xff277049));
+            check.setButtonTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{GREEN, 0xffc3ccc7}));
             check.setChecked(selected.contains(pkg));
             check.setOnCheckedChangeListener((button, value) -> {
-                if (value) selected.add(pkg); else selected.remove(pkg);
+                if (value) {
+                    selected.add(pkg);
+                    visibleSelectionCount++;
+                } else {
+                    selected.remove(pkg);
+                    visibleSelectionCount--;
+                }
+                row.setContentDescription(appName + (value ? "，已选择" : "，未选择"));
+                updateSelectionCount();
             });
             row.addView(check);
+            row.setContentDescription(appName + (check.isChecked() ? "，已选择" : "，未选择"));
             row.setOnClickListener(v -> check.setChecked(!check.isChecked()));
             list.addView(row, new LinearLayout.LayoutParams(-1, -2));
+
             View divider = new View(this);
-            divider.setBackgroundColor(0xffe9eee8);
-            list.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+            divider.setBackgroundColor(LINE);
+            LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
+            dividerParams.leftMargin = dp(46);
+            list.addView(divider, dividerParams);
         }
-        if (apps.isEmpty()) {
-            TextView empty = text("没有找到可启动的应用", 14, 0xff65776a, false);
-            empty.setGravity(Gravity.CENTER);
-            list.addView(empty, new LinearLayout.LayoutParams(-1, dp(100)));
-        }
+    }
+
+    private void updateSelectionCount() {
+        if (selectionCount != null) selectionCount.setText("已选 " + visibleSelectionCount + " 个");
     }
 
     private boolean hasSavedBlockSelection() {
@@ -146,7 +249,15 @@ public final class AppPickerActivity extends Activity {
         return view;
     }
 
-    private GradientDrawable background(int color, int radius) {
+    private GradientDrawable round(int color, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+        drawable.setStroke(dp(1), LINE);
+        return drawable;
+    }
+
+    private GradientDrawable solid(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(dp(radius));

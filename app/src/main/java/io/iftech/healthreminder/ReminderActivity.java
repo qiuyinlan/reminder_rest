@@ -28,7 +28,11 @@ import android.text.TextWatcher;
 import android.widget.ScrollView;
 
 public final class ReminderActivity extends Activity {
-    private static final int GREEN = 0xff277049;
+    private static final int GREEN = 0xff62c79f;
+    private static final int PAGE_BACKGROUND = 0xfff5faf8;
+    private static final int SOFT_BACKGROUND = 0xffe2f7ef;
+    private static final int TEXT_PRIMARY = 0xff2a2f2d;
+    private static final int TEXT_MUTED = 0xff78827e;
     private String action;
     private int ruleId = -1;
     private String sessionId;
@@ -61,7 +65,7 @@ public final class ReminderActivity extends Activity {
             sessionId = java.util.UUID.randomUUID().toString();
             startedAt = System.currentTimeMillis();
             LinearLayout background = new LinearLayout(this);
-            background.setBackgroundColor(0xffe4f2e3);
+            background.setBackgroundColor(PAGE_BACKGROUND);
             setContentView(background);
             askReason();
             return;
@@ -79,21 +83,35 @@ public final class ReminderActivity extends Activity {
             beginDoing();
             return;
         }
-        getWindow().setStatusBarColor(0xffe4f2e3);
-        getWindow().setNavigationBarColor(0xffe4f2e3);
+        getWindow().setStatusBarColor(PAGE_BACKGROUND);
+        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(26), dp(28), dp(26), dp(26));
-        root.setBackgroundColor(0xffe4f2e3);
+        root.setPadding(dp(20), dp(12), dp(20), dp(12));
+        root.setBackgroundColor(PAGE_BACKGROUND);
         setContentView(root);
 
-        TextView overline = text("哪怕做一秒，身体也会舒服一点！\n求求主人了。", 17, GREEN, true);
+        ScrollView pageScroll = new ScrollView(this);
+        pageScroll.setFillViewport(false);
+        pageScroll.setClipToPadding(false);
+        pageScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout reminderCard = new LinearLayout(this);
+        reminderCard.setOrientation(LinearLayout.VERTICAL);
+        reminderCard.setGravity(Gravity.CENTER_HORIZONTAL);
+        reminderCard.setPadding(dp(20), dp(18), dp(20), dp(22));
+        reminderCard.setBackground(round(Color.WHITE, 28));
+        pageScroll.addView(reminderCard, new ScrollView.LayoutParams(-1, -2));
+        root.addView(pageScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        TextView overline = text("哪怕做一秒，身体也会舒服一点！\n求求主人了。", 13, GREEN, true);
         overline.setGravity(Gravity.CENTER);
-        overline.setLineSpacing(dp(3), 1f);
-        root.addView(overline);
+        overline.setLineSpacing(dp(2), 1f);
+        overline.setPadding(dp(14), dp(8), dp(14), dp(8));
+        overline.setBackground(round(SOFT_BACKGROUND, 18));
+        reminderCard.addView(overline);
         FrameLayout animation = new FrameLayout(this);
         if (isTypingReminder(action)) {
             animation.addView(new TypingSceneView(this), new FrameLayout.LayoutParams(-1, -1));
@@ -112,30 +130,31 @@ public final class ReminderActivity extends Activity {
             bob.setStartDelay(620);
             bob.setRepeatCount(ValueAnimator.INFINITE);
             face.post(bob::start);
-            animation.addView(face, new FrameLayout.LayoutParams(dp(260), dp(250), Gravity.CENTER));
+            animation.addView(face, new FrameLayout.LayoutParams(dp(220), dp(210), Gravity.CENTER));
         }
-        int sceneHeight = isTypingReminder(action) ? 210 : 260;
+        animation.setBackground(round(SOFT_BACKGROUND, 24));
+        int sceneHeight = isTypingReminder(action) ? 180 : 205;
         LinearLayout.LayoutParams sceneParams = new LinearLayout.LayoutParams(-1, dp(sceneHeight));
-        sceneParams.topMargin = dp(14);
-        root.addView(animation, sceneParams);
-        TextView title = text(titleFor(action), isTypingReminder(action) ? 27 : 30, 0xff23342a, true);
+        sceneParams.topMargin = dp(12);
+        sceneParams.bottomMargin = dp(16);
+        reminderCard.addView(animation, sceneParams);
+        TextView title = text(titleFor(action), isTypingReminder(action) ? 25 : 27, TEXT_PRIMARY, true);
         title.setGravity(Gravity.CENTER);
-        root.addView(title);
-        TextView plea = text(pleaFor(action), 17, 0xff53685a, false);
+        reminderCard.addView(title);
+        TextView plea = text(pleaFor(action), 16, TEXT_MUTED, false);
         plea.setGravity(Gravity.CENTER);
         plea.setLineSpacing(dp(3), 1f);
         LinearLayout.LayoutParams pleaParams = new LinearLayout.LayoutParams(-1, -2);
         pleaParams.topMargin = dp(10);
-        root.addView(plea, pleaParams);
-        View spacer = new View(this);
-        root.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
+        reminderCard.addView(plea, pleaParams);
 
         Button done = button("好啦，我去做", GREEN, Color.WHITE);
         done.setOnClickListener(v -> beginDoing());
         root.addView(done, new LinearLayout.LayoutParams(-1, dp(54)));
         TextView snooze = text("临时有事，稍后提醒我", 15, GREEN, true);
         snooze.setGravity(Gravity.CENTER);
-        snooze.setPadding(0, dp(15), 0, dp(8));
+        snooze.setPadding(0, 0, 0, 0);
+        snooze.setBackground(round(SOFT_BACKGROUND, 16));
         snooze.setOnClickListener(v -> {
             ReminderReceiver.stopAlarmVibration(this, "user chose snooze");
             ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
@@ -143,7 +162,9 @@ public final class ReminderActivity extends Activity {
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(703);
             finish();
         });
-        root.addView(snooze);
+        LinearLayout.LayoutParams snoozeParams = new LinearLayout.LayoutParams(-1, dp(48));
+        snoozeParams.topMargin = dp(8);
+        root.addView(snooze, snoozeParams);
     }
 
     private void beginDoing() {
@@ -165,41 +186,58 @@ public final class ReminderActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(26), dp(38), dp(26), dp(26));
-        root.setBackgroundColor(0xffe4f2e3);
+        root.setPadding(dp(20), dp(12), dp(20), dp(12));
+        root.setBackgroundColor(PAGE_BACKGROUND);
         setContentView(root);
-        root.addView(text("我在这里等你回来", 17, GREEN, true));
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        ScrollView waitingScroll = new ScrollView(this);
+        waitingScroll.setFillViewport(false);
+        waitingScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout waitingCard = new LinearLayout(this);
+        waitingCard.setOrientation(LinearLayout.VERTICAL);
+        waitingCard.setGravity(Gravity.CENTER_HORIZONTAL);
+        waitingCard.setPadding(dp(20), dp(18), dp(20), dp(20));
+        waitingCard.setBackground(round(Color.WHITE, 28));
+        waitingScroll.addView(waitingCard, new ScrollView.LayoutParams(-1, -2));
+        root.addView(waitingScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        TextView waitingHeader = text("我在这里等你回来", 17, GREEN, true);
+        waitingHeader.setTextSize(13);
+        waitingHeader.setPadding(dp(14), dp(8), dp(14), dp(8));
+        waitingHeader.setBackground(round(SOFT_BACKGROUND, 18));
+        waitingCard.addView(waitingHeader);
         WellnessAnimationView smile = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
-        root.addView(smile, new LinearLayout.LayoutParams(dp(240), dp(240)));
-        TextView message = text("正在等你去做：" + titleFor(action), 23, 0xff23342a, true);
+        waitingCard.addView(smile, new LinearLayout.LayoutParams(dp(210), dp(210)));
+        TextView message = text("正在等你去做：" + titleFor(action), 22, TEXT_PRIMARY, true);
         message.setGravity(Gravity.CENTER);
-        root.addView(message);
+        waitingCard.addView(message);
         elapsedLabel = text("00:00", 20, GREEN, true);
+        elapsedLabel.setBackground(round(SOFT_BACKGROUND, 18));
         elapsedLabel.setGravity(Gravity.CENTER);
-        elapsedLabel.setPadding(0, dp(12), 0, dp(26));
-        root.addView(elapsedLabel);
+        elapsedLabel.setPadding(dp(18), dp(10), dp(18), dp(10));
+        waitingCard.addView(elapsedLabel);
         completionNote = new EditText(this);
         completionNote.setSingleLine(true);
         completionNote.setTextSize(15);
-        completionNote.setTextColor(0xff23342a);
-        completionNote.setHintTextColor(0xff87968b);
+        completionNote.setTextColor(TEXT_PRIMARY);
+        completionNote.setHintTextColor(TEXT_MUTED);
         completionNote.setHint("做了什么？（选填）");
         completionNote.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         completionNote.setPadding(dp(14), dp(10), dp(14), dp(10));
-        completionNote.setBackground(round(Color.WHITE, 12));
+        completionNote.setBackground(round(PAGE_BACKGROUND, 14));
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, dp(50));
         noteParams.bottomMargin = dp(12);
-        root.addView(completionNote, noteParams);
-        View spacer = new View(this);
-        root.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
+        waitingCard.addView(completionNote, noteParams);
         Button completed = button("已做完", GREEN, Color.WHITE);
         completed.setOnClickListener(v -> completeSession());
         root.addView(completed, new LinearLayout.LayoutParams(-1, dp(54)));
         TextView missed = text("临时有事，没做", 15, GREEN, true);
         missed.setGravity(Gravity.CENTER);
-        missed.setPadding(0, dp(16), 0, dp(8));
+        missed.setPadding(0, 0, 0, 0);
+        missed.setBackground(round(SOFT_BACKGROUND, 16));
         missed.setOnClickListener(v -> askReason());
-        root.addView(missed);
+        LinearLayout.LayoutParams missedParams = new LinearLayout.LayoutParams(-1, dp(48));
+        missedParams.topMargin = dp(8);
+        root.addView(missed, missedParams);
         completionNote.clearFocus();
         root.setFocusableInTouchMode(true);
         root.requestFocus();
@@ -208,9 +246,9 @@ public final class ReminderActivity extends Activity {
     }
 
     private void setReminderSystemBarBackground() {
-        getWindow().setStatusBarColor(0xffe4f2e3);
-        getWindow().setNavigationBarColor(0xffe4f2e3);
-        getWindow().getDecorView().setBackgroundColor(0xffe4f2e3);
+        getWindow().setStatusBarColor(PAGE_BACKGROUND);
+        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
+        getWindow().getDecorView().setBackgroundColor(PAGE_BACKGROUND);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
                 | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     }
@@ -236,33 +274,33 @@ public final class ReminderActivity extends Activity {
         content.setPadding(dp(22), dp(22), dp(22), dp(16));
         content.setBackground(round(Color.WHITE, 22));
 
-        TextView title = text("临时有事", 21, 0xff23342a, true);
+        TextView title = text("临时有事", 21, TEXT_PRIMARY, true);
         content.addView(title);
 
-        TextView subtitle = text("记下为什么没能完成，也可以选择稍后提醒。", 14, 0xff718076, false);
+        TextView subtitle = text("记下为什么没能完成，也可以选择稍后提醒。", 14, TEXT_MUTED, false);
         subtitle.setPadding(0, dp(7), 0, dp(18));
         content.addView(subtitle);
 
         EditText reason = new EditText(this);
         reason.setHint("什么事比我还重要！");
         reason.setTextSize(16);
-        reason.setTextColor(0xff23342a);
-        reason.setHintTextColor(0xff93a197);
+        reason.setTextColor(TEXT_PRIMARY);
+        reason.setHintTextColor(TEXT_MUTED);
         reason.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         reason.setSingleLine(true);
         reason.setPadding(dp(14), dp(10), dp(14), dp(10));
-        reason.setBackground(round(0xfff4f7f3, 12));
+        reason.setBackground(round(SOFT_BACKGROUND, 12));
         LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(-1, -2);
         reasonParams.topMargin = dp(4);
         content.addView(reason, reasonParams);
 
         LinearLayout snoozeHeader = new LinearLayout(this);
         snoozeHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView snoozeTitle = text("稍后提醒我", 14, 0xff23342a, true);
+        TextView snoozeTitle = text("稍后提醒我", 14, TEXT_PRIMARY, true);
         snoozeHeader.addView(snoozeTitle, new LinearLayout.LayoutParams(0, -2, 1));
         Switch customDelay = new Switch(this);
         customDelay.setText("自选");
-        customDelay.setTextColor(0xff617466);
+        customDelay.setTextColor(TEXT_MUTED);
         snoozeHeader.addView(customDelay);
         LinearLayout.LayoutParams snoozeHeaderParams = new LinearLayout.LayoutParams(-1, -2);
         snoozeHeaderParams.topMargin = dp(14);
@@ -270,7 +308,7 @@ public final class ReminderActivity extends Activity {
 
         LinearLayout delayRow = new LinearLayout(this);
         delayRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView delayLabel = text("延后时间", 12, 0xff718076, false);
+        TextView delayLabel = text("延后时间", 12, TEXT_MUTED, false);
         delayRow.addView(delayLabel, new LinearLayout.LayoutParams(0, -2, 1));
         TextView delayValue = text("下一次到时再提醒", 13, GREEN, true);
         delayRow.addView(delayValue);
@@ -281,7 +319,7 @@ public final class ReminderActivity extends Activity {
         LinearLayout delayPickers = new LinearLayout(this);
         delayPickers.setGravity(Gravity.CENTER);
         delayPickers.setPadding(dp(12), dp(2), dp(12), dp(2));
-        delayPickers.setBackground(round(0xfff4f7f3, 12));
+        delayPickers.setBackground(round(SOFT_BACKGROUND, 12));
         LinearLayout hourColumn = new LinearLayout(this);
         hourColumn.setGravity(Gravity.CENTER);
         hourColumn.setOrientation(LinearLayout.HORIZONTAL);
@@ -294,19 +332,19 @@ public final class ReminderActivity extends Activity {
         minutePicker.setMaxValue(59);
         minutePicker.setValue(15);
         hourColumn.addView(hourPicker, new LinearLayout.LayoutParams(dp(88), dp(112)));
-        hourColumn.addView(text("小时", 13, 0xff718076, false));
+            hourColumn.addView(text("小时", 13, TEXT_MUTED, false));
         LinearLayout minuteColumn = new LinearLayout(this);
         minuteColumn.setGravity(Gravity.CENTER);
         minuteColumn.setOrientation(LinearLayout.HORIZONTAL);
         minuteColumn.addView(minutePicker, new LinearLayout.LayoutParams(dp(88), dp(112)));
-        minuteColumn.addView(text("分钟", 13, 0xff718076, false));
+            minuteColumn.addView(text("分钟", 13, TEXT_MUTED, false));
         delayPickers.addView(hourColumn, new LinearLayout.LayoutParams(0, -2, 1));
         delayPickers.addView(minuteColumn, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams pickerParams = new LinearLayout.LayoutParams(-1, -2);
         pickerParams.topMargin = dp(8);
         content.addView(delayPickers, pickerParams);
 
-        TextView defaultDelay = text("不选的话，默认下一次到时再提醒", 12, 0xff718076, false);
+        TextView defaultDelay = text("不选的话，默认下一次到时再提醒", 12, TEXT_MUTED, false);
         defaultDelay.setPadding(0, 0, 0, dp(3));
         content.addView(defaultDelay);
         TextView warning = text("想想清楚，最好是真的有事！\n不要骗别人把自己也骗了！", 12,
@@ -346,7 +384,7 @@ public final class ReminderActivity extends Activity {
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         actions.setPadding(0, dp(18), 0, 0);
-        TextView cancel = text("再想想", 15, 0xff617167, true);
+        TextView cancel = text("再想想", 15, 0xff636d69, true);
         cancel.setGravity(Gravity.CENTER);
         cancel.setPadding(dp(18), dp(12), dp(18), dp(12));
         cancel.setOnClickListener(v -> {
@@ -473,6 +511,9 @@ public final class ReminderActivity extends Activity {
         button.setTextSize(16);
         button.setTextColor(textColor);
         button.setAllCaps(false);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setMinHeight(dp(54));
+        button.setPadding(dp(12), 0, dp(12), 0);
         GradientDrawable background = new GradientDrawable();
         background.setColor(backgroundColor);
         background.setCornerRadius(dp(16));

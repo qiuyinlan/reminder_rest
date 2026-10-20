@@ -40,16 +40,16 @@ public final class WellnessWallpaperService extends WallpaperService {
             try {
                 canvas = holder.lockCanvas();
                 if (canvas == null) return;
-                canvas.drawColor(0xffeaf4e8);
+                canvas.drawColor(0xfff2f8f6);
                 float faceRadius = Math.min(width, height) * .19f;
                 float cx = width * .5f;
                 float cy = height * .39f;
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(0xffd9ebd9);
+                paint.setColor(0xffe5f4ec);
                 canvas.drawCircle(cx, cy, faceRadius * 1.22f, paint);
                 paint.setColor(0xffffdfa8);
                 canvas.drawCircle(cx, cy, faceRadius, paint);
-                paint.setColor(0xff37483d);
+                paint.setColor(0xff4b5350);
                 canvas.drawCircle(cx - faceRadius * .36f, cy - faceRadius * .27f, faceRadius * .065f, paint);
                 canvas.drawCircle(cx + faceRadius * .36f, cy - faceRadius * .27f, faceRadius * .065f, paint);
                 paint.setColor(0xffee9c83);

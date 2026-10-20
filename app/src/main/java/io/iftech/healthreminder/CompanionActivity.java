@@ -4,16 +4,18 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -23,8 +25,12 @@ import android.widget.TextView;
 import java.util.Locale;
 
 public final class CompanionActivity extends Activity {
-    private static final int GREEN = 0xff277049;
-    private static final int PAPER = 0xffedf5eb;
+    private static final int ACCENT = 0xff62c79f;
+    private static final int MINT_LIGHT = 0xffe2f7ef;
+    private static final int MINT_PALE = 0xffeff9f5;
+    private static final int INK = 0xff2a2f2d;
+    private static final int MUTED = 0xff78827e;
+    private static final int PAPER = 0xfff5faf8;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView currentTime;
     private TextView timer;
@@ -47,6 +53,8 @@ public final class CompanionActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
         focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
                 : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);
@@ -98,17 +106,23 @@ public final class CompanionActivity extends Activity {
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(-1, -1);
         root.addView(content, contentParams);
 
-        TextView title = text(focusMode ? "专注陪伴" : "轻松陪伴", 22, GREEN, true);
+        TextView title = text(focusMode ? "专注陪伴" : "轻松陪伴", 22, INK, true);
         content.addView(title);
+        title.setTextColor(INK);
         TextView subtitle = text(focusMode ? "留一点安静时间，把注意力放回手边。"
-                : "不用做什么，先陪自己呼吸一会儿。", 15, 0xff617466, false);
+                : "不用做什么，先陪自己呼吸一会儿。", 15, MUTED, false);
         subtitle.setPadding(0, dp(8), 0, dp(24));
         content.addView(subtitle);
+        subtitle.setTextColor(MUTED);
 
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
-        LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(224), dp(224));
-        faceParams.topMargin = dp(18);
-        content.addView(face, faceParams);
+        FrameLayout faceStage = new FrameLayout(this);
+        faceStage.setBackground(round(MINT_LIGHT, 22));
+        FrameLayout.LayoutParams faceParams = new FrameLayout.LayoutParams(dp(216), dp(216), Gravity.CENTER);
+        faceStage.addView(face, faceParams);
+        LinearLayout.LayoutParams faceStageParams = new LinearLayout.LayoutParams(dp(240), dp(240));
+        faceStageParams.topMargin = dp(12);
+        content.addView(faceStage, faceStageParams);
         breatheX = ObjectAnimator.ofFloat(face, View.SCALE_X, 1f, 1.1f, 1f);
         breatheX.setDuration(4200);
         breatheX.setRepeatCount(ValueAnimator.INFINITE);
@@ -120,32 +134,41 @@ public final class CompanionActivity extends Activity {
         breatheY.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         breatheY.start();
 
-        TextView breatheHint = text(focusMode ? "专注进行中" : "吸气……呼气……", 17, GREEN, true);
-        breatheHint.setPadding(0, dp(20), 0, dp(10));
-        content.addView(breatheHint);
+        TextView breatheHint = text(focusMode ? "专注进行中" : "吸气 · 呼气", 15, ACCENT, true);
+        breatheHint.setGravity(Gravity.CENTER);
+        breatheHint.setPadding(dp(16), dp(8), dp(16), dp(8));
+        breatheHint.setBackground(round(MINT_LIGHT, 16));
+        LinearLayout.LayoutParams breatheHintParams = new LinearLayout.LayoutParams(-2, -2);
+        breatheHintParams.topMargin = dp(16);
+        breatheHintParams.bottomMargin = dp(12);
+        content.addView(breatheHint, breatheHintParams);
 
         LinearLayout clockPanel = new LinearLayout(this);
         clockPanel.setOrientation(LinearLayout.VERTICAL);
         clockPanel.setGravity(Gravity.CENTER);
         clockPanel.setPadding(dp(24), dp(14), dp(24), dp(14));
         clockPanel.setBackground(round(Color.WHITE, 18));
-        TextView clockLabel = text("现在", 12, 0xff718174, false);
+        TextView clockLabel = text("现在", 12, MUTED, false);
         clockPanel.addView(clockLabel);
-        currentTime = text("--:--:--", 48, 0xff23342a, true);
+        clockLabel.setTextColor(MUTED);
+        currentTime = text("--:--:--", 46, INK, true);
+        currentTime.setTextColor(INK);
         currentTime.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         currentTime.setGravity(Gravity.CENTER);
         clockPanel.addView(currentTime);
-        timer = text((focusMode ? "已专注 " : "已陪伴 ") + "00:00:00", 13, 0xff617466, true);
+        timer = text((focusMode ? "已专注 " : "已陪伴 ") + "00:00:00", 13, MUTED, true);
         timer.setGravity(Gravity.CENTER);
+        timer.setTextColor(MUTED);
         timer.setPadding(0, dp(3), 0, 0);
         clockPanel.addView(timer);
         LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(-1, -2);
         clockParams.setMargins(dp(22), dp(4), dp(22), 0);
         content.addView(clockPanel, clockParams);
 
-        TextView soundLabel = text("环境音", 13, 0xff617466, false);
-        soundLabel.setPadding(0, dp(14), 0, 0);
+        TextView soundLabel = text("环境音", 13, MUTED, true);
+        soundLabel.setPadding(dp(4), dp(14), 0, 0);
         content.addView(soundLabel);
+        soundLabel.setTextColor(MUTED);
         HorizontalScrollView soundScroll = new HorizontalScrollView(this);
         soundScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout soundPicker = new LinearLayout(this);
@@ -167,7 +190,7 @@ public final class CompanionActivity extends Activity {
 
         TextView end = text("结束陪伴", 16, Color.WHITE, true);
         end.setGravity(Gravity.CENTER);
-        end.setBackground(round(GREEN, 28));
+        end.setBackground(round(ACCENT, 10));
         end.setOnClickListener(v -> endSession());
         LinearLayout.LayoutParams endParams = new LinearLayout.LayoutParams(-1, dp(54));
         endParams.bottomMargin = dp(8);
@@ -177,7 +200,7 @@ public final class CompanionActivity extends Activity {
         musicButton.setGravity(Gravity.CENTER);
         musicButton.setContentDescription("播放" + CompanionAudioService.soundName(
                 CompanionAudioService.selectedSound(this)));
-        musicButton.setBackground(round(Color.WHITE, 24));
+        musicButton.setBackground(round(Color.WHITE, 16));
         musicButton.setOnClickListener(v -> {
             boolean play = !CompanionAudioService.isMusicPlaying(this);
             CompanionAudioService.setMusicPlaying(this, play);
@@ -187,17 +210,17 @@ public final class CompanionActivity extends Activity {
                     .putExtra(CompanionAudioService.EXTRA_MUSIC_PLAYING, play));
         });
         FrameLayout.LayoutParams musicParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.RIGHT);
-        musicParams.setMargins(0, dp(12), dp(16), 0);
+        musicParams.setMargins(0, focusMode ? dp(12) : dp(36), dp(16), 0);
         root.addView(musicButton, musicParams);
         setContentView(root);
     }
 
     private void addSoundOption(LinearLayout row, String label, String id) {
-        TextView option = text(label, 14, GREEN, true);
+        TextView option = text(label, 14, MUTED, true);
         option.setGravity(Gravity.CENTER);
         option.setMinWidth(dp(72));
         option.setPadding(dp(14), 0, dp(14), 0);
-        option.setBackground(round(Color.WHITE, 20));
+        option.setBackground(round(Color.WHITE, 10));
         option.setOnClickListener(v -> {
             if (id.equals(CompanionAudioService.selectedSound(this))) return;
             CompanionAudioService.selectSound(this, id);
@@ -218,8 +241,8 @@ public final class CompanionActivity extends Activity {
         String[] ids = {"river", "rain", "birds", "wind", "waves", "trees"};
         for (int i = 0; i < soundOptions.size(); i++) {
             boolean active = ids[i].equals(selected);
-            soundOptions.get(i).setTextColor(active ? Color.WHITE : GREEN);
-            soundOptions.get(i).setBackground(round(active ? GREEN : Color.WHITE, 20));
+            soundOptions.get(i).setTextColor(active ? ACCENT : MUTED);
+            soundOptions.get(i).setBackground(round(active ? MINT_LIGHT : Color.WHITE, 10));
         }
     }
 
@@ -227,8 +250,8 @@ public final class CompanionActivity extends Activity {
         if (musicButton == null) return;
         boolean playing = CompanionAudioService.isMusicPlaying(this);
         musicButton.setText("♫");
-        musicButton.setTextColor(playing ? GREEN : 0xff9aa59c);
-        musicButton.setBackground(round(playing ? 0xffe0efe1 : Color.WHITE, 24));
+        musicButton.setTextColor(playing ? ACCENT : MUTED);
+        musicButton.setBackground(round(playing ? MINT_LIGHT : MINT_PALE, 24));
         String sound = CompanionAudioService.soundName(CompanionAudioService.selectedSound(this));
         musicButton.setContentDescription((playing ? "暂停" : "播放") + sound);
     }
@@ -238,11 +261,12 @@ public final class CompanionActivity extends Activity {
             stopCompanionSession();
             return;
         }
-        new AlertDialog.Builder(this)
+        AlertDialog confirmDialog = new AlertDialog.Builder(dialogContext())
                 .setMessage("真的要结束了吗？")
                 .setNegativeButton("再陪伴一会", null)
                 .setPositiveButton("结束", (dialog, which) -> stopCompanionSession())
-                .show();
+                .create();
+        showStyledDialog(confirmDialog);
     }
 
     private void stopCompanionSession() {
@@ -291,6 +315,35 @@ public final class CompanionActivity extends Activity {
         shape.setColor(color);
         shape.setCornerRadius(dp(radius));
         return shape;
+    }
+
+    private Context dialogContext() {
+        return new ContextThemeWrapper(this, R.style.ItemsDialogTheme);
+    }
+
+    private void showStyledDialog(AlertDialog dialog) {
+        dialog.show();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(round(Color.WHITE, 16));
+            window.setDimAmount(0.34f);
+            window.setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(36), dp(480)),
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        TextView message = dialog.findViewById(android.R.id.message);
+        if (message != null) {
+            message.setTextColor(MUTED);
+            message.setLineSpacing(dp(2), 1f);
+        }
+        for (int buttonId : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE,
+                AlertDialog.BUTTON_NEUTRAL}) {
+            android.widget.Button button = dialog.getButton(buttonId);
+            if (button == null) continue;
+            button.setAllCaps(false);
+            button.setTextSize(14);
+            button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? ACCENT : MUTED);
+        }
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

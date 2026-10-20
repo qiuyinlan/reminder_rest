@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
+import android.content.res.ColorStateList;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -23,15 +24,19 @@ import android.widget.Toast;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ScreenOffSettingsActivity extends Activity {
-    private static final int GREEN = 0xff277049;
-    private static final int INK = 0xff23342a;
-    private static final int MUTED = 0xff65776a;
-    private static final int PAPER = 0xfff4f8f1;
+    private static final int GREEN = 0xff62c79f;
+    private static final int MINT = 0xff62c79f;
+    private static final int MINT_LIGHT = 0xffe2f7ef;
+    private static final int MINT_PALE = 0xffeff9f5;
+    private static final int INK = 0xff2a2f2d;
+    private static final int MUTED = 0xff78827e;
+    private static final int PAPER = 0xfff5faf8;
+    private static final int LINE = 0xffe7f0ec;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
+        getWindow().setNavigationBarColor(Color.WHITE);
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
@@ -44,77 +49,136 @@ public final class ScreenOffSettingsActivity extends Activity {
     }
 
     private void render() {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        scroll.setBackgroundColor(PAPER);
+
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(20), dp(12), dp(20), dp(24));
+        page.setPadding(dp(20), dp(10), dp(20), dp(30));
         page.setBackgroundColor(PAPER);
+        scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
+        setContentView(scroll);
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        TextView back = text("‹", 30, GREEN, false);
+        TextView back = text("‹", 29, INK, false);
         back.setGravity(Gravity.CENTER);
+        back.setBackground(round(Color.WHITE, 14));
         back.setContentDescription("返回");
         back.setOnClickListener(v -> finish());
-        header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(48)));
-        TextView title = text("息屏设置", 21, INK, true);
-        title.setPadding(dp(8), 0, 0, 0);
+        header.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView title = text("息屏设置", 25, INK, true);
+        title.setPadding(dp(12), 0, 0, 0);
         header.addView(title);
         page.addView(header);
 
+        TextView subtitle = text("设置屏幕关闭后的提醒方式", 13, MUTED, false);
+        subtitle.setPadding(dp(54), dp(5), 0, 0);
+        page.addView(subtitle);
+
+        LinearLayout intro = new LinearLayout(this);
+        intro.setGravity(Gravity.CENTER_VERTICAL);
+        intro.setPadding(dp(16), dp(15), dp(16), dp(15));
+        intro.setBackground(round(MINT_LIGHT, 18));
+        LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
+        introParams.topMargin = dp(20);
+        page.addView(intro, introParams);
+
+        TextView introIcon = text("时", 17, GREEN, true);
+        introIcon.setGravity(Gravity.CENTER);
+        introIcon.setBackground(round(Color.WHITE, 14));
+        LinearLayout.LayoutParams introIconParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+        introIconParams.rightMargin = dp(13);
+        intro.addView(introIcon, introIconParams);
+
+        LinearLayout introCopy = new LinearLayout(this);
+        introCopy.setOrientation(LinearLayout.VERTICAL);
+        introCopy.addView(text("让息屏提醒稳定响起", 16, INK, true));
+        TextView introDetail = text("按需开启计时、闹钟和振动，并确认系统权限。", 12, MUTED, false);
+        introDetail.setPadding(0, dp(5), 0, 0);
+        introCopy.addView(introDetail);
+        intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        addSectionHeading(page, "提醒方式", "息屏时继续计时，到点后按你的选择提醒。");
+
         LinearLayout options = new LinearLayout(this);
         options.setOrientation(LinearLayout.VERTICAL);
-        options.setPadding(dp(16), dp(4), dp(16), dp(4));
-        options.setBackground(round(Color.WHITE, 12));
-        Switch alarm = addSwitchRow(options, "统计息屏", ReminderSettings.screenOffAlarm(this));
-        TextView screenOffHint = text("关闭屏幕时也计入提醒时间", 11, MUTED, false);
-        screenOffHint.setPadding(0, 0, 0, dp(12));
-        options.addView(screenOffHint, new LinearLayout.LayoutParams(-1, -2));
+        options.setPadding(dp(15), dp(3), dp(15), dp(3));
+        options.setBackground(round(Color.WHITE, 17));
+        options.setElevation(dp(1));
+        Switch alarm = addSwitchRow(options, "息屏计时并提醒",
+                "关闭屏幕时继续累计，到点后通过闹钟提醒。", ReminderSettings.screenOffAlarm(this));
         addDivider(options);
-        Switch sound = addSwitchRow(options, "息屏闹钟", ReminderSettings.screenOffSound(this));
+        Switch sound = addSwitchRow(options, "播放闹钟铃声",
+                "提醒触发时播放所选铃声。", ReminderSettings.screenOffSound(this));
         addDivider(options);
-        Switch vibrate = addSwitchRow(options, "息屏振动", ReminderSettings.screenOffVibrate(this));
+        Switch vibrate = addSwitchRow(options, "同时振动",
+                "响铃提醒时同步振动。", ReminderSettings.screenOffVibrate(this));
         vibrate.setOnCheckedChangeListener((button, checked) ->
                 ReminderSettings.prefs(this).edit().putBoolean("screen_off_vibrate", checked).apply());
-        page.addView(options, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView permissionsTitle = text("锁屏提醒权限", 16, INK, true);
-        LinearLayout.LayoutParams permissionsTitleParams = new LinearLayout.LayoutParams(-1, -2);
-        permissionsTitleParams.topMargin = dp(20);
-        permissionsTitleParams.bottomMargin = dp(8);
-        page.addView(permissionsTitle, permissionsTitleParams);
-        addPermissionRow(page, "精确闹钟", exactAlarmAllowed() ? "已允许" : "未开启 · 去设置",
+        LinearLayout ringtoneRow = new LinearLayout(this);
+        ringtoneRow.setGravity(Gravity.CENTER_VERTICAL);
+        ringtoneRow.setPadding(0, dp(12), 0, dp(12));
+        addDivider(options);
+        TextView ringtoneIcon = text("♫", 18, GREEN, true);
+        ringtoneIcon.setGravity(Gravity.CENTER);
+        ringtoneIcon.setBackground(round(MINT_PALE, 12));
+        LinearLayout.LayoutParams ringtoneIconParams = new LinearLayout.LayoutParams(dp(40), dp(40));
+        ringtoneIconParams.rightMargin = dp(11);
+        ringtoneRow.addView(ringtoneIcon, ringtoneIconParams);
+        LinearLayout ringtoneCopy = new LinearLayout(this);
+        ringtoneCopy.setOrientation(LinearLayout.VERTICAL);
+        ringtoneCopy.addView(text("闹钟铃声", 14, INK, true));
+        TextView ringtoneName = text(ringtoneName(), 12, MUTED, false);
+        ringtoneName.setMaxLines(1);
+        ringtoneName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams ringtoneNameParams = new LinearLayout.LayoutParams(-1, -2);
+        ringtoneNameParams.topMargin = dp(3);
+        ringtoneCopy.addView(ringtoneName, ringtoneNameParams);
+        ringtoneRow.addView(ringtoneCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView ringtoneValue = text("›", 23, GREEN, false);
+        ringtoneValue.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        ringtoneRow.addView(ringtoneValue);
+        ringtoneRow.setContentDescription("选择闹钟铃声，" + ringtoneName());
+        ringtoneRow.setOnClickListener(v -> pickAlarmRingtone());
+        options.addView(ringtoneRow, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams optionsParams = new LinearLayout.LayoutParams(-1, -2);
+        page.addView(options, optionsParams);
+
+        addSectionHeading(page, "后台提醒权限", "点击未开启的项目，前往系统设置授权。");
+
+        LinearLayout permissions = new LinearLayout(this);
+        permissions.setOrientation(LinearLayout.VERTICAL);
+        permissions.setPadding(dp(15), dp(3), dp(15), dp(3));
+        permissions.setBackground(round(Color.WHITE, 17));
+        permissions.setElevation(dp(1));
+        addPermissionRow(permissions, "精确闹钟", "让提醒按设定时间准确触发。", exactAlarmAllowed(),
                 this::openExactAlarmSettings);
         boolean notificationsAllowed = NotificationManagerCompat.from(this).areNotificationsEnabled()
                 && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 == android.content.pm.PackageManager.PERMISSION_GRANTED);
-        addPermissionRow(page, "通知权限", notificationsAllowed ? "已允许" : "未开启 · 去设置",
+        addPermissionRow(permissions, "通知权限", "允许应用显示提醒通知。", notificationsAllowed,
                 this::openNotificationSettings);
         if (Build.VERSION.SDK_INT >= 34) {
             NotificationManager notifications = getSystemService(NotificationManager.class);
             boolean fullScreenAllowed = notifications != null && notifications.canUseFullScreenIntent();
-            addPermissionRow(page, "锁屏全屏提醒", fullScreenAllowed ? "已允许" : "未开启 · 去设置",
+            addPermissionRow(permissions, "锁屏全屏提醒", "息屏时允许闹钟界面显示在锁屏上。", fullScreenAllowed,
                     this::openFullScreenSettings);
         }
-        TextView recheck = text("重新检查权限", 14, GREEN, true);
-        recheck.setGravity(Gravity.CENTER);
-        recheck.setPadding(0, dp(10), 0, dp(10));
-        recheck.setOnClickListener(v -> render());
-        page.addView(recheck, new LinearLayout.LayoutParams(-1, -2));
+        page.addView(permissions, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout ringtoneRow = new LinearLayout(this);
-        ringtoneRow.setGravity(Gravity.CENTER_VERTICAL);
-        ringtoneRow.setPadding(dp(16), dp(14), dp(16), dp(14));
-        ringtoneRow.setBackground(round(Color.WHITE, 12));
-        LinearLayout.LayoutParams ringtoneParams = new LinearLayout.LayoutParams(-1, -2);
-        ringtoneParams.topMargin = dp(12);
-        page.addView(ringtoneRow, ringtoneParams);
-        TextView ringtoneTitle = text("选择铃声", 15, INK, true);
-        ringtoneRow.addView(ringtoneTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView ringtoneValue = text(ringtoneName() + "  ›", 14, GREEN, true);
-        ringtoneValue.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        ringtoneRow.addView(ringtoneValue);
-        ringtoneRow.setContentDescription("选择铃声，" + ringtoneName());
-        ringtoneRow.setOnClickListener(v -> pickAlarmRingtone());
+        TextView recheck = text("刷新权限状态", 13, GREEN, true);
+        recheck.setGravity(Gravity.CENTER);
+        recheck.setPadding(dp(14), dp(11), dp(14), dp(11));
+        recheck.setBackground(round(MINT_PALE, 16));
+        recheck.setOnClickListener(v -> render());
+        LinearLayout.LayoutParams recheckParams = new LinearLayout.LayoutParams(-1, -2);
+        recheckParams.topMargin = dp(11);
+        page.addView(recheck, recheckParams);
+
         LinearLayout soundRow = (LinearLayout) sound.getParent();
         LinearLayout vibrateRow = (LinearLayout) vibrate.getParent();
         sound.setOnCheckedChangeListener((button, checked) -> {
@@ -130,8 +194,8 @@ public final class ScreenOffSettingsActivity extends Activity {
                         soundRow, vibrateRow, ringtoneRow);
                 return;
             }
-            new AlertDialog.Builder(this).setTitle("统计息屏")
-                    .setMessage("息屏时身体也在劳作，我会化成闹钟提醒你的")
+            AlertDialog confirm = new AlertDialog.Builder(this).setTitle("息屏计时并提醒")
+                    .setMessage("开启后，屏幕关闭时仍会累计使用时间，到达提醒时间后播放闹钟。请确认下方所需权限已开启。")
                     .setNegativeButton("取消", (dialog, which) -> button.setChecked(false))
                     .setPositiveButton("开启", (dialog, which) -> {
                         ReminderSettings.prefs(this).edit().putBoolean("screen_off_alarm", true).apply();
@@ -140,25 +204,47 @@ public final class ScreenOffSettingsActivity extends Activity {
                                 soundRow, vibrateRow, ringtoneRow);
                     })
                     .setOnCancelListener(dialog -> button.setChecked(false))
-                    .show();
+                    .create();
+            confirm.setOnShowListener(dialog -> styleDialog(confirm));
+            confirm.show();
         });
         updateControlState(alarm.isChecked(), sound.isChecked(), sound, vibrate,
                 soundRow, vibrateRow, ringtoneRow);
-
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.addView(page);
-        setContentView(scroll);
     }
 
-    private Switch addSwitchRow(LinearLayout parent, String title, boolean checked) {
+    private void addSectionHeading(LinearLayout page, String title, String detail) {
+        LinearLayout heading = new LinearLayout(this);
+        heading.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(22);
+        params.bottomMargin = dp(9);
+        page.addView(heading, params);
+        heading.addView(text(title, 15, INK, true));
+        TextView caption = text(detail, 12, MUTED, false);
+        caption.setPadding(0, dp(3), 0, 0);
+        heading.addView(caption);
+    }
+
+    private Switch addSwitchRow(LinearLayout parent, String title, String detail, boolean checked) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(12), 0, dp(12));
-        TextView label = text(title, 15, INK, false);
-        row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+        row.setPadding(0, dp(11), 0, dp(11));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(text(title, 14, INK, true));
+        TextView hint = text(detail, 12, MUTED, false);
+        hint.setPadding(0, dp(4), 0, 0);
+        copy.addView(hint);
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         Switch control = new Switch(this);
         control.setChecked(checked);
+        control.setShowText(false);
+        control.setThumbTintList(new ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{MINT, 0xffc7d2cb}));
+        control.setTrackTintList(new ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{MINT_LIGHT, 0xffe4eae6}));
         row.addView(control);
         parent.addView(row, new LinearLayout.LayoutParams(-1, -2));
         return control;
@@ -166,7 +252,7 @@ public final class ScreenOffSettingsActivity extends Activity {
 
     private void addDivider(LinearLayout parent) {
         View divider = new View(this);
-        divider.setBackgroundColor(0xffe8eee6);
+        divider.setBackgroundColor(LINE);
         parent.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
     }
 
@@ -188,18 +274,30 @@ public final class ScreenOffSettingsActivity extends Activity {
         return alarms != null && alarms.canScheduleExactAlarms();
     }
 
-    private void addPermissionRow(LinearLayout parent, String label, String status, Runnable action) {
+    private void addPermissionRow(LinearLayout parent, String label, String detail,
+                                  boolean allowed, Runnable action) {
+        if (parent.getChildCount() > 0) addDivider(parent);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        row.setBackground(round(Color.WHITE, 12));
-        TextView name = text(label, 15, INK, false);
-        row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView value = text(status, 14, status.startsWith("未开启") ? 0xffa33b32 : GREEN, true);
+        row.setPadding(0, dp(12), 0, dp(12));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(text(label, 14, INK, true));
+        TextView description = text(detail, 12, MUTED, false);
+        description.setPadding(0, dp(4), 0, 0);
+        copy.addView(description);
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView value = text(allowed ? "已开启" : "去开启", 11, allowed ? GREEN : 0xffa36558, true);
+        value.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        value.setBackground(round(allowed ? MINT_PALE : 0xfffff4f1, 12));
+        value.setPadding(dp(9), dp(7), dp(9), dp(7));
         row.addView(value);
+        TextView arrow = text("›", 21, MUTED, false);
+        arrow.setGravity(Gravity.CENTER);
+        row.addView(arrow, new LinearLayout.LayoutParams(dp(22), dp(36)));
         row.setOnClickListener(v -> action.run());
+        row.setContentDescription(label + (allowed ? "，已开启" : "，去设置开启"));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(8);
         parent.addView(row, params);
     }
 
@@ -289,7 +387,26 @@ public final class ScreenOffSettingsActivity extends Activity {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(color);
         shape.setCornerRadius(dp(radius));
+        shape.setStroke(dp(1), LINE);
         return shape;
+    }
+
+    private void styleDialog(AlertDialog dialog) {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(round(Color.WHITE, 20));
+        }
+        int titleId = getResources().getIdentifier("alertTitle", "id", "android");
+        TextView title = titleId == 0 ? null : dialog.findViewById(titleId);
+        if (title != null) {
+            title.setTextColor(INK);
+            title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        }
+        TextView message = dialog.findViewById(android.R.id.message);
+        if (message != null) message.setTextColor(MUTED);
+        for (int id : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE}) {
+            android.widget.Button button = dialog.getButton(id);
+            if (button != null) button.setTextColor(id == AlertDialog.BUTTON_POSITIVE ? GREEN : MUTED);
+        }
     }
 
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
