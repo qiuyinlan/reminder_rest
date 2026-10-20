@@ -15,11 +15,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class BlockActivity extends Activity {
-    private static final int PAGE_BACKGROUND = 0xfff5faf8;
-    private static final int SOFT_BACKGROUND = 0xffe2f7ef;
-    private static final int ACCENT = 0xff62c79f;
-    private static final int TEXT_PRIMARY = 0xff2a2f2d;
-    private static final int TEXT_MUTED = 0xff78827e;
+    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
+    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
+    private static final int ACCENT = UiPalette.ACCENT;
+    private static final int TEXT_PRIMARY = UiPalette.INK;
+    private static final int TEXT_MUTED = UiPalette.MUTED;
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -36,9 +36,9 @@ public final class BlockActivity extends Activity {
     private void render() {
         getWindow().setStatusBarColor(PAGE_BACKGROUND);
         getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(PAGE_BACKGROUND);
+        root.setBackground(UiPalette.page());
         setContentView(root);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -128,8 +128,9 @@ public final class BlockActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(radius));
+        if (color == Color.WHITE) drawable.setStroke(dp(1), UiPalette.BORDER);
         return drawable;
     }
 

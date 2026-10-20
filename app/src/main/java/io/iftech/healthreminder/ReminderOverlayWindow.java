@@ -19,11 +19,11 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 final class ReminderOverlayWindow {
-    private static final int PAGE_BACKGROUND = 0xffe4f8dd;
-    private static final int SOFT_BACKGROUND = 0xfff2fbe9;
-    private static final int ACCENT = 0xff62c79f;
-    private static final int TEXT_PRIMARY = 0xff2a2f2d;
-    private static final int TEXT_MUTED = 0xff78827e;
+    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
+    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
+    private static final int ACCENT = UiPalette.ACCENT;
+    private static final int TEXT_PRIMARY = UiPalette.INK;
+    private static final int TEXT_MUTED = UiPalette.MUTED;
 
     private static View currentView;
     private static WindowManager currentManager;
@@ -51,7 +51,7 @@ final class ReminderOverlayWindow {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(context, 20), dp(context, 28), dp(context, 20), dp(context, 18));
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffe7f9df, 0xffdef6d8, 0xffe9f9df}));
+                new int[]{0xffdcecdf, 0xffc8e1ce, 0xffe4efdf}));
 
         LinearLayout top = new LinearLayout(context);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -169,8 +169,9 @@ final class ReminderOverlayWindow {
 
     private static GradientDrawable round(Context context, int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(context, radius));
+        if (color == Color.WHITE) drawable.setStroke(dp(context, 1), UiPalette.BORDER);
         return drawable;
     }
 

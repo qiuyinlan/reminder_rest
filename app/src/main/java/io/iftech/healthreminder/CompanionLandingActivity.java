@@ -16,12 +16,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public final class CompanionLandingActivity extends Activity {
-    private static final int ACCENT = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
+    private static final int ACCENT = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
     private android.animation.ObjectAnimator breatheX;
     private android.animation.ObjectAnimator breatheY;
     private boolean focusMode;
@@ -34,13 +34,12 @@ public final class CompanionLandingActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
 
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(PAPER);
+        screen.setBackground(UiPalette.page());
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -186,8 +185,9 @@ public final class CompanionLandingActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
+        shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(radius));
+        if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER);
         return shape;
     }
 

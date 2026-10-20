@@ -43,13 +43,13 @@ import java.util.List;
 import java.util.Set;
 
 public final class MainActivity extends Activity {
-    private static final int GREEN = Color.rgb(98, 199, 159);
-    private static final int INK = Color.rgb(42, 47, 45);
-    private static final int MUTED = Color.rgb(120, 130, 126);
-    private static final int PAPER = Color.rgb(245, 250, 248);
-    private static final int MINT_LIGHT = Color.rgb(226, 247, 239);
-    private static final int MINT_PALE = Color.rgb(239, 249, 245);
-    private static final int LINE = Color.rgb(231, 240, 236);
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int LINE = UiPalette.BORDER;
     private LinearLayout body;
     private ScrollView scroll;
     private boolean reopenPermissionGuide;
@@ -60,7 +60,7 @@ public final class MainActivity extends Activity {
         boolean newItem = getIntent().getBooleanExtra("new_item", false);
         int editId = getIntent().getIntExtra("edit_id", -1);
         if (newItem || editId >= 0) {
-            Intent editor = new Intent(this, ItemsActivity.class);
+            Intent editor = new Intent(this, ItemsActivity.class).putExtra("return_to_home", true);
             if (newItem) editor.putExtra("new_item", true);
             if (editId >= 0) editor.putExtra("edit_id", editId);
             startActivity(editor);
@@ -68,8 +68,8 @@ public final class MainActivity extends Activity {
             return;
         }
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         ReminderScheduler.update(this);
         render();
     }
@@ -90,10 +90,10 @@ public final class MainActivity extends Activity {
         int previousScrollY = scroll == null ? 0 : scroll.getScrollY();
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(PAPER);
+        screen.setBackground(UiPalette.page());
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(PAPER);
+        scroll.setBackground(UiPalette.page());
         body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(20), dp(14), dp(20), dp(24));
@@ -113,7 +113,7 @@ public final class MainActivity extends Activity {
         TextView settingsButton = label("设置  ›", 13, INK, true);
         settingsButton.setGravity(Gravity.CENTER);
         settingsButton.setPadding(dp(13), dp(8), dp(13), dp(8));
-        settingsButton.setBackground(outline(0xfffbfdfc, 0xffe1ece7, 18));
+        settingsButton.setBackground(outline(Color.WHITE, UiPalette.BORDER, 18));
         settingsButton.setContentDescription("设置");
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         top.addView(settingsButton);
@@ -134,7 +134,7 @@ public final class MainActivity extends Activity {
         manageItems.setGravity(Gravity.CENTER);
         manageItems.setPadding(dp(11), dp(7), dp(11), dp(7));
         manageItems.setTextColor(GREEN);
-        manageItems.setBackground(outline(Color.WHITE, 0xffd9eee5, 16));
+        manageItems.setBackground(outline(Color.WHITE, UiPalette.BORDER, 16));
         manageItems.setOnClickListener(v -> startActivity(new Intent(this, ItemsActivity.class)));
         sectionHead.addView(manageItems);
         body.addView(sectionHead);
@@ -303,7 +303,7 @@ public final class MainActivity extends Activity {
         LinearLayout metric = new LinearLayout(this);
         metric.setOrientation(LinearLayout.VERTICAL);
         metric.setPadding(dp(10), dp(8), dp(10), dp(8));
-        metric.setBackground(round("今日完成".equals(title) ? 0xffedf2fa : 0xffe9f5ee, 12));
+        metric.setBackground(round("今日完成".equals(title) ? 0xff203a45 : 0xff183d30, 12));
         metric.addView(label(title, 11, MUTED, false));
         TextView amount = label(value, 17, INK, true);
         amount.setPadding(0, dp(2), 0, 0);
@@ -325,12 +325,12 @@ public final class MainActivity extends Activity {
         LinearLayout banner = row();
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(11), dp(9), dp(12), dp(9));
-        banner.setBackground(outline(ready ? 0xffeff8f2 : 0xfffff1e9,
-                ready ? 0xffdcece2 : 0xfff3dfd1, 14));
-        int statusColor = ready ? INK : 0xffa33b32;
+        banner.setBackground(outline(ready ? 0xff15382a : 0xff402c24,
+                ready ? UiPalette.BORDER : 0xffaa7152, 14));
+        int statusColor = ready ? INK : 0xffffa08f;
         TextView mark = label(ready ? "✓" : "!", 15, ready ? GREEN : statusColor, true);
         mark.setGravity(Gravity.CENTER);
-        mark.setBackground(round(ready ? MINT_LIGHT : 0xffffe3dd, 10));
+        mark.setBackground(round(ready ? MINT_LIGHT : 0xff623d2e, 10));
         banner.addView(mark, new LinearLayout.LayoutParams(dp(32), dp(32)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
@@ -400,7 +400,7 @@ public final class MainActivity extends Activity {
     }
 
     private void addPermissionRow(LinearLayout parent, AlertDialog guide, String title, boolean ready, Runnable action) {
-        TextView row = label((ready ? "✓ " : "○ ") + title + (ready ? "  已完成" : "  去设置"), 15, ready ? INK : 0xffa33b32, true);
+        TextView row = label((ready ? "✓ " : "○ ") + title + (ready ? "  已完成" : "  去设置"), 15, ready ? INK : 0xffffa08f, true);
         row.setPadding(0, dp(13), 0, dp(13));
         row.setOnClickListener(v -> {
             guide.dismiss();
@@ -601,7 +601,6 @@ public final class MainActivity extends Activity {
         active.setContentDescription((rule.enabled ? "停用" : "启用") + rule.title);
         active.setOnCheckedChangeListener((button, checked) -> saveRule(rule.withEnabled(checked)));
         main.addView(active);
-        if (!rule.enabled) item.setAlpha(.62f);
         item.addView(main);
 
         String nextText;
@@ -694,7 +693,9 @@ public final class MainActivity extends Activity {
     }
 
     private void openItemEditor(int ruleId) {
-        startActivity(new Intent(this, ItemsActivity.class).putExtra("edit_id", ruleId));
+        startActivity(new Intent(this, ItemsActivity.class)
+                .putExtra("edit_id", ruleId)
+                .putExtra("return_to_home", true));
     }
 
     private String countdownText(long remainingMillis) {
@@ -723,21 +724,21 @@ public final class MainActivity extends Activity {
     }
 
     private int iconColor(String title) {
-        if (title.contains("水")) return 0xff398b98;
-        if (title.contains("眼")) return 0xff687bb2;
-        if (title.contains("走") || title.contains("活动")) return 0xff388c6d;
-        if (title.contains("颈") || title.contains("肩")) return 0xffad8242;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff9a70a3;
-        return 0xffbc7067;
+        if (title.contains("水")) return 0xff70d6dd;
+        if (title.contains("眼")) return 0xffa8b9ff;
+        if (title.contains("走") || title.contains("活动")) return 0xff67d49b;
+        if (title.contains("颈") || title.contains("肩")) return 0xffffce78;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffd7a6eb;
+        return 0xffffa497;
     }
 
     private int iconTint(String title) {
-        if (title.contains("水")) return 0xffe4f2f4;
-        if (title.contains("眼")) return 0xffedf0fa;
-        if (title.contains("走") || title.contains("活动")) return 0xffe6f4ec;
-        if (title.contains("颈") || title.contains("肩")) return 0xfff8f0df;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xfff3ecf6;
-        return 0xfff8edeb;
+        if (title.contains("水")) return 0xff173b40;
+        if (title.contains("眼")) return 0xff292f4c;
+        if (title.contains("走") || title.contains("活动")) return 0xff173d2d;
+        if (title.contains("颈") || title.contains("肩")) return 0xff49371f;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff3b2947;
+        return 0xff482b28;
     }
 
     private void editRule(ReminderSettings.Rule existing) {
@@ -997,26 +998,26 @@ public final class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(4), dp(14), dp(4));
-        card.setBackground(outline(0xffeff6f3, 0xffe1ebe7, 15));
+        card.setBackground(outline(0xff102d24, UiPalette.BORDER, 15));
         return card;
     }
 
     private GradientDrawable homeStatusBackground() {
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffe7f5ec, 0xfff2f7f7, 0xffeaf0f8});
+                new int[]{0xff0b3325, 0xff12352c, 0xff142d3c});
         background.setCornerRadius(dp(18));
-        background.setStroke(dp(1), 0xffdce9e4);
+        background.setStroke(dp(1), UiPalette.BORDER);
         return background;
     }
 
     private int iconBorder(String title) {
-        if (title.contains("水")) return 0xffd1e7e9;
-        if (title.contains("眼")) return 0xffdfe3f1;
-        if (title.contains("走") || title.contains("活动")) return 0xffd6e9dd;
-        if (title.contains("颈") || title.contains("肩")) return 0xffeee3c9;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffe8ddec;
-        return 0xffeedbd7;
+        if (title.contains("水")) return 0xff39717a;
+        if (title.contains("眼")) return 0xff59648d;
+        if (title.contains("走") || title.contains("活动")) return 0xff34724f;
+        if (title.contains("颈") || title.contains("肩")) return 0xff8a6935;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff765187;
+        return 0xff89514a;
     }
 
     private GradientDrawable outline(int fillColor, int strokeColor, int radius) {
@@ -1055,7 +1056,7 @@ public final class MainActivity extends Activity {
                 new int[]{}
         };
         toggle.setThumbTintList(new ColorStateList(states, new int[]{Color.WHITE, Color.WHITE}));
-        toggle.setTrackTintList(new ColorStateList(states, new int[]{GREEN, 0xffd5dfdb}));
+        toggle.setTrackTintList(new ColorStateList(states, new int[]{GREEN, UiPalette.DISABLED}));
     }
 
     private LinearLayout row() {
@@ -1085,8 +1086,9 @@ public final class MainActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(radius));
+        if (color == Color.WHITE) drawable.setStroke(dp(1), UiPalette.BORDER);
         return drawable;
     }
 

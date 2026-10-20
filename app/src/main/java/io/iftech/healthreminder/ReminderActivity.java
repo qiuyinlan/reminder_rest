@@ -28,11 +28,11 @@ import android.text.TextWatcher;
 import android.widget.ScrollView;
 
 public final class ReminderActivity extends Activity {
-    private static final int GREEN = 0xff62c79f;
-    private static final int PAGE_BACKGROUND = 0xfff5faf8;
-    private static final int SOFT_BACKGROUND = 0xffe2f7ef;
-    private static final int TEXT_PRIMARY = 0xff2a2f2d;
-    private static final int TEXT_MUTED = 0xff78827e;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
+    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
+    private static final int TEXT_PRIMARY = UiPalette.INK;
+    private static final int TEXT_MUTED = UiPalette.MUTED;
     private String action;
     private int ruleId = -1;
     private String sessionId;
@@ -65,7 +65,7 @@ public final class ReminderActivity extends Activity {
             sessionId = java.util.UUID.randomUUID().toString();
             startedAt = System.currentTimeMillis();
             LinearLayout background = new LinearLayout(this);
-            background.setBackgroundColor(PAGE_BACKGROUND);
+            background.setBackground(UiPalette.page());
             setContentView(background);
             askReason();
             return;
@@ -85,13 +85,13 @@ public final class ReminderActivity extends Activity {
         }
         getWindow().setStatusBarColor(PAGE_BACKGROUND);
         getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().getDecorView().setSystemUiVisibility(0);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(20), dp(12), dp(20), dp(12));
-        root.setBackgroundColor(PAGE_BACKGROUND);
+        root.setBackground(UiPalette.page());
         setContentView(root);
 
         ScrollView pageScroll = new ScrollView(this);
@@ -187,7 +187,7 @@ public final class ReminderActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(20), dp(12), dp(20), dp(12));
-        root.setBackgroundColor(PAGE_BACKGROUND);
+        root.setBackground(UiPalette.page());
         setContentView(root);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         ScrollView waitingScroll = new ScrollView(this);
@@ -248,9 +248,8 @@ public final class ReminderActivity extends Activity {
     private void setReminderSystemBarBackground() {
         getWindow().setStatusBarColor(PAGE_BACKGROUND);
         getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setBackgroundColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().getDecorView().setBackground(UiPalette.page());
+        getWindow().getDecorView().setSystemUiVisibility(0);
     }
 
     private void completeSession() {
@@ -452,8 +451,9 @@ public final class ReminderActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(radius));
+        if (color == Color.WHITE) drawable.setStroke(dp(1), UiPalette.BORDER);
         return drawable;
     }
 

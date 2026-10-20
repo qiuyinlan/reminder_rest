@@ -16,9 +16,9 @@ final class BottomNavigationBar {
     static final int COMPANION = 2;
     static final int STATS = 3;
 
-    private static final int GREEN = 0xff62c79f;
-    private static final int BAR = 0xffffffff;
-    private static final int MUTED = 0xff9aa39f;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int BAR = UiPalette.SURFACE;
+    private static final int MUTED = UiPalette.MUTED;
     private static final String[] LABELS = {"首页", "事项", "陪伴", "统计"};
 
     private BottomNavigationBar() { }

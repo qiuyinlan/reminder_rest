@@ -25,12 +25,12 @@ import android.widget.TextView;
 import java.util.Locale;
 
 public final class CompanionActivity extends Activity {
-    private static final int ACCENT = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
+    private static final int ACCENT = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView currentTime;
     private TextView timer;
@@ -53,8 +53,7 @@ public final class CompanionActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
         focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
                 : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);
@@ -97,7 +96,7 @@ public final class CompanionActivity extends Activity {
 
     private void render() {
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(PAPER);
+        root.setBackground(UiPalette.page());
 
         LinearLayout content = new LinearLayout(this);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -312,8 +311,9 @@ public final class CompanionActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
+        shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(radius));
+        if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER);
         return shape;
     }
 

@@ -76,7 +76,7 @@ final class TypingSceneView extends View {
         fill(0xffd6e7de);
         c.drawRoundRect(new RectF(205, 76, 261, 79), 2, 2, paint);
         c.drawRoundRect(new RectF(205, 84, 247, 87), 2, 2, paint);
-        fill(phase < .5f ? 0xff62c79f : 0x4462c79f);
+        fill(phase < .5f ? UiPalette.ACCENT : 0x44287f52);
         c.drawRect(205, 92, 207, 99, paint);
         fill(0xff747c79);
         c.drawRoundRect(new RectF(229, 113, 240, 124), 3, 3, paint);

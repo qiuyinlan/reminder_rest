@@ -39,26 +39,27 @@ import java.util.Locale;
 import java.text.SimpleDateFormat;
 
 public final class ItemsActivity extends Activity {
-    private static final int GREEN = 0xff62c79f;
-    private static final int MINT = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int LINE = 0xffe7f0ec;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int MINT = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int LINE = UiPalette.BORDER;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
     private LinearLayout list;
+    private boolean returnToHome;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        returnToHome = getIntent().getBooleanExtra("return_to_home", false);
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         FrameLayout frame = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(PAPER);
+        screen.setBackground(UiPalette.page());
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -119,7 +120,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         summary.setPadding(dp(16), dp(14), dp(16), dp(14));
-        summary.setBackground(surface(new int[]{0xffe5f4eb, 0xfff0f6f8}, 16, 0xffdcebe3));
+        summary.setBackground(surface(new int[]{0xff10412e, 0xff173c35}, 16, UiPalette.BORDER));
         LinearLayout summaryTop = new LinearLayout(this);
         summaryTop.setGravity(Gravity.CENTER_VERTICAL);
         TextView summaryTitle = text("今天的完成进度", 14, INK, true);
@@ -205,7 +206,7 @@ public final class ItemsActivity extends Activity {
             TextView empty = text("还没有提醒事项", 15, MUTED, true);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
-            empty.setBackground(surface(new int[]{0xffedf6f1, 0xfff1f4f8}, 14, 0xffe1ebe7));
+            empty.setBackground(surface(new int[]{0xff12382c, 0xff172e32}, 14, UiPalette.BORDER));
             list.addView(empty);
         }
     }
@@ -221,39 +222,39 @@ public final class ItemsActivity extends Activity {
     }
 
     private int categoryInk(String title) {
-        if (title.contains("水")) return 0xff398b98;
-        if (title.contains("眼")) return 0xff687bb2;
-        if (title.contains("走") || title.contains("活动")) return 0xff388c6d;
-        if (title.contains("颈") || title.contains("肩")) return 0xffad8242;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff9a70a3;
-        return 0xffbc7067;
+        if (title.contains("水")) return 0xff70d6dd;
+        if (title.contains("眼")) return 0xffa8b9ff;
+        if (title.contains("走") || title.contains("活动")) return 0xff67d49b;
+        if (title.contains("颈") || title.contains("肩")) return 0xffffce78;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffd7a6eb;
+        return 0xffffa497;
     }
 
     private int categoryTint(String title) {
-        if (title.contains("水")) return 0xffe4f2f4;
-        if (title.contains("眼")) return 0xffedf0fa;
-        if (title.contains("走") || title.contains("活动")) return 0xffe6f4ec;
-        if (title.contains("颈") || title.contains("肩")) return 0xfff8f0df;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xfff3ecf6;
-        return 0xfff8edeb;
+        if (title.contains("水")) return 0xff173b40;
+        if (title.contains("眼")) return 0xff292f4c;
+        if (title.contains("走") || title.contains("活动")) return 0xff173d2d;
+        if (title.contains("颈") || title.contains("肩")) return 0xff49371f;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff3b2947;
+        return 0xff482b28;
     }
 
     private GradientDrawable categorySurface(String title) {
         int tint = categoryTint(title);
         GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{tint, 0xfffbfcfb});
+                new int[]{tint, 0xff192f29});
         background.setCornerRadius(dp(15));
         background.setStroke(dp(1), categoryBorder(title));
         return background;
     }
 
     private int categoryBorder(String title) {
-        if (title.contains("水")) return 0xffd1e7e9;
-        if (title.contains("眼")) return 0xffdfe3f1;
-        if (title.contains("走") || title.contains("活动")) return 0xffd6e9dd;
-        if (title.contains("颈") || title.contains("肩")) return 0xffeee3c9;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffe8ddec;
-        return 0xffeedbd7;
+        if (title.contains("水")) return 0xff39717a;
+        if (title.contains("眼")) return 0xff59648d;
+        if (title.contains("走") || title.contains("活动")) return 0xff34724f;
+        if (title.contains("颈") || title.contains("肩")) return 0xff8a6935;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff765187;
+        return 0xff89514a;
     }
 
     private GradientDrawable surface(int[] colors, int radius, int stroke) {
@@ -430,8 +431,8 @@ public final class ItemsActivity extends Activity {
         enabledSwitch.setTextColor(INK);
         enabledSwitch.setTextSize(14);
         enabledSwitch.setMinHeight(dp(48));
-        enabledSwitch.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{MINT, 0xffc7d2cb}));
-        enabledSwitch.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{MINT_LIGHT, 0xffe4eae6}));
+        enabledSwitch.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{Color.WHITE, Color.WHITE}));
+        enabledSwitch.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{MINT, UiPalette.DISABLED}));
         enabledSwitch.setChecked(enabled[0]);
         enabledSwitch.setOnCheckedChangeListener((button, checked) -> enabled[0] = checked);
         settings.addView(enabledSwitch);
@@ -476,6 +477,12 @@ public final class ItemsActivity extends Activity {
             ReminderSettings.saveRules(this, updated);
             renderItems();
             editor.dismiss();
+            if (returnToHome) {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                finish();
+                overridePendingTransition(0, 0);
+            }
         }));
         showStyledDialog(editor);
         if (editor.getWindow() != null) {
@@ -1053,7 +1060,7 @@ public final class ItemsActivity extends Activity {
             button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? GREEN : MUTED);
         }
         if (dialog.getListView() != null) {
-            dialog.getListView().setBackgroundColor(Color.WHITE);
+            dialog.getListView().setBackgroundColor(UiPalette.SURFACE);
             dialog.getListView().setDivider(new ColorDrawable(LINE));
             dialog.getListView().setDividerHeight(dp(1));
             dialog.getListView().setSelector(new ColorDrawable(MINT_LIGHT));
@@ -1117,7 +1124,7 @@ public final class ItemsActivity extends Activity {
     }
 
     private TextView text(String value, int size, int color, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return t; }
-    private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
+    private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(UiPalette.surface(color)); d.setCornerRadius(dp(radius)); if (color == Color.WHITE) d.setStroke(dp(1), UiPalette.BORDER); return d; }
     private GradientDrawable circle(int color) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setShape(GradientDrawable.OVAL); return d; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private float dp(float value) { return value * getResources().getDisplayMetrics().density; }

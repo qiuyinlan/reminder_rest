@@ -24,21 +24,20 @@ import android.widget.Toast;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ScreenOffSettingsActivity extends Activity {
-    private static final int GREEN = 0xff62c79f;
-    private static final int MINT = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
-    private static final int LINE = 0xffe7f0ec;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int MINT = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
+    private static final int LINE = UiPalette.BORDER;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         render();
     }
 
@@ -52,12 +51,12 @@ public final class ScreenOffSettingsActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
-        scroll.setBackgroundColor(PAPER);
+        scroll.setBackground(UiPalette.page());
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(20), dp(10), dp(20), dp(30));
-        page.setBackgroundColor(PAPER);
+        page.setBackground(UiPalette.page());
         scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
         setContentView(scroll);
 
@@ -385,9 +384,9 @@ public final class ScreenOffSettingsActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
+        shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(radius));
-        shape.setStroke(dp(1), LINE);
+        shape.setStroke(dp(1), UiPalette.BORDER);
         return shape;
     }
 

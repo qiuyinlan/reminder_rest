@@ -51,13 +51,13 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class StatsActivity extends Activity {
-    private static final int GREEN = 0xff62c79f;
-    private static final int MINT = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int MINT = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
     private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
@@ -81,12 +81,11 @@ public final class StatsActivity extends Activity {
 
     private void render() {
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(PAPER);
+        screen.setBackground(UiPalette.page());
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
@@ -167,8 +166,8 @@ public final class StatsActivity extends Activity {
         summary.setPadding(dp(6), dp(12), dp(6), dp(12));
         summary.setBackground(round(Color.WHITE, 10));
         summary.addView(summaryMetric("完成", totals[0], GREEN), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("未完成", totals[1], 0xffd47a70), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("陪伴", totals[2], 0xff75a9a0), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("未完成", totals[1], 0xffff9a8a), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("陪伴", totals[2], 0xff77d5bf), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
         pills.setPadding(dp(4), dp(4), dp(4), dp(4));
@@ -200,7 +199,7 @@ public final class StatsActivity extends Activity {
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setBackgroundColor(PAPER);
+        page.setBackground(UiPalette.page());
         FrameLayout header = new FrameLayout(this);
         header.setBackgroundColor(MINT_LIGHT);
         TextView back = text("‹", 30, GREEN, true);
@@ -399,7 +398,7 @@ public final class StatsActivity extends Activity {
         paint.setColor(MINT);
         canvas.drawText(date, width - 64 - paint.measureText(date), 118, paint);
 
-        paint.setColor(Color.WHITE);
+        paint.setColor(UiPalette.SURFACE);
         canvas.drawRoundRect(new RectF(60, 220, 1020, 402), 30, 30, paint);
         drawShareText(canvas, paint, "今天提醒了我", 98, 280, 30, MUTED, false);
         drawShareText(canvas, paint, String.valueOf(totalReminders), 98, 374, 82, MINT, true);
@@ -435,7 +434,7 @@ public final class StatsActivity extends Activity {
             row += 82;
         }
 
-        paint.setColor(0xffdcebe4);
+        paint.setColor(0xff29493a);
         paint.setStrokeWidth(2);
         canvas.drawLine(64, footerTop, 1016, footerTop, paint);
         drawShareText(canvas, paint, "好好休息寄语", 66, footerTop + 53, 26, MINT, true);
@@ -447,7 +446,7 @@ public final class StatsActivity extends Activity {
 
     private void drawShareFace(Canvas canvas, float centerX, float centerY, float radius, int mood) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(0xffe5f4ec);
+        paint.setColor(0xff1d4934);
         canvas.drawCircle(centerX, centerY, radius + 12, paint);
         paint.setColor(0xffffd85c);
         canvas.drawCircle(centerX, centerY, radius, paint);
@@ -481,7 +480,7 @@ public final class StatsActivity extends Activity {
 
     private Paint whitePaint() {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.WHITE);
+        paint.setColor(UiPalette.SURFACE);
         return paint;
     }
 
@@ -766,12 +765,12 @@ public final class StatsActivity extends Activity {
     }
 
     private int categoryColor(String action) {
-        if (action.contains("喝") || action.contains("水")) return 0xff79c8bb;
-        if (action.contains("眼") || action.contains("看")) return 0xff87b9a0;
-        if (action.contains("颈") || action.contains("肩")) return 0xffa4cdb6;
+        if (action.contains("喝") || action.contains("水")) return 0xff70d6dd;
+        if (action.contains("眼") || action.contains("看")) return 0xff67d49b;
+        if (action.contains("颈") || action.contains("肩")) return 0xffffce78;
         if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return GREEN;
-        if ("专注陪伴".equals(action)) return 0xff95c9b1;
-        return 0xffa8cbb9;
+        if ("专注陪伴".equals(action)) return 0xffd7a6eb;
+        return 0xff84cda2;
     }
 
     private final class TimelineRail extends View {
@@ -855,7 +854,7 @@ public final class StatsActivity extends Activity {
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? MINT : MUTED);
         }
-        if (dialog.getListView() != null) dialog.getListView().setBackgroundColor(Color.WHITE);
+        if (dialog.getListView() != null) dialog.getListView().setBackgroundColor(UiPalette.SURFACE);
     }
 
     private boolean sameDay(long time, Calendar day) {
@@ -880,7 +879,7 @@ public final class StatsActivity extends Activity {
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return view;
     }
     private GradientDrawable round(int color, int radius) {
-        GradientDrawable shape = new GradientDrawable(); shape.setColor(color); shape.setCornerRadius(dp(radius)); return shape;
+        GradientDrawable shape = new GradientDrawable(); shape.setColor(UiPalette.surface(color)); shape.setCornerRadius(dp(radius)); if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER); return shape;
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

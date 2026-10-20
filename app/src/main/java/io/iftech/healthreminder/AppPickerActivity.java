@@ -26,13 +26,13 @@ import java.util.List;
 import java.util.Set;
 
 public final class AppPickerActivity extends Activity {
-    private static final int GREEN = 0xff62c79f;
-    private static final int MINT_LIGHT = 0xffe2f7ef;
-    private static final int MINT_PALE = 0xffeff9f5;
-    private static final int INK = 0xff2a2f2d;
-    private static final int MUTED = 0xff78827e;
-    private static final int PAPER = 0xfff5faf8;
-    private static final int LINE = 0xffe7f0ec;
+    private static final int GREEN = UiPalette.ACCENT;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
+    private static final int MINT_PALE = UiPalette.PALE;
+    private static final int INK = UiPalette.INK;
+    private static final int MUTED = UiPalette.MUTED;
+    private static final int PAPER = UiPalette.PAGE;
+    private static final int LINE = UiPalette.BORDER;
 
     private final Set<String> selected = new HashSet<>();
     private LinearLayout list;
@@ -44,9 +44,8 @@ public final class AppPickerActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setNavigationBarColor(PAPER);
+        getWindow().getDecorView().setSystemUiVisibility(0);
         blockMode = "block".equals(getIntent().getStringExtra("mode"));
         selected.addAll(blockMode ? ReminderSettings.blockPackages(this) : ReminderSettings.whitelist(this));
         render();
@@ -56,7 +55,7 @@ public final class AppPickerActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(19), dp(10), dp(19), dp(14));
-        root.setBackgroundColor(PAPER);
+        root.setBackground(UiPalette.page());
         setContentView(root);
 
         LinearLayout header = new LinearLayout(this);
@@ -251,15 +250,15 @@ public final class AppPickerActivity extends Activity {
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(radius));
-        drawable.setStroke(dp(1), LINE);
+        drawable.setStroke(dp(1), UiPalette.BORDER);
         return drawable;
     }
 
     private GradientDrawable solid(int color, int radius) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(UiPalette.surface(color));
         drawable.setCornerRadius(dp(radius));
         return drawable;
     }
