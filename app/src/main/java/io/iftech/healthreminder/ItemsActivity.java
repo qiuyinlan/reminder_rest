@@ -182,7 +182,7 @@ public final class ItemsActivity extends Activity {
             schedule.setPadding(dp(9), dp(5), dp(9), dp(5));
             schedule.setBackground(round(MINT_PALE, 8));
             meta.addView(schedule, new LinearLayout.LayoutParams(0, -2, 1));
-            TextView targetBehavior = text(rule.remindAfterTarget ? "繼續提醒" : "達標停止", 11, MUTED, false);
+            TextView targetBehavior = text(rule.remindAfterTarget ? "继续提醒" : "达标停止", 11, MUTED, false);
             targetBehavior.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
             targetBehavior.setPadding(dp(8), 0, 0, 0);
             meta.addView(targetBehavior);
@@ -612,32 +612,69 @@ public final class ItemsActivity extends Activity {
             int favoriteOrder = Boolean.compare(favorites.contains(b), favorites.contains(a));
             return favoriteOrder != 0 ? favoriteOrder : Integer.compare(a, b);
         });
-        ArrayList<String> options = new ArrayList<>();
-        for (int value : saved) options.add((favorites.contains(value) ? "★ 常用 · " : "自定义 · ") + intervalText(value));
-        int savedCount = options.size();
-        options.add("自定义时间…");
-        options.add("管理自定义时间…");
-        options.add("每 5 分钟");
-        options.add("每 10 分钟");
-        options.add("每 15 分钟");
-        options.add("每 20 分钟");
-        options.add("每 30 分钟");
-        options.add("每 45 分钟");
-        options.add("每 1 小时");
-        options.add("每 1 小时 30 分钟");
-        AlertDialog intervalDialog = new AlertDialog.Builder(dialogContext()).setTitle("提醒间隔").setItems(options.toArray(new String[0]), (dialog, which) -> {
-            if (which < savedCount) {
-                setInterval(interval, button, saved.get(which));
-            } else if (which == savedCount) {
-                showCustomIntervalPicker(interval, button);
-            } else if (which == savedCount + 1) {
-                manageSavedIntervals(interval, button);
-            } else {
-                int[] values = {5, 10, 15, 20, 30, 45, 60, 90};
-                setInterval(interval, button, values[which - savedCount - 2] * 60);
+        LinearLayout options = new LinearLayout(this);
+        options.setOrientation(LinearLayout.VERTICAL);
+        options.setPadding(dp(18), dp(6), dp(18), dp(8));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(360)));
+        scroll.addView(options);
+        AlertDialog intervalDialog = new AlertDialog.Builder(dialogContext())
+                .setTitle("提醒间隔")
+                .setView(scroll)
+                .setNegativeButton("管理自定义", (dialog, which) -> manageSavedIntervals(interval, button))
+                .setNeutralButton("自定义", (dialog, which) -> showCustomIntervalPicker(interval, button))
+                .setPositiveButton("完成", null)
+                .create();
+        if (!favorites.isEmpty()) {
+            addIntervalSection(options, "常用时间");
+            for (int value : saved) {
+                if (favorites.contains(value)) addIntervalOption(options, intervalDialog, interval, button,
+                        value, interval[0] == value, true);
             }
-        }).create();
+        }
+        boolean hasCustom = false;
+        for (int value : saved) hasCustom |= !favorites.contains(value);
+        if (hasCustom) {
+            addIntervalSection(options, "自定义时间");
+            for (int value : saved) {
+                if (!favorites.contains(value)) addIntervalOption(options, intervalDialog, interval, button,
+                        value, interval[0] == value, false);
+            }
+        }
+        addIntervalSection(options, "快捷间隔");
+        for (int value : new int[]{5, 10, 15, 20, 30, 45, 60, 90}) {
+            int seconds = value * 60;
+            addIntervalOption(options, intervalDialog, interval, button, seconds, interval[0] == seconds, false);
+        }
         showStyledDialog(intervalDialog);
+    }
+
+    private void addIntervalSection(LinearLayout parent, String title) {
+        TextView label = text(title, 12, MUTED, true);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(8);
+        params.bottomMargin = dp(4);
+        parent.addView(label, params);
+    }
+
+    private void addIntervalOption(LinearLayout parent, AlertDialog dialog, int[] interval,
+                                   Button button, int value, boolean selected, boolean favorite) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), 0, dp(12), 0);
+        row.setBackground(round(selected ? MINT_LIGHT : Color.WHITE, 11));
+        TextView title = text(intervalText(value), 15, selected ? GREEN : INK, selected);
+        row.addView(title, new LinearLayout.LayoutParams(0, dp(46), 1));
+        if (favorite) row.addView(text("常用", 11, 0xffb28742, true));
+        if (selected) row.addView(text("✓", 16, GREEN, true));
+        row.setOnClickListener(v -> {
+            setInterval(interval, button, value);
+            dialog.dismiss();
+        });
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(46));
+        params.bottomMargin = dp(4);
+        parent.addView(row, params);
     }
 
     private void showCustomIntervalPicker(int[] interval, Button button) {
