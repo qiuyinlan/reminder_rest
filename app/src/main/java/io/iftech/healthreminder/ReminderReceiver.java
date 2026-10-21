@@ -166,6 +166,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
         String message = ReminderActivity.pleaFor(action);
         androidx.core.app.NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setColor(UiPalette.ACCENT)
                 .setContentTitle("健康提醒 · " + title)
                 .setContentText(message)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(message))

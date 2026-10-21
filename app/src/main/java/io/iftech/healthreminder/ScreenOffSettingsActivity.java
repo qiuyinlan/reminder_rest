@@ -25,9 +25,18 @@ import androidx.core.app.NotificationManagerCompat;
 
 public final class ScreenOffSettingsActivity extends Activity {
     private static final int GREEN = UiPalette.ACCENT;
+    /** 开关选中态的强调绿（浅色主题下只有 ACCENT 在浅底上足够可读）。 */
     private static final int MINT = UiPalette.ACCENT;
+    /** 浅绿面板 / 开关选中轨道底色。 */
     private static final int MINT_LIGHT = UiPalette.SOFT;
     private static final int MINT_PALE = UiPalette.PALE;
+    /** 开关未选中态：浅底上的禁用灰绿与浅轨道。 */
+    private static final int SWITCH_OFF = UiPalette.DISABLED;
+    private static final int TRACK_OFF = UiPalette.PAGE;
+    /** 未授权提示：浅底琥珀色文字 + 警示底色与描边。 */
+    private static final int WARN = UiPalette.WARN;
+    private static final int WARN_SOFT = UiPalette.WARN_SOFT;
+    private static final int WARN_BORDER = UiPalette.WARN_BORDER;
     private static final int INK = UiPalette.INK;
     private static final int MUTED = UiPalette.MUTED;
     private static final int PAPER = UiPalette.PAGE;
@@ -37,7 +46,8 @@ public final class ScreenOffSettingsActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
     }
 
@@ -81,6 +91,7 @@ public final class ScreenOffSettingsActivity extends Activity {
         intro.setGravity(Gravity.CENTER_VERTICAL);
         intro.setPadding(dp(16), dp(15), dp(16), dp(15));
         intro.setBackground(round(MINT_LIGHT, 18));
+        intro.setElevation(dp(1));
         LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
         introParams.topMargin = dp(20);
         page.addView(intro, introParams);
@@ -240,10 +251,10 @@ public final class ScreenOffSettingsActivity extends Activity {
         control.setShowText(false);
         control.setThumbTintList(new ColorStateList(
                 new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{MINT, 0xffc7d2cb}));
+                new int[]{MINT, SWITCH_OFF}));
         control.setTrackTintList(new ColorStateList(
                 new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{MINT_LIGHT, 0xffe4eae6}));
+                new int[]{MINT_LIGHT, TRACK_OFF}));
         row.addView(control);
         parent.addView(row, new LinearLayout.LayoutParams(-1, -2));
         return control;
@@ -286,9 +297,9 @@ public final class ScreenOffSettingsActivity extends Activity {
         description.setPadding(0, dp(4), 0, 0);
         copy.addView(description);
         row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView value = text(allowed ? "已开启" : "去开启", 11, allowed ? GREEN : 0xffa36558, true);
+        TextView value = text(allowed ? "已开启" : "去开启", 11, allowed ? GREEN : WARN, true);
         value.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        value.setBackground(round(allowed ? MINT_PALE : 0xfffff4f1, 12));
+        value.setBackground(allowed ? round(MINT_PALE, 12) : round(WARN_SOFT, 12, WARN_BORDER));
         value.setPadding(dp(9), dp(7), dp(9), dp(7));
         row.addView(value);
         TextView arrow = text("›", 21, MUTED, false);
@@ -383,10 +394,14 @@ public final class ScreenOffSettingsActivity extends Activity {
     }
 
     private GradientDrawable round(int color, int radius) {
+        return round(color, radius, UiPalette.BORDER);
+    }
+
+    private GradientDrawable round(int color, int radius, int strokeColor) {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(radius));
-        shape.setStroke(dp(1), UiPalette.BORDER);
+        shape.setStroke(dp(1), strokeColor);
         return shape;
     }
 

@@ -1,16 +1,17 @@
 <resources>
     <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="colorAccent">#287F52</item>
-        <item name="android:colorAccent">#287F52</item>
-        <item name="android:navigationBarColor">#031D17</item>
-        <item name="android:statusBarColor">#031D17</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorAccent">#1F8A5F</item>
+        <item name="android:colorAccent">#1F8A5F</item>
+        <item name="android:windowBackground">#EEF8F1</item>
+        <item name="android:navigationBarColor">#EEF8F1</item>
+        <item name="android:statusBarColor">#F6FCF8</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
     <style name="ItemsDialogTheme" parent="Theme.AppCompat.Dialog.Alert">
-        <item name="colorAccent">#287F52</item>
-        <item name="android:colorAccent">#287F52</item>
+        <item name="colorAccent">#1F8A5F</item>
+        <item name="android:colorAccent">#1F8A5F</item>
     </style>
 </resources>

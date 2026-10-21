@@ -45,7 +45,7 @@ public final class AppPickerActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         blockMode = "block".equals(getIntent().getStringExtra("mode"));
         selected.addAll(blockMode ? ReminderSettings.blockPackages(this) : ReminderSettings.whitelist(this));
         render();
@@ -75,6 +75,7 @@ public final class AppPickerActivity extends Activity {
         intro.setGravity(Gravity.CENTER_VERTICAL);
         intro.setPadding(dp(15), dp(14), dp(15), dp(14));
         intro.setBackground(round(MINT_LIGHT, 17));
+        intro.setElevation(dp(1));
         LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
         introParams.topMargin = dp(18);
         root.addView(intro, introParams);
@@ -204,7 +205,7 @@ public final class AppPickerActivity extends Activity {
             CheckBox check = new CheckBox(this);
             check.setButtonTintList(new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{GREEN, 0xffc3ccc7}));
+                    new int[]{GREEN, UiPalette.DISABLED}));
             check.setChecked(selected.contains(pkg));
             check.setOnCheckedChangeListener((button, value) -> {
                 if (value) {

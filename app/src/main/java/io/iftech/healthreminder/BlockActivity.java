@@ -36,7 +36,8 @@ public final class BlockActivity extends Activity {
     private void render() {
         getWindow().setStatusBarColor(PAGE_BACKGROUND);
         getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         FrameLayout root = new FrameLayout(this);
         root.setBackground(UiPalette.page());
         setContentView(root);
@@ -54,6 +55,7 @@ public final class BlockActivity extends Activity {
         blockCard.setGravity(Gravity.CENTER_HORIZONTAL);
         blockCard.setPadding(dp(20), dp(20), dp(20), dp(22));
         blockCard.setBackground(round(Color.WHITE, 20));
+        blockCard.setElevation(dp(1));
         pageScroll.addView(blockCard, new ScrollView.LayoutParams(-1, -2));
         content.addView(pageScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -122,7 +124,9 @@ public final class BlockActivity extends Activity {
         GradientDrawable background = new GradientDrawable();
         background.setColor(primary ? ACCENT : SOFT_BACKGROUND);
         background.setCornerRadius(dp(18));
+        if (!primary) background.setStroke(dp(1), UiPalette.BORDER);
         button.setBackground(background);
+        button.setElevation(dp(1));
         return button;
     }
 

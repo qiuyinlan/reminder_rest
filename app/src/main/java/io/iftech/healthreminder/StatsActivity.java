@@ -58,6 +58,11 @@ public final class StatsActivity extends Activity {
     private static final int INK = UiPalette.INK;
     private static final int MUTED = UiPalette.MUTED;
     private static final int PAPER = UiPalette.PAGE;
+    private static final int WARN = UiPalette.WARN;
+    private static final int BORDER = UiPalette.BORDER;
+    private static final int DISABLED = UiPalette.DISABLED;
+    /** 陪伴专用浅紫色，与「专注陪伴」保持一致。 */
+    private static final int COMPANION = 0xff8a5bab;
     private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
@@ -82,15 +87,15 @@ public final class StatsActivity extends Activity {
     private void render() {
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackground(UiPalette.page());
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(8), dp(20), dp(14));
-        header.setBackgroundColor(MINT_LIGHT);
+        header.setPadding(dp(20), dp(10), dp(20), dp(16));
+        header.setBackground(headerBackground());
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("每日记录", 25, INK, true);
@@ -99,7 +104,8 @@ public final class StatsActivity extends Activity {
         saveImage.setImageResource(android.R.drawable.ic_menu_share);
         saveImage.setColorFilter(GREEN);
         saveImage.setContentDescription("保存今日分享图");
-        saveImage.setBackground(round(Color.WHITE, 10));
+        saveImage.setBackground(outline(Color.WHITE, BORDER, 12));
+        lift(saveImage);
         saveImage.setOnClickListener(v -> openSharePreview());
         titleRow.addView(saveImage, new LinearLayout.LayoutParams(dp(42), dp(42)));
         header.addView(titleRow);
@@ -118,8 +124,9 @@ public final class StatsActivity extends Activity {
 
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
-        calendar.setPadding(dp(12), dp(10), dp(12), dp(10));
-        calendar.setBackground(round(Color.WHITE, 10));
+        calendar.setPadding(dp(14), dp(12), dp(14), dp(12));
+        calendar.setBackground(round(Color.WHITE, 18));
+        lift(calendar);
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView previous = text("‹", 28, GREEN, true);
@@ -127,8 +134,8 @@ public final class StatsActivity extends Activity {
         monthLabel = text("", 17, INK, true);
         previous.setGravity(Gravity.CENTER);
         next.setGravity(Gravity.CENTER);
-        previous.setBackground(round(MINT_PALE, 8));
-        next.setBackground(round(MINT_PALE, 8));
+        previous.setBackground(round(MINT_PALE, 12));
+        next.setBackground(round(MINT_PALE, 12));
         previous.setOnClickListener(v -> shiftMonth(-1));
         next.setOnClickListener(v -> shiftMonth(1));
         monthLabel.setOnClickListener(v -> {
@@ -158,20 +165,21 @@ public final class StatsActivity extends Activity {
         content.addView(calendar);
 
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
-        dayHeading.setPadding(dp(2), dp(16), dp(2), dp(8));
+        dayHeading.setPadding(dp(2), dp(18), dp(2), dp(9));
         content.addView(dayHeading);
         int[] totals = totalsForDay(selected);
         LinearLayout summary = new LinearLayout(this);
         summary.setGravity(Gravity.CENTER_VERTICAL);
-        summary.setPadding(dp(6), dp(12), dp(6), dp(12));
-        summary.setBackground(round(Color.WHITE, 10));
+        summary.setPadding(dp(8), dp(14), dp(8), dp(14));
+        summary.setBackground(round(Color.WHITE, 16));
+        lift(summary);
         summary.addView(summaryMetric("完成", totals[0], GREEN), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("未完成", totals[1], 0xffff9a8a), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("陪伴", totals[2], 0xff77d5bf), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("未完成", totals[1], WARN), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("陪伴", totals[2], COMPANION), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
-        pills.setPadding(dp(4), dp(4), dp(4), dp(4));
-        pills.setBackground(round(MINT_LIGHT, 10));
+        pills.setPadding(dp(5), dp(5), dp(5), dp(5));
+        pills.setBackground(round(UiPalette.SOFT, 14));
         TextView all = pill("全部", FILTER_ALL.equals(filter));
         TextView done = pill("做了", ReminderRecord.KIND_DONE.equals(filter));
         TextView missed = pill("没做", ReminderRecord.KIND_MISSED.equals(filter));
@@ -201,7 +209,7 @@ public final class StatsActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackground(UiPalette.page());
         FrameLayout header = new FrameLayout(this);
-        header.setBackgroundColor(MINT_LIGHT);
+        header.setBackground(headerBackground());
         TextView back = text("‹", 30, GREEN, true);
         back.setGravity(Gravity.CENTER);
         back.setContentDescription("返回统计");
@@ -222,8 +230,9 @@ public final class StatsActivity extends Activity {
         page.addView(image, imageParams);
 
         LinearLayout actions = new LinearLayout(this);
-        actions.setPadding(dp(4), dp(4), dp(4), dp(4));
-        actions.setBackground(round(Color.WHITE, 10));
+        actions.setPadding(dp(6), dp(6), dp(6), dp(6));
+        actions.setBackground(round(Color.WHITE, 18));
+        lift(actions);
         actions.setGravity(Gravity.CENTER);
         Button save = previewActionButton("保存图片", android.R.drawable.ic_menu_save,
                 MINT_LIGHT, GREEN, v -> saveOrSharePreview(false));
@@ -256,7 +265,9 @@ public final class StatsActivity extends Activity {
             button.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null);
             button.setCompoundDrawablePadding(dp(8));
         }
-        button.setBackground(round(backgroundColor, 16));
+        button.setBackground(backgroundColor == MINT ? round(backgroundColor, 16)
+                : outline(backgroundColor, BORDER, 16));
+        lift(button);
         button.setOnClickListener(listener);
         return button;
     }
@@ -398,8 +409,15 @@ public final class StatsActivity extends Activity {
         paint.setColor(MINT);
         canvas.drawText(date, width - 64 - paint.measureText(date), 118, paint);
 
+        RectF totalCard = new RectF(60, 220, 1020, 402);
+        paint.setStyle(Paint.Style.FILL);
         paint.setColor(UiPalette.SURFACE);
-        canvas.drawRoundRect(new RectF(60, 220, 1020, 402), 30, 30, paint);
+        canvas.drawRoundRect(totalCard, 30, 30, paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2);
+        paint.setColor(BORDER);
+        canvas.drawRoundRect(totalCard, 30, 30, paint);
+        paint.setStyle(Paint.Style.FILL);
         drawShareText(canvas, paint, "今天提醒了我", 98, 280, 30, MUTED, false);
         drawShareText(canvas, paint, String.valueOf(totalReminders), 98, 374, 82, MINT, true);
         paint.setTypeface(Typeface.DEFAULT_BOLD);
@@ -420,9 +438,15 @@ public final class StatsActivity extends Activity {
         drawShareText(canvas, paint, "事项记录", 66, 744, 30, INK, true);
         int row = listTop;
         for (Map.Entry<String, ActionSummary> entry : actions.entrySet()) {
-            canvas.drawRoundRect(new RectF(60, row, 1020, row + 66), 16, 16, whitePaint());
+            RectF rowCard = new RectF(60, row, 1020, row + 66);
+            canvas.drawRoundRect(rowCard, 18, 18, whitePaint());
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            paint.setColor(BORDER);
+            canvas.drawRoundRect(rowCard, 18, 18, paint);
+            paint.setStyle(Paint.Style.FILL);
             paint.setColor(categoryColor(entry.getKey()));
-            canvas.drawRoundRect(new RectF(82, row + 21, 96, row + 45), 5, 5, paint);
+            canvas.drawRoundRect(new RectF(82, row + 21, 96, row + 45), 6, 6, paint);
             drawShareText(canvas, paint, fitShareText(paint, entry.getKey(), 390, 28, true),
                     116, row + 42, 28, INK, true);
             String detail = "提醒 " + entry.getValue().reminders + " 次  ·  做了 "
@@ -434,7 +458,8 @@ public final class StatsActivity extends Activity {
             row += 82;
         }
 
-        paint.setColor(0xff29493a);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(BORDER);
         paint.setStrokeWidth(2);
         canvas.drawLine(64, footerTop, 1016, footerTop, paint);
         drawShareText(canvas, paint, "好好休息寄语", 66, footerTop + 53, 26, MINT, true);
@@ -446,7 +471,8 @@ public final class StatsActivity extends Activity {
 
     private void drawShareFace(Canvas canvas, float centerX, float centerY, float radius, int mood) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(0xff1d4934);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(MINT);
         canvas.drawCircle(centerX, centerY, radius + 12, paint);
         paint.setColor(0xffffd85c);
         canvas.drawCircle(centerX, centerY, radius, paint);
@@ -520,7 +546,7 @@ public final class StatsActivity extends Activity {
             for (int day = 0; day < 7; day++) {
                 Calendar cellDate = (Calendar) cursor.clone();
                 TextView cell = text(String.valueOf(cellDate.get(Calendar.DAY_OF_MONTH)), 13,
-                        cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH) ? INK : 0xffb5bfb6, false);
+                        cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH) ? INK : DISABLED, false);
                 cell.setGravity(Gravity.CENTER);
                 boolean today = sameDay(cellDate, Calendar.getInstance());
                 boolean isSelected = sameDay(cellDate, selected);
@@ -567,13 +593,14 @@ public final class StatsActivity extends Activity {
 
             LinearLayout details = new LinearLayout(this);
             details.setOrientation(LinearLayout.VERTICAL);
-            details.setPadding(dp(14), dp(12), dp(14), dp(11));
-            details.setBackground(round(Color.WHITE, 10));
+            details.setPadding(dp(15), dp(13), dp(15), dp(12));
+            details.setBackground(round(Color.WHITE, 14));
+            lift(details);
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.setGravity(Gravity.CENTER_VERTICAL);
             View category = new View(this);
-            category.setBackground(round(color, 2));
-            titleRow.addView(category, new LinearLayout.LayoutParams(dp(11), dp(11)));
+            category.setBackground(round(color, 5));
+            titleRow.addView(category, new LinearLayout.LayoutParams(dp(10), dp(10)));
             TextView action = text(record.action, 15, INK, true);
             LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, -2, 1);
             actionParams.leftMargin = dp(9);
@@ -613,8 +640,12 @@ public final class StatsActivity extends Activity {
                 timestamp += " - " + time(record.endedAt);
             }
             TextView time = text(timestamp, 11, color, true);
-            time.setPadding(dp(20), dp(5), 0, 0);
-            details.addView(time);
+            time.setPadding(dp(9), dp(4), dp(9), dp(4));
+            time.setBackground(round(categoryTint(record.action), 10));
+            LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(-2, -2);
+            timeParams.leftMargin = dp(18);
+            timeParams.topMargin = dp(7);
+            details.addView(time, timeParams);
 
             LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(0, -2, 1);
             detailsParams.bottomMargin = dp(9);
@@ -631,10 +662,11 @@ public final class StatsActivity extends Activity {
                     : ReminderRecord.KIND_DONE.equals(filter) ? "这一天还没有完成记录" : "这一天没有未完成记录";
             TextView empty = text(message, 13, MUTED, false);
             empty.setGravity(Gravity.CENTER);
-            empty.setPadding(dp(16), dp(30), dp(16), dp(30));
-            empty.setBackground(round(Color.WHITE, 10));
+            empty.setPadding(dp(16), dp(32), dp(16), dp(32));
+            empty.setBackground(round(Color.WHITE, 16));
+            lift(empty);
             LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(-1, -2);
-            emptyParams.topMargin = dp(4);
+            emptyParams.topMargin = dp(6);
             content.addView(empty, emptyParams);
         }
     }
@@ -669,7 +701,7 @@ public final class StatsActivity extends Activity {
         action.setHintTextColor(MUTED);
         action.setPadding(dp(13), dp(10), dp(13), dp(10));
         action.setMinHeight(dp(48));
-        action.setBackground(round(MINT_PALE, 10));
+        action.setBackground(outline(MINT_PALE, BORDER, 12));
         form.addView(action);
 
         long[] startedAt = {record.startedAt};
@@ -707,10 +739,10 @@ public final class StatsActivity extends Activity {
 
     private TextView recordTimeField(String label, long timestamp) {
         TextView field = text(label + "\n" + recordDateTime(timestamp), 14, INK, true);
-        field.setPadding(dp(12), dp(10), dp(12), dp(10));
-        field.setBackground(round(MINT_LIGHT, 10));
+        field.setPadding(dp(13), dp(11), dp(13), dp(11));
+        field.setBackground(outline(MINT_LIGHT, BORDER, 12));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = dp(8);
+        params.topMargin = dp(9);
         field.setLayoutParams(params);
         return field;
     }
@@ -764,13 +796,28 @@ public final class StatsActivity extends Activity {
         return totals;
     }
 
+    /** 浅底可读的分类深色（对应主题规范的 iconColor 一列）。 */
     private int categoryColor(String action) {
-        if (action.contains("喝") || action.contains("水")) return 0xff70d6dd;
-        if (action.contains("眼") || action.contains("看")) return 0xff67d49b;
-        if (action.contains("颈") || action.contains("肩")) return 0xffffce78;
+        if (action.contains("喝") || action.contains("水")) return 0xff247a88;
+        if (action.contains("眼") || action.contains("看")) return 0xff4859b0;
+        if (action.contains("走") || action.contains("活动")) return 0xff1f7d55;
+        if (action.contains("颈") || action.contains("肩")) return 0xff94650f;
+        if (action.contains("放松") || action.contains("呼吸")) return 0xff76439a;
         if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return GREEN;
-        if ("专注陪伴".equals(action)) return 0xffd7a6eb;
-        return 0xff84cda2;
+        if ("专注陪伴".equals(action)) return COMPANION;
+        return 0xffaa4a3d;
+    }
+
+    /** 分类浅色底（对应主题规范的 iconTint 一列），用于时间标签等胶囊。 */
+    private int categoryTint(String action) {
+        if (action.contains("喝") || action.contains("水")) return 0xffd9f0f3;
+        if (action.contains("眼") || action.contains("看")) return 0xffe3e8fb;
+        if (action.contains("走") || action.contains("活动")) return 0xffd8f2e4;
+        if (action.contains("颈") || action.contains("肩")) return 0xfffdeed2;
+        if (action.contains("放松") || action.contains("呼吸")) return 0xfff0e2f7;
+        if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return UiPalette.SOFT;
+        if ("专注陪伴".equals(action)) return 0xfff0e2f7;
+        return 0xfffbe3e1;
     }
 
     private final class TimelineRail extends View {
@@ -787,7 +834,7 @@ public final class StatsActivity extends Activity {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float center = getWidth() / 2f;
-            paint.setColor(0xffcbd8cd);
+            paint.setColor(BORDER);
             paint.setStrokeWidth(dp(2));
             canvas.drawLine(center, dp(12), center, last ? dp(12) : getHeight(), paint);
             paint.setColor(color);
@@ -818,9 +865,12 @@ public final class StatsActivity extends Activity {
     }
 
     private TextView pill(String label, boolean selected) {
-        TextView view = text(label, 14, selected ? Color.WHITE : MUTED, true);
+        TextView view = text(label, 14, selected ? Color.WHITE : INK, true);
         view.setGravity(Gravity.CENTER);
-        if (selected) view.setBackground(round(MINT, 8));
+        if (selected) {
+            view.setBackground(round(MINT, 12));
+            lift(view);
+        }
         return view;
     }
 
@@ -880,6 +930,20 @@ public final class StatsActivity extends Activity {
     }
     private GradientDrawable round(int color, int radius) {
         GradientDrawable shape = new GradientDrawable(); shape.setColor(UiPalette.surface(color)); shape.setCornerRadius(dp(radius)); if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER); return shape;
+    }
+    private GradientDrawable outline(int fillColor, int strokeColor, int radius) {
+        GradientDrawable shape = round(fillColor, radius);
+        shape.setStroke(dp(1), strokeColor);
+        return shape;
+    }
+    /** 头部浅绿渐变，替代原来的深绿头部底色。 */
+    private GradientDrawable headerBackground() {
+        return new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2});
+    }
+    /** 白色卡片轻微浮起。 */
+    private void lift(View view) {
+        if (Build.VERSION.SDK_INT >= 21) view.setElevation(dp(1));
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

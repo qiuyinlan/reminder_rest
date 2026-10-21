@@ -55,7 +55,7 @@ public final class ItemsActivity extends Activity {
         returnToHome = getIntent().getBooleanExtra("return_to_home", false);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         FrameLayout frame = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -106,7 +106,7 @@ public final class ItemsActivity extends Activity {
         TextView addLabel = text("添加", 13, GREEN, true);
         addLabel.setGravity(Gravity.CENTER);
         addLabel.setPadding(dp(12), dp(8), dp(12), dp(8));
-        addLabel.setBackground(round(MINT_LIGHT, 18));
+        addLabel.setBackground(round(MINT_LIGHT, 13));
         addLabel.setOnClickListener(v -> editRule(null));
         heading.addView(addLabel);
         list.addView(heading);
@@ -120,7 +120,8 @@ public final class ItemsActivity extends Activity {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         summary.setPadding(dp(16), dp(14), dp(16), dp(14));
-        summary.setBackground(surface(new int[]{0xff10412e, 0xff173c35}, 16, UiPalette.BORDER));
+        summary.setBackground(surface(new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2}, 18, UiPalette.BORDER));
+        summary.setElevation(dp(1));
         LinearLayout summaryTop = new LinearLayout(this);
         summaryTop.setGravity(Gravity.CENTER_VERTICAL);
         TextView summaryTitle = text("今天的完成进度", 14, INK, true);
@@ -167,7 +168,9 @@ public final class ItemsActivity extends Activity {
             TextView marker = text(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1),
                     13, categoryInk(rule.title), true);
             marker.setGravity(Gravity.CENTER);
-            marker.setBackground(round(categoryTint(rule.title), 10));
+            GradientDrawable markerBackground = round(categoryTint(rule.title), 12);
+            markerBackground.setStroke(dp(1), categoryBorder(rule.title));
+            marker.setBackground(markerBackground);
             titleLine.addView(marker, new LinearLayout.LayoutParams(dp(32), dp(32)));
             TextView itemTitle = text(rule.title, 16, INK, true);
             LinearLayout.LayoutParams itemTitleParams = new LinearLayout.LayoutParams(0, -2, 1);
@@ -177,7 +180,7 @@ public final class ItemsActivity extends Activity {
                     12, categoryInk(rule.title), true);
             count.setGravity(Gravity.CENTER);
             count.setPadding(dp(9), dp(5), dp(9), dp(5));
-            count.setBackground(round(categoryTint(rule.title), 16));
+            count.setBackground(round(categoryTint(rule.title), 13));
             titleLine.addView(count);
             details.addView(titleLine);
             ProgressBar itemProgress = progressBar(rule.dailyTarget, done);
@@ -189,7 +192,7 @@ public final class ItemsActivity extends Activity {
             meta.setPadding(0, dp(10), 0, 0);
             TextView schedule = text(scheduleSummary(rule), 12, categoryInk(rule.title), false);
             schedule.setPadding(dp(9), dp(5), dp(9), dp(5));
-            schedule.setBackground(round(categoryTint(rule.title), 9));
+            schedule.setBackground(round(categoryTint(rule.title), 10));
             meta.addView(schedule, new LinearLayout.LayoutParams(0, -2, 1));
             TextView targetBehavior = text(rule.remindAfterTarget ? "继续提醒" : "达标停止", 11, MUTED, false);
             targetBehavior.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
@@ -206,7 +209,7 @@ public final class ItemsActivity extends Activity {
             TextView empty = text("还没有提醒事项", 15, MUTED, true);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
-            empty.setBackground(surface(new int[]{0xff12382c, 0xff172e32}, 14, UiPalette.BORDER));
+            empty.setBackground(surface(new int[]{UiPalette.PALE, 0xffd9f1e6}, 16, UiPalette.BORDER));
             list.addView(empty);
         }
     }
@@ -222,39 +225,38 @@ public final class ItemsActivity extends Activity {
     }
 
     private int categoryInk(String title) {
-        if (title.contains("水")) return 0xff70d6dd;
-        if (title.contains("眼")) return 0xffa8b9ff;
-        if (title.contains("走") || title.contains("活动")) return 0xff67d49b;
-        if (title.contains("颈") || title.contains("肩")) return 0xffffce78;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffd7a6eb;
-        return 0xffffa497;
+        if (title.contains("水")) return 0xff247a88;
+        if (title.contains("眼")) return 0xff4859b0;
+        if (title.contains("走") || title.contains("活动")) return 0xff1f7d55;
+        if (title.contains("颈") || title.contains("肩")) return 0xff94650f;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff76439a;
+        return 0xffaa4a3d;
     }
 
     private int categoryTint(String title) {
-        if (title.contains("水")) return 0xff173b40;
-        if (title.contains("眼")) return 0xff292f4c;
-        if (title.contains("走") || title.contains("活动")) return 0xff173d2d;
-        if (title.contains("颈") || title.contains("肩")) return 0xff49371f;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff3b2947;
-        return 0xff482b28;
+        if (title.contains("水")) return 0xffd9f0f3;
+        if (title.contains("眼")) return 0xffe3e8fb;
+        if (title.contains("走") || title.contains("活动")) return 0xffd8f2e4;
+        if (title.contains("颈") || title.contains("肩")) return 0xfffdeed2;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xfff0e2f7;
+        return 0xfffbe3e1;
     }
 
     private GradientDrawable categorySurface(String title) {
-        int tint = categoryTint(title);
         GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{tint, 0xff192f29});
-        background.setCornerRadius(dp(15));
-        background.setStroke(dp(1), categoryBorder(title));
+                new int[]{UiPalette.SURFACE, UiPalette.PALE});
+        background.setCornerRadius(dp(16));
+        background.setStroke(dp(1), UiPalette.BORDER);
         return background;
     }
 
     private int categoryBorder(String title) {
-        if (title.contains("水")) return 0xff39717a;
-        if (title.contains("眼")) return 0xff59648d;
-        if (title.contains("走") || title.contains("活动")) return 0xff34724f;
-        if (title.contains("颈") || title.contains("肩")) return 0xff8a6935;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff765187;
-        return 0xff89514a;
+        if (title.contains("水")) return 0xffa8dbe2;
+        if (title.contains("眼")) return 0xffb8c3ee;
+        if (title.contains("走") || title.contains("活动")) return 0xffa7dfc2;
+        if (title.contains("颈") || title.contains("肩")) return 0xffeeD0a2;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffdbbfe9;
+        return 0xfff0beb8;
     }
 
     private GradientDrawable surface(int[] colors, int radius, int stroke) {
@@ -581,7 +583,7 @@ public final class ItemsActivity extends Activity {
         history.removeAllViews();
         for (ReminderRecord record : records) {
             boolean completed = ReminderRecord.KIND_DONE.equals(record.kind);
-            int accent = completed ? GREEN : 0xffbf665a;
+            int accent = completed ? GREEN : 0xffb35648;
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.TOP);
             row.setPadding(dp(12), dp(11), dp(12), dp(11));
@@ -734,7 +736,7 @@ public final class ItemsActivity extends Activity {
         row.setBackground(round(selected ? MINT_LIGHT : Color.WHITE, 11));
         TextView title = text(intervalText(value), 15, selected ? GREEN : INK, selected);
         row.addView(title, new LinearLayout.LayoutParams(0, dp(46), 1));
-        if (favorite) row.addView(text("常用", 11, 0xffb28742, true));
+        if (favorite) row.addView(text("常用", 11, UiPalette.WARN, true));
         if (selected) row.addView(text("✓", 16, GREEN, true));
         row.setOnClickListener(v -> {
             setInterval(interval, button, value);
@@ -834,7 +836,7 @@ public final class ItemsActivity extends Activity {
                 TextView label = text(intervalText(value), 15, INK, true);
                 row.addView(label, new LinearLayout.LayoutParams(0, dp(48), 1));
                 TextView favorite = text(readFavoriteIntervals().contains(value) ? "★" : "☆", 22,
-                        readFavoriteIntervals().contains(value) ? 0xffd59b28 : MUTED, true);
+                        readFavoriteIntervals().contains(value) ? UiPalette.WARN : MUTED, true);
                 favorite.setGravity(Gravity.CENTER);
                 favorite.setContentDescription("收藏到顶部");
                 favorite.setOnClickListener(v -> {
@@ -845,7 +847,7 @@ public final class ItemsActivity extends Activity {
                     refresh[0].run();
                 });
                 row.addView(favorite, new LinearLayout.LayoutParams(dp(44), dp(48)));
-                TextView delete = text("×", 22, 0xffbd5147, false);
+                TextView delete = text("×", 22, 0xffc85a4c, false);
                 delete.setGravity(Gravity.CENTER);
                 delete.setContentDescription("删除自定义时间");
                 delete.setOnClickListener(v -> showStyledDialog(new AlertDialog.Builder(dialogContext())
@@ -985,7 +987,7 @@ public final class ItemsActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(12), 0, dp(4), 0);
-            row.setBackground(round(MINT_PALE, 8));
+            row.setBackground(round(MINT_PALE, 10));
             TextView value = text(timePointText(point), 16, INK, true);
             row.addView(value, new LinearLayout.LayoutParams(0, dp(46), 1));
             Button remove = new Button(this);

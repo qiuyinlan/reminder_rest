@@ -71,7 +71,7 @@ public final class MainActivity extends Activity {
         }
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         ReminderScheduler.update(this);
         render();
     }
@@ -306,7 +306,7 @@ public final class MainActivity extends Activity {
         LinearLayout metric = new LinearLayout(this);
         metric.setOrientation(LinearLayout.VERTICAL);
         metric.setPadding(dp(10), dp(8), dp(10), dp(8));
-        metric.setBackground(round("今日完成".equals(title) ? 0xff203a45 : 0xff183d30, 12));
+        metric.setBackground(outline("今日完成".equals(title) ? 0xffdff3e8 : 0xffe8f6ef, UiPalette.BORDER, 12));
         metric.addView(label(title, 11, MUTED, false));
         TextView amount = label(value, 17, INK, true);
         amount.setPadding(0, dp(2), 0, 0);
@@ -329,12 +329,12 @@ public final class MainActivity extends Activity {
         LinearLayout banner = row();
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(11), dp(9), dp(12), dp(9));
-        banner.setBackground(outline(ready ? 0xff15382a : 0xff402c24,
-                ready ? UiPalette.BORDER : 0xffaa7152, 14));
-        int statusColor = ready ? INK : 0xffffa08f;
+        banner.setBackground(outline(ready ? 0xffe9f7ef : UiPalette.WARN_SOFT,
+                ready ? UiPalette.BORDER : UiPalette.WARN_BORDER, 14));
+        int statusColor = ready ? INK : UiPalette.WARN;
         TextView mark = label(ready ? "✓" : "!", 15, ready ? GREEN : statusColor, true);
         mark.setGravity(Gravity.CENTER);
-        mark.setBackground(round(ready ? MINT_LIGHT : 0xff623d2e, 10));
+        mark.setBackground(round(ready ? MINT_LIGHT : UiPalette.WARN_SOFT, 10));
         banner.addView(mark, new LinearLayout.LayoutParams(dp(32), dp(32)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
@@ -404,7 +404,7 @@ public final class MainActivity extends Activity {
     }
 
     private void addPermissionRow(LinearLayout parent, AlertDialog guide, String title, boolean ready, Runnable action) {
-        TextView row = label((ready ? "✓ " : "○ ") + title + (ready ? "  已完成" : "  去设置"), 15, ready ? INK : 0xffffa08f, true);
+        TextView row = label((ready ? "✓ " : "○ ") + title + (ready ? "  已完成" : "  去设置"), 15, ready ? INK : UiPalette.WARN, true);
         row.setPadding(0, dp(13), 0, dp(13));
         row.setOnClickListener(v -> {
             guide.dismiss();
@@ -755,21 +755,21 @@ public final class MainActivity extends Activity {
     }
 
     private int iconColor(String title) {
-        if (title.contains("水")) return 0xff70d6dd;
-        if (title.contains("眼")) return 0xffa8b9ff;
-        if (title.contains("走") || title.contains("活动")) return 0xff67d49b;
-        if (title.contains("颈") || title.contains("肩")) return 0xffffce78;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffd7a6eb;
-        return 0xffffa497;
+        if (title.contains("水")) return 0xff247a88;
+        if (title.contains("眼")) return 0xff4859b0;
+        if (title.contains("走") || title.contains("活动")) return 0xff1f7d55;
+        if (title.contains("颈") || title.contains("肩")) return 0xff94650f;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xff76439a;
+        return 0xffaa4a3d;
     }
 
     private int iconTint(String title) {
-        if (title.contains("水")) return 0xff173b40;
-        if (title.contains("眼")) return 0xff292f4c;
-        if (title.contains("走") || title.contains("活动")) return 0xff173d2d;
-        if (title.contains("颈") || title.contains("肩")) return 0xff49371f;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff3b2947;
-        return 0xff482b28;
+        if (title.contains("水")) return 0xffd9f0f3;
+        if (title.contains("眼")) return 0xffe3e8fb;
+        if (title.contains("走") || title.contains("活动")) return 0xffd8f2e4;
+        if (title.contains("颈") || title.contains("肩")) return 0xfffdeed2;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xfff0e2f7;
+        return 0xfffbe3e1;
     }
 
     private void editRule(ReminderSettings.Rule existing) {
@@ -1030,26 +1030,27 @@ public final class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(4), dp(14), dp(4));
-        card.setBackground(outline(0xff102d24, UiPalette.BORDER, 15));
+        card.setBackground(outline(Color.WHITE, UiPalette.BORDER, 16));
+        card.setElevation(dp(1));
         return card;
     }
 
     private GradientDrawable homeStatusBackground() {
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xff0b3325, 0xff12352c, 0xff142d3c});
+                new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2});
         background.setCornerRadius(dp(18));
         background.setStroke(dp(1), UiPalette.BORDER);
         return background;
     }
 
     private int iconBorder(String title) {
-        if (title.contains("水")) return 0xff39717a;
-        if (title.contains("眼")) return 0xff59648d;
-        if (title.contains("走") || title.contains("活动")) return 0xff34724f;
-        if (title.contains("颈") || title.contains("肩")) return 0xff8a6935;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff765187;
-        return 0xff89514a;
+        if (title.contains("水")) return 0xffa8dbe2;
+        if (title.contains("眼")) return 0xffb8c3ee;
+        if (title.contains("走") || title.contains("活动")) return 0xffa7dfc2;
+        if (title.contains("颈") || title.contains("肩")) return 0xffeed0a2;
+        if (title.contains("放松") || title.contains("呼吸")) return 0xffdbbfe9;
+        return 0xfff0beb8;
     }
 
     private GradientDrawable outline(int fillColor, int strokeColor, int radius) {

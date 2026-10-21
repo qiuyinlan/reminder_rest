@@ -51,13 +51,13 @@ final class ReminderOverlayWindow {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(context, 20), dp(context, 28), dp(context, 20), dp(context, 18));
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffdcecdf, 0xffc8e1ce, 0xffe4efdf}));
+                new int[]{0xfff6fcf8, 0xffeeF8f1, 0xffe9f6ef}));
 
         LinearLayout top = new LinearLayout(context);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView close = text(context, "×", 28, Color.WHITE, false);
+        TextView close = text(context, "×", 28, TEXT_PRIMARY, false);
         close.setGravity(Gravity.CENTER);
-        close.setBackground(round(context, 0x6683a68a, 40));
+        close.setBackground(round(context, Color.WHITE, 40));
         close.setContentDescription("关闭提醒画面");
         close.setOnClickListener(v -> dismiss(context));
         top.addView(close, new LinearLayout.LayoutParams(dp(context, 48), dp(context, 48)));
@@ -76,7 +76,8 @@ final class ReminderOverlayWindow {
                 : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
         WellnessAnimationView face = new WellnessAnimationView(context, mood);
         FrameLayout scene = new FrameLayout(context);
-        scene.setBackground(round(context, 0x44ffffff, 120));
+        scene.setBackground(round(context, Color.WHITE, 120));
+        scene.setElevation(dp(context, 1));
         scene.addView(face, new FrameLayout.LayoutParams(dp(context, 260), dp(context, 260), Gravity.CENTER));
         root.addView(scene, new LinearLayout.LayoutParams(-1, dp(context, 300)));
 
@@ -107,8 +108,8 @@ final class ReminderOverlayWindow {
         });
         TextView later = text(context, "临时有事，稍后提醒我", 15, TEXT_PRIMARY, true);
         later.setGravity(Gravity.CENTER);
-        later.setPadding(0, 0, 0, 0);
-        later.setBackgroundColor(Color.TRANSPARENT);
+        later.setPadding(dp(context, 10), 0, dp(context, 10), 0);
+        later.setBackground(round(context, SOFT_BACKGROUND, 18));
         later.setOnClickListener(v -> {
             Intent reason = new Intent(context, ReminderActivity.class)
                     .putExtra("action", reminderAction)

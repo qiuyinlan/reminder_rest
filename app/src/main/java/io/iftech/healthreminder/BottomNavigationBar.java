@@ -2,11 +2,14 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -19,6 +22,7 @@ final class BottomNavigationBar {
     private static final int GREEN = UiPalette.ACCENT;
     private static final int BAR = UiPalette.SURFACE;
     private static final int MUTED = UiPalette.MUTED;
+    private static final int MINT_LIGHT = UiPalette.SOFT;
     private static final String[] LABELS = {"首页", "事项", "陪伴", "统计"};
 
     private BottomNavigationBar() { }
@@ -26,10 +30,13 @@ final class BottomNavigationBar {
     static LinearLayout create(Activity activity, int selected, Runnable... actions) {
         LinearLayout bar = new LinearLayout(activity);
         bar.setGravity(Gravity.CENTER);
-        bar.setBackgroundColor(BAR);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setBackground(barBackground(activity));
+        bar.setElevation(dp(activity, 1));
         for (int i = 0; i < LABELS.length; i++) {
             final int index = i;
-            int color = i == selected ? GREEN : MUTED;
+            boolean active = i == selected;
+            int color = active ? GREEN : MUTED;
             LinearLayout cell = new LinearLayout(activity);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER);
@@ -37,7 +44,12 @@ final class BottomNavigationBar {
             cell.setClickable(actions != null && i < actions.length && actions[i] != null);
 
             Icon icon = new Icon(activity, i, color);
-            cell.addView(icon, new LinearLayout.LayoutParams(-1, dp(activity, 28)));
+            FrameLayout iconStage = new FrameLayout(activity);
+            iconStage.setBackground(active
+                    ? pill(activity, MINT_LIGHT, 13)
+                    : pill(activity, Color.TRANSPARENT, 13));
+            iconStage.addView(icon, new FrameLayout.LayoutParams(-1, -1));
+            cell.addView(iconStage, new LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 26)));
 
             TextView label = new TextView(activity);
             label.setText(LABELS[i]);
@@ -47,7 +59,7 @@ final class BottomNavigationBar {
             label.setGravity(Gravity.CENTER);
             label.setIncludeFontPadding(false);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-1, dp(activity, 18));
-            labelParams.topMargin = dp(activity, 2);
+            labelParams.topMargin = dp(activity, 3);
             cell.addView(label, labelParams);
 
             if (actions != null && i < actions.length && actions[i] != null) {
@@ -56,6 +68,23 @@ final class BottomNavigationBar {
             bar.addView(cell, new LinearLayout.LayoutParams(0, dp(activity, 60), 1));
         }
         return bar;
+    }
+
+    /** 白色卡片底 + 顶部 1dp 浅绿描边，顶部两角圆角，贴在页面底部。 */
+    private static GradientDrawable barBackground(Activity activity) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(BAR);
+        float radius = dp(activity, 16);
+        shape.setCornerRadii(new float[]{radius, radius, radius, radius, 0f, 0f, 0f, 0f});
+        shape.setStroke(dp(activity, 1), UiPalette.BORDER);
+        return shape;
+    }
+
+    private static GradientDrawable pill(Activity activity, int color, int radius) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(UiPalette.surface(color));
+        shape.setCornerRadius(dp(activity, radius));
+        return shape;
     }
 
     private static int dp(Activity activity, int value) {
@@ -79,7 +108,7 @@ final class BottomNavigationBar {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float density = getResources().getDisplayMetrics().density;
-            float size = 24 * density;
+            float size = 22 * density;
             canvas.save();
             canvas.translate((getWidth() - size) / 2f, (getHeight() - size) / 2f);
             canvas.scale(density, density);

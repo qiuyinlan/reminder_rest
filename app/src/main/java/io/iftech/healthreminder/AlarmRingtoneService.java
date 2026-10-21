@@ -207,6 +207,7 @@ public final class AlarmRingtoneService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setColor(UiPalette.ACCENT)
                 .setContentTitle("健康提醒正在响铃")
                 .setContentText("打开提醒页面可停止铃声")
                 .setContentIntent(content)

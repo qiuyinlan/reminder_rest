@@ -35,7 +35,7 @@ public final class CompanionLandingActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -57,7 +57,7 @@ public final class CompanionLandingActivity extends Activity {
 
         LinearLayout modes = new LinearLayout(this);
         modes.setPadding(dp(4), dp(4), dp(4), dp(4));
-        modes.setBackground(round(MINT_PALE, 10));
+        modes.setBackground(round(MINT_PALE, 12));
         companionOption = modeOption("轻松陪伴");
         focusOption = modeOption("专注陪伴");
         companionOption.setOnClickListener(v -> setFocusMode(false));
@@ -83,6 +83,7 @@ public final class CompanionLandingActivity extends Activity {
         modeCard.setOrientation(LinearLayout.VERTICAL);
         modeCard.setPadding(dp(16), dp(14), dp(16), dp(14));
         modeCard.setBackground(round(Color.WHITE, 18));
+        modeCard.setElevation(dp(1));
         modeCard.addView(modeHeading, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout.LayoutParams modesParams = new LinearLayout.LayoutParams(-1, -2);
         modesParams.topMargin = dp(10);
@@ -94,7 +95,7 @@ public final class CompanionLandingActivity extends Activity {
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
         LinearLayout illustration = new LinearLayout(this);
         illustration.setGravity(Gravity.CENTER);
-        illustration.setBackground(round(MINT_LIGHT, 22));
+        illustration.setBackground(round(MINT_LIGHT, 18));
         LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(208), dp(208));
         illustration.addView(face, faceParams);
         LinearLayout.LayoutParams illustrationParams = new LinearLayout.LayoutParams(-1, dp(232));
@@ -123,7 +124,8 @@ public final class CompanionLandingActivity extends Activity {
         content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1));
         start = text("开始陪伴", 16, Color.WHITE, true);
         start.setGravity(Gravity.CENTER);
-        start.setBackground(round(ACCENT, 10));
+        start.setBackground(round(ACCENT, 16));
+        start.setElevation(dp(1));
         start.setOnClickListener(v -> {
             Intent companion = new Intent(this, CompanionActivity.class);
             companion.putExtra(CompanionAudioService.EXTRA_FOCUS_MODE, focusMode);
@@ -146,9 +148,9 @@ public final class CompanionLandingActivity extends Activity {
     private void setFocusMode(boolean focus) {
         focusMode = focus;
         companionOption.setTextColor(focus ? MUTED : ACCENT);
-        companionOption.setBackground(round(focus ? Color.TRANSPARENT : MINT_LIGHT, 8));
+        companionOption.setBackground(round(focus ? Color.TRANSPARENT : MINT_LIGHT, 10));
         focusOption.setTextColor(focus ? ACCENT : MUTED);
-        focusOption.setBackground(round(focus ? MINT_LIGHT : Color.TRANSPARENT, 8));
+        focusOption.setBackground(round(focus ? MINT_LIGHT : Color.TRANSPARENT, 10));
         prompt.setText(focus ? "给自己一段专注时间" : "现在开始一段安静的陪伴");
         detail.setText(focus ? "霸屏专注，结束后会记录陪伴时长。" : "可以切到后台，随时回来或结束。");
         start.setText(focus ? "开始专注陪伴" : "开始轻松陪伴");

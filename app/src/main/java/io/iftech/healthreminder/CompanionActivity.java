@@ -53,7 +53,7 @@ public final class CompanionActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
         focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
                 : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);
@@ -116,7 +116,7 @@ public final class CompanionActivity extends Activity {
 
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
         FrameLayout faceStage = new FrameLayout(this);
-        faceStage.setBackground(round(MINT_LIGHT, 22));
+        faceStage.setBackground(round(MINT_LIGHT, 18));
         FrameLayout.LayoutParams faceParams = new FrameLayout.LayoutParams(dp(216), dp(216), Gravity.CENTER);
         faceStage.addView(face, faceParams);
         LinearLayout.LayoutParams faceStageParams = new LinearLayout.LayoutParams(dp(240), dp(240));
@@ -133,10 +133,10 @@ public final class CompanionActivity extends Activity {
         breatheY.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         breatheY.start();
 
-        TextView breatheHint = text(focusMode ? "专注进行中" : "吸气 · 呼气", 15, ACCENT, true);
+        TextView breatheHint = text(focusMode ? "专注进行中" : "吸气 · 呼气", 15, INK, true);
         breatheHint.setGravity(Gravity.CENTER);
         breatheHint.setPadding(dp(16), dp(8), dp(16), dp(8));
-        breatheHint.setBackground(round(MINT_LIGHT, 16));
+        breatheHint.setBackground(round(MINT_LIGHT, 14));
         LinearLayout.LayoutParams breatheHintParams = new LinearLayout.LayoutParams(-2, -2);
         breatheHintParams.topMargin = dp(16);
         breatheHintParams.bottomMargin = dp(12);
@@ -147,6 +147,7 @@ public final class CompanionActivity extends Activity {
         clockPanel.setGravity(Gravity.CENTER);
         clockPanel.setPadding(dp(24), dp(14), dp(24), dp(14));
         clockPanel.setBackground(round(Color.WHITE, 18));
+        clockPanel.setElevation(dp(1));
         TextView clockLabel = text("现在", 12, MUTED, false);
         clockPanel.addView(clockLabel);
         clockLabel.setTextColor(MUTED);
@@ -189,13 +190,14 @@ public final class CompanionActivity extends Activity {
 
         TextView end = text("结束陪伴", 16, Color.WHITE, true);
         end.setGravity(Gravity.CENTER);
-        end.setBackground(round(ACCENT, 10));
+        end.setBackground(round(ACCENT, 16));
+        end.setElevation(dp(1));
         end.setOnClickListener(v -> endSession());
         LinearLayout.LayoutParams endParams = new LinearLayout.LayoutParams(-1, dp(54));
         endParams.bottomMargin = dp(8);
         content.addView(end, endParams);
 
-        musicButton = text("♫", 22, 0xff9aa59c, true);
+        musicButton = text("♫", 22, MUTED, true);
         musicButton.setGravity(Gravity.CENTER);
         musicButton.setContentDescription("播放" + CompanionAudioService.soundName(
                 CompanionAudioService.selectedSound(this)));
@@ -219,7 +221,7 @@ public final class CompanionActivity extends Activity {
         option.setGravity(Gravity.CENTER);
         option.setMinWidth(dp(72));
         option.setPadding(dp(14), 0, dp(14), 0);
-        option.setBackground(round(Color.WHITE, 10));
+        option.setBackground(round(Color.WHITE, 12));
         option.setOnClickListener(v -> {
             if (id.equals(CompanionAudioService.selectedSound(this))) return;
             CompanionAudioService.selectSound(this, id);
@@ -241,7 +243,7 @@ public final class CompanionActivity extends Activity {
         for (int i = 0; i < soundOptions.size(); i++) {
             boolean active = ids[i].equals(selected);
             soundOptions.get(i).setTextColor(active ? ACCENT : MUTED);
-            soundOptions.get(i).setBackground(round(active ? MINT_LIGHT : Color.WHITE, 10));
+            soundOptions.get(i).setBackground(round(active ? MINT_LIGHT : Color.WHITE, 12));
         }
     }
 

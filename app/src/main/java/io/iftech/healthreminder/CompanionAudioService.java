@@ -188,6 +188,7 @@ public final class CompanionAudioService extends Service {
                 : isMusicPlaying(this) ? "轻松陪伴中 · " + soundName(selectedSound(this)) + "播放中" : "轻松陪伴计时正在进行";
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_media_play)
+                .setColor(UiPalette.ACCENT)
                 .setContentTitle(title)
                 .setContentText("点击返回陪伴页面，或停止本次陪伴")
                 .setContentIntent(openPending)

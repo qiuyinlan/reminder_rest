@@ -25,7 +25,8 @@ public final class SettingsActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(PAPER);
         getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -59,6 +60,7 @@ public final class SettingsActivity extends Activity {
         intro.setGravity(Gravity.CENTER_VERTICAL);
         intro.setPadding(dp(16), dp(16), dp(16), dp(16));
         intro.setBackground(round(MINT_LIGHT, 18));
+        intro.setElevation(dp(1));
         LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
         introParams.topMargin = dp(22);
         page.addView(intro, introParams);
@@ -124,6 +126,7 @@ public final class SettingsActivity extends Activity {
         note.setOrientation(LinearLayout.VERTICAL);
         note.setPadding(dp(15), dp(13), dp(15), dp(13));
         note.setBackground(round(Color.WHITE, 16));
+        note.setElevation(dp(1));
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
         noteParams.topMargin = dp(13);
         page.addView(note, noteParams);
