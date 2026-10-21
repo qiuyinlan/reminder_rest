@@ -24,30 +24,27 @@ import android.widget.Toast;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ScreenOffSettingsActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
+    private int GREEN = UiPalette.ACCENT;
     /** 开关选中态的强调绿（浅色主题下只有 ACCENT 在浅底上足够可读）。 */
-    private static final int MINT = UiPalette.ACCENT;
+    private int MINT = UiPalette.ACCENT;
     /** 浅绿面板 / 开关选中轨道底色。 */
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
     /** 开关未选中态：浅底上的禁用灰绿与浅轨道。 */
-    private static final int SWITCH_OFF = UiPalette.DISABLED;
-    private static final int TRACK_OFF = UiPalette.PAGE;
+    private int SWITCH_OFF = UiPalette.DISABLED;
+    private int TRACK_OFF = UiPalette.PAGE;
     /** 未授权提示：浅底琥珀色文字 + 警示底色与描边。 */
-    private static final int WARN = UiPalette.WARN;
-    private static final int WARN_SOFT = UiPalette.WARN_SOFT;
-    private static final int WARN_BORDER = UiPalette.WARN_BORDER;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
-    private static final int LINE = UiPalette.BORDER;
+    private int WARN = UiPalette.WARN;
+    private int WARN_SOFT = UiPalette.WARN_SOFT;
+    private int WARN_BORDER = UiPalette.WARN_BORDER;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
+    private int LINE = UiPalette.BORDER;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         render();
     }
 

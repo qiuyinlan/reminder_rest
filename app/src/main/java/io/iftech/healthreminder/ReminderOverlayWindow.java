@@ -19,12 +19,6 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 final class ReminderOverlayWindow {
-    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
-    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
-    private static final int ACCENT = UiPalette.ACCENT;
-    private static final int TEXT_PRIMARY = UiPalette.INK;
-    private static final int TEXT_MUTED = UiPalette.MUTED;
-
     private static View currentView;
     private static WindowManager currentManager;
 
@@ -50,18 +44,17 @@ final class ReminderOverlayWindow {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(context, 20), dp(context, 28), dp(context, 20), dp(context, 18));
-        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xfff6fcf8, 0xffeeF8f1, 0xffe9f6ef}));
+        root.setBackground(UiPalette.page());
 
         LinearLayout top = new LinearLayout(context);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView close = text(context, "×", 28, TEXT_PRIMARY, false);
+        TextView close = text(context, "×", 28, UiPalette.INK, false);
         close.setGravity(Gravity.CENTER);
         close.setBackground(round(context, Color.WHITE, 40));
         close.setContentDescription("关闭提醒画面");
         close.setOnClickListener(v -> dismiss(context));
         top.addView(close, new LinearLayout.LayoutParams(dp(context, 48), dp(context, 48)));
-        TextView overline = text(context, "哪怕做一秒，身体也会舒服一点！\n求求主人了。", 15, TEXT_PRIMARY, true);
+        TextView overline = text(context, "哪怕做一秒，身体也会舒服一点！\n求求主人了。", 15, UiPalette.INK, true);
         overline.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams overlineParams = new LinearLayout.LayoutParams(0, -2, 1);
         overlineParams.leftMargin = dp(context, 12);
@@ -81,12 +74,12 @@ final class ReminderOverlayWindow {
         scene.addView(face, new FrameLayout.LayoutParams(dp(context, 260), dp(context, 260), Gravity.CENTER));
         root.addView(scene, new LinearLayout.LayoutParams(-1, dp(context, 300)));
 
-        TextView title = text(context, ReminderActivity.titleFor(action), 27, TEXT_PRIMARY, true);
+        TextView title = text(context, ReminderActivity.titleFor(action), 27, UiPalette.INK, true);
         title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = dp(context, 20);
         root.addView(title, titleParams);
-        TextView plea = text(context, ReminderSettings.reminderMessage(context, ruleId, action), 16, TEXT_MUTED, false);
+        TextView plea = text(context, ReminderSettings.reminderMessage(context, ruleId, action), 16, UiPalette.MUTED, false);
         plea.setGravity(Gravity.CENTER);
         plea.setLineSpacing(dp(context, 3), 1f);
         plea.setPadding(dp(context, 8), dp(context, 10), dp(context, 8), 0);
@@ -106,10 +99,10 @@ final class ReminderOverlayWindow {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(open);
         });
-        TextView later = text(context, "临时有事，稍后提醒我", 15, TEXT_PRIMARY, true);
+        TextView later = text(context, "临时有事，稍后提醒我", 15, UiPalette.INK, true);
         later.setGravity(Gravity.CENTER);
         later.setPadding(dp(context, 10), 0, dp(context, 10), 0);
-        later.setBackground(round(context, SOFT_BACKGROUND, 18));
+        later.setBackground(round(context, UiPalette.SOFT, 18));
         later.setOnClickListener(v -> {
             Intent reason = new Intent(context, ReminderActivity.class)
                     .putExtra("action", reminderAction)
@@ -163,12 +156,12 @@ final class ReminderOverlayWindow {
         Button button = new Button(context);
         button.setText(value);
         button.setTextSize(16);
-        button.setTextColor(primary ? Color.WHITE : ACCENT);
+        button.setTextColor(primary ? Color.WHITE : UiPalette.ACCENT);
         button.setAllCaps(false);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setMinHeight(dp(context, 54));
         button.setPadding(dp(context, 12), 0, dp(context, 12), 0);
-        button.setBackground(round(context, primary ? ACCENT : SOFT_BACKGROUND, 18));
+        button.setBackground(round(context, primary ? UiPalette.ACCENT : UiPalette.SOFT, 18));
         return button;
     }
 

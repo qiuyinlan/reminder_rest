@@ -28,11 +28,11 @@ import android.text.TextWatcher;
 import android.widget.ScrollView;
 
 public final class ReminderActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
-    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
-    private static final int TEXT_PRIMARY = UiPalette.INK;
-    private static final int TEXT_MUTED = UiPalette.MUTED;
+    private int GREEN = UiPalette.ACCENT;
+    private int PAGE_BACKGROUND = UiPalette.PAGE;
+    private int SOFT_BACKGROUND = UiPalette.SOFT;
+    private int TEXT_PRIMARY = UiPalette.INK;
+    private int TEXT_MUTED = UiPalette.MUTED;
     /** 浅底可读的柔和警示红（原 0xffbd5147 提亮版）。 */
     private static final int DANGER = 0xffc85a4c;
     private String action;
@@ -85,9 +85,7 @@ public final class ReminderActivity extends Activity {
             beginDoing();
             return;
         }
-        getWindow().setStatusBarColor(PAGE_BACKGROUND);
-        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -250,10 +248,7 @@ public final class ReminderActivity extends Activity {
     }
 
     private void setReminderSystemBarBackground() {
-        getWindow().setStatusBarColor(PAGE_BACKGROUND);
-        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setBackground(UiPalette.page());
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
     }
 
     private void completeSession() {

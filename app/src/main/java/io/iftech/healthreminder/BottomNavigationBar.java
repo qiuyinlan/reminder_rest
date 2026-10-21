@@ -19,10 +19,6 @@ final class BottomNavigationBar {
     static final int COMPANION = 2;
     static final int STATS = 3;
 
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int BAR = UiPalette.SURFACE;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
     private static final String[] LABELS = {"首页", "事项", "陪伴", "统计"};
 
     private BottomNavigationBar() { }
@@ -36,7 +32,7 @@ final class BottomNavigationBar {
         for (int i = 0; i < LABELS.length; i++) {
             final int index = i;
             boolean active = i == selected;
-            int color = active ? GREEN : MUTED;
+            int color = active ? UiPalette.ACCENT : UiPalette.MUTED;
             LinearLayout cell = new LinearLayout(activity);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER);
@@ -46,7 +42,7 @@ final class BottomNavigationBar {
             Icon icon = new Icon(activity, i, color);
             FrameLayout iconStage = new FrameLayout(activity);
             iconStage.setBackground(active
-                    ? pill(activity, MINT_LIGHT, 13)
+                    ? pill(activity, UiPalette.SOFT, 13)
                     : pill(activity, Color.TRANSPARENT, 13));
             iconStage.addView(icon, new FrameLayout.LayoutParams(-1, -1));
             cell.addView(iconStage, new LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 26)));
@@ -73,7 +69,7 @@ final class BottomNavigationBar {
     /** 白色卡片底 + 顶部 1dp 浅绿描边，顶部两角圆角，贴在页面底部。 */
     private static GradientDrawable barBackground(Activity activity) {
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(BAR);
+        shape.setColor(UiPalette.SURFACE);
         float radius = dp(activity, 16);
         shape.setCornerRadii(new float[]{radius, radius, radius, radius, 0f, 0f, 0f, 0f});
         shape.setStroke(dp(activity, 1), UiPalette.BORDER);

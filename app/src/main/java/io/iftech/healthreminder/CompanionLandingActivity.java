@@ -16,12 +16,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public final class CompanionLandingActivity extends Activity {
-    private static final int ACCENT = UiPalette.ACCENT;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
+    private int ACCENT = UiPalette.ACCENT;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
     private android.animation.ObjectAnimator breatheX;
     private android.animation.ObjectAnimator breatheY;
     private boolean focusMode;
@@ -33,9 +33,7 @@ public final class CompanionLandingActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
 
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);

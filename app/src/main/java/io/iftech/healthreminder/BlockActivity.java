@@ -15,11 +15,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class BlockActivity extends Activity {
-    private static final int PAGE_BACKGROUND = UiPalette.PAGE;
-    private static final int SOFT_BACKGROUND = UiPalette.SOFT;
-    private static final int ACCENT = UiPalette.ACCENT;
-    private static final int TEXT_PRIMARY = UiPalette.INK;
-    private static final int TEXT_MUTED = UiPalette.MUTED;
+    private int PAGE_BACKGROUND = UiPalette.PAGE;
+    private int SOFT_BACKGROUND = UiPalette.SOFT;
+    private int ACCENT = UiPalette.ACCENT;
+    private int TEXT_PRIMARY = UiPalette.INK;
+    private int TEXT_MUTED = UiPalette.MUTED;
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -34,10 +34,7 @@ public final class BlockActivity extends Activity {
     }
 
     private void render() {
-        getWindow().setStatusBarColor(PAGE_BACKGROUND);
-        getWindow().setNavigationBarColor(PAGE_BACKGROUND);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         FrameLayout root = new FrameLayout(this);
         root.setBackground(UiPalette.page());
         setContentView(root);

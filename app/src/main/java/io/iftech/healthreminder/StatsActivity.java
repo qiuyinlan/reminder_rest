@@ -51,18 +51,16 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class StatsActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int MINT = UiPalette.ACCENT;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
-    private static final int WARN = UiPalette.WARN;
-    private static final int BORDER = UiPalette.BORDER;
-    private static final int DISABLED = UiPalette.DISABLED;
-    /** 陪伴专用浅紫色，与「专注陪伴」保持一致。 */
-    private static final int COMPANION = 0xff8a5bab;
+    private int GREEN = UiPalette.ACCENT;
+    private int MINT = UiPalette.ACCENT;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
+    private int WARN = UiPalette.WARN;
+    private int BORDER = UiPalette.BORDER;
+    private int DISABLED = UiPalette.DISABLED;
     private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
@@ -85,9 +83,7 @@ public final class StatsActivity extends Activity {
     }
 
     private void render() {
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackground(UiPalette.page());
@@ -175,7 +171,7 @@ public final class StatsActivity extends Activity {
         lift(summary);
         summary.addView(summaryMetric("完成", totals[0], GREEN), new LinearLayout.LayoutParams(0, -2, 1));
         summary.addView(summaryMetric("未完成", totals[1], WARN), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("陪伴", totals[2], COMPANION), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("陪伴", totals[2], UiPalette.COMPANION), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
         pills.setPadding(dp(5), dp(5), dp(5), dp(5));
@@ -796,28 +792,14 @@ public final class StatsActivity extends Activity {
         return totals;
     }
 
-    /** 浅底可读的分类深色（对应主题规范的 iconColor 一列）。 */
+    /** 分类颜色（浅底可读的深色；深绿主题用亮色系）。 */
     private int categoryColor(String action) {
-        if (action.contains("喝") || action.contains("水")) return 0xff247a88;
-        if (action.contains("眼") || action.contains("看")) return 0xff4859b0;
-        if (action.contains("走") || action.contains("活动")) return 0xff1f7d55;
-        if (action.contains("颈") || action.contains("肩")) return 0xff94650f;
-        if (action.contains("放松") || action.contains("呼吸")) return 0xff76439a;
-        if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return GREEN;
-        if ("专注陪伴".equals(action)) return COMPANION;
-        return 0xffaa4a3d;
+        return UiPalette.categoryInk(UiPalette.categoryKind(action));
     }
 
-    /** 分类浅色底（对应主题规范的 iconTint 一列），用于时间标签等胶囊。 */
+    /** 分类浅色底（对应 iconTint），用于时间标签等胶囊。 */
     private int categoryTint(String action) {
-        if (action.contains("喝") || action.contains("水")) return 0xffd9f0f3;
-        if (action.contains("眼") || action.contains("看")) return 0xffe3e8fb;
-        if (action.contains("走") || action.contains("活动")) return 0xffd8f2e4;
-        if (action.contains("颈") || action.contains("肩")) return 0xfffdeed2;
-        if (action.contains("放松") || action.contains("呼吸")) return 0xfff0e2f7;
-        if ("陪伴".equals(action) || "轻松陪伴".equals(action)) return UiPalette.SOFT;
-        if ("专注陪伴".equals(action)) return 0xfff0e2f7;
-        return 0xfffbe3e1;
+        return UiPalette.categoryFill(UiPalette.categoryKind(action));
     }
 
     private final class TimelineRail extends View {
@@ -936,10 +918,9 @@ public final class StatsActivity extends Activity {
         shape.setStroke(dp(1), strokeColor);
         return shape;
     }
-    /** 头部浅绿渐变，替代原来的深绿头部底色。 */
+    /** 头部渐变：浅绿主题为薄荷白，深绿主题为深绿玻璃。 */
     private GradientDrawable headerBackground() {
-        return new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2});
+        return new GradientDrawable(GradientDrawable.Orientation.TL_BR, UiPalette.headGradient());
     }
     /** 白色卡片轻微浮起。 */
     private void lift(View view) {

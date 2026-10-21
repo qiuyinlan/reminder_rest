@@ -43,13 +43,13 @@ import java.util.List;
 import java.util.Set;
 
 public final class MainActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int LINE = UiPalette.BORDER;
+    private int GREEN = UiPalette.ACCENT;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int LINE = UiPalette.BORDER;
     private LinearLayout body;
     private ScrollView scroll;
     private boolean reopenPermissionGuide;
@@ -69,9 +69,7 @@ public final class MainActivity extends Activity {
             finish();
             return;
         }
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         ReminderScheduler.update(this);
         render();
     }
@@ -306,7 +304,7 @@ public final class MainActivity extends Activity {
         LinearLayout metric = new LinearLayout(this);
         metric.setOrientation(LinearLayout.VERTICAL);
         metric.setPadding(dp(10), dp(8), dp(10), dp(8));
-        metric.setBackground(outline("今日完成".equals(title) ? 0xffdff3e8 : 0xffe8f6ef, UiPalette.BORDER, 12));
+        metric.setBackground(outline("今日完成".equals(title) ? UiPalette.SOFT : UiPalette.PALE, UiPalette.BORDER, 12));
         metric.addView(label(title, 11, MUTED, false));
         TextView amount = label(value, 17, INK, true);
         amount.setPadding(0, dp(2), 0, 0);
@@ -329,7 +327,7 @@ public final class MainActivity extends Activity {
         LinearLayout banner = row();
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(11), dp(9), dp(12), dp(9));
-        banner.setBackground(outline(ready ? 0xffe9f7ef : UiPalette.WARN_SOFT,
+        banner.setBackground(outline(ready ? UiPalette.SOFT : UiPalette.WARN_SOFT,
                 ready ? UiPalette.BORDER : UiPalette.WARN_BORDER, 14));
         int statusColor = ready ? INK : UiPalette.WARN;
         TextView mark = label(ready ? "✓" : "!", 15, ready ? GREEN : statusColor, true);
@@ -755,21 +753,11 @@ public final class MainActivity extends Activity {
     }
 
     private int iconColor(String title) {
-        if (title.contains("水")) return 0xff247a88;
-        if (title.contains("眼")) return 0xff4859b0;
-        if (title.contains("走") || title.contains("活动")) return 0xff1f7d55;
-        if (title.contains("颈") || title.contains("肩")) return 0xff94650f;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff76439a;
-        return 0xffaa4a3d;
+        return UiPalette.categoryInk(UiPalette.categoryKind(title));
     }
 
     private int iconTint(String title) {
-        if (title.contains("水")) return 0xffd9f0f3;
-        if (title.contains("眼")) return 0xffe3e8fb;
-        if (title.contains("走") || title.contains("活动")) return 0xffd8f2e4;
-        if (title.contains("颈") || title.contains("肩")) return 0xfffdeed2;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xfff0e2f7;
-        return 0xfffbe3e1;
+        return UiPalette.categoryFill(UiPalette.categoryKind(title));
     }
 
     private void editRule(ReminderSettings.Rule existing) {
@@ -1037,20 +1025,14 @@ public final class MainActivity extends Activity {
 
     private GradientDrawable homeStatusBackground() {
         GradientDrawable background = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2});
+                GradientDrawable.Orientation.TL_BR, UiPalette.headGradient());
         background.setCornerRadius(dp(18));
         background.setStroke(dp(1), UiPalette.BORDER);
         return background;
     }
 
     private int iconBorder(String title) {
-        if (title.contains("水")) return 0xffa8dbe2;
-        if (title.contains("眼")) return 0xffb8c3ee;
-        if (title.contains("走") || title.contains("活动")) return 0xffa7dfc2;
-        if (title.contains("颈") || title.contains("肩")) return 0xffeed0a2;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffdbbfe9;
-        return 0xfff0beb8;
+        return UiPalette.categoryStroke(UiPalette.categoryKind(title));
     }
 
     private GradientDrawable outline(int fillColor, int strokeColor, int radius) {

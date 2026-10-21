@@ -39,23 +39,21 @@ import java.util.Locale;
 import java.text.SimpleDateFormat;
 
 public final class ItemsActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int MINT = UiPalette.ACCENT;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int LINE = UiPalette.BORDER;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
+    private int GREEN = UiPalette.ACCENT;
+    private int MINT = UiPalette.ACCENT;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int LINE = UiPalette.BORDER;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
     private LinearLayout list;
     private boolean returnToHome;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         returnToHome = getIntent().getBooleanExtra("return_to_home", false);
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         FrameLayout frame = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -120,7 +118,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         summary.setPadding(dp(16), dp(14), dp(16), dp(14));
-        summary.setBackground(surface(new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2}, 18, UiPalette.BORDER));
+        summary.setBackground(surface(UiPalette.headGradient(), 18, UiPalette.BORDER));
         summary.setElevation(dp(1));
         LinearLayout summaryTop = new LinearLayout(this);
         summaryTop.setGravity(Gravity.CENTER_VERTICAL);
@@ -209,7 +207,7 @@ public final class ItemsActivity extends Activity {
             TextView empty = text("还没有提醒事项", 15, MUTED, true);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
-            empty.setBackground(surface(new int[]{UiPalette.PALE, 0xffd9f1e6}, 16, UiPalette.BORDER));
+            empty.setBackground(surface(UiPalette.headGradient(), 16, UiPalette.BORDER));
             list.addView(empty);
         }
     }
@@ -225,38 +223,29 @@ public final class ItemsActivity extends Activity {
     }
 
     private int categoryInk(String title) {
-        if (title.contains("水")) return 0xff247a88;
-        if (title.contains("眼")) return 0xff4859b0;
-        if (title.contains("走") || title.contains("活动")) return 0xff1f7d55;
-        if (title.contains("颈") || title.contains("肩")) return 0xff94650f;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xff76439a;
-        return 0xffaa4a3d;
+        return UiPalette.categoryInk(UiPalette.categoryKind(title));
     }
 
     private int categoryTint(String title) {
-        if (title.contains("水")) return 0xffd9f0f3;
-        if (title.contains("眼")) return 0xffe3e8fb;
-        if (title.contains("走") || title.contains("活动")) return 0xffd8f2e4;
-        if (title.contains("颈") || title.contains("肩")) return 0xfffdeed2;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xfff0e2f7;
-        return 0xfffbe3e1;
+        return UiPalette.categoryFill(UiPalette.categoryKind(title));
     }
 
     private GradientDrawable categorySurface(String title) {
-        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{UiPalette.SURFACE, UiPalette.PALE});
+        GradientDrawable background;
+        if (UiPalette.isDark()) {
+            background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    new int[]{categoryTint(title), 0xff192f29});
+        } else {
+            background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    new int[]{UiPalette.SURFACE, UiPalette.PALE});
+        }
         background.setCornerRadius(dp(16));
         background.setStroke(dp(1), UiPalette.BORDER);
         return background;
     }
 
     private int categoryBorder(String title) {
-        if (title.contains("水")) return 0xffa8dbe2;
-        if (title.contains("眼")) return 0xffb8c3ee;
-        if (title.contains("走") || title.contains("活动")) return 0xffa7dfc2;
-        if (title.contains("颈") || title.contains("肩")) return 0xffeeD0a2;
-        if (title.contains("放松") || title.contains("呼吸")) return 0xffdbbfe9;
-        return 0xfff0beb8;
+        return UiPalette.categoryStroke(UiPalette.categoryKind(title));
     }
 
     private GradientDrawable surface(int[] colors, int radius, int stroke) {

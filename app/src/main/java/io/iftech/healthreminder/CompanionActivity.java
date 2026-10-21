@@ -25,12 +25,12 @@ import android.widget.TextView;
 import java.util.Locale;
 
 public final class CompanionActivity extends Activity {
-    private static final int ACCENT = UiPalette.ACCENT;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
+    private int ACCENT = UiPalette.ACCENT;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView currentTime;
     private TextView timer;
@@ -51,9 +51,7 @@ public final class CompanionActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
         boolean existingSession = CompanionAudioService.startedAt(this) > 0L;
         focusMode = existingSession ? CompanionAudioService.isFocusSession(this)
                 : getIntent().getBooleanExtra(CompanionAudioService.EXTRA_FOCUS_MODE, false);

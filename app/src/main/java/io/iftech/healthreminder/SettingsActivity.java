@@ -13,20 +13,17 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class SettingsActivity extends Activity {
-    private static final int GREEN = UiPalette.ACCENT;
-    private static final int MINT_LIGHT = UiPalette.SOFT;
-    private static final int MINT_PALE = UiPalette.PALE;
-    private static final int INK = UiPalette.INK;
-    private static final int MUTED = UiPalette.MUTED;
-    private static final int PAPER = UiPalette.PAGE;
-    private static final int LINE = UiPalette.BORDER;
+    private int GREEN = UiPalette.ACCENT;
+    private int MINT_LIGHT = UiPalette.SOFT;
+    private int MINT_PALE = UiPalette.PALE;
+    private int INK = UiPalette.INK;
+    private int MUTED = UiPalette.MUTED;
+    private int PAPER = UiPalette.PAGE;
+    private int LINE = UiPalette.BORDER;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(PAPER);
-        getWindow().setNavigationBarColor(PAPER);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        UiPalette.applyWindow(getWindow());
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -79,6 +76,36 @@ public final class SettingsActivity extends Activity {
         introDetail.setPadding(0, dp(5), 0, 0);
         introCopy.addView(introDetail);
         intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout appearanceHeader = new LinearLayout(this);
+        appearanceHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams appearanceHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        appearanceHeaderParams.topMargin = dp(26);
+        appearanceHeaderParams.bottomMargin = dp(10);
+        page.addView(appearanceHeader, appearanceHeaderParams);
+        appearanceHeader.addView(text("外观", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout appearanceCard = new LinearLayout(this);
+        appearanceCard.setOrientation(LinearLayout.VERTICAL);
+        appearanceCard.setPadding(dp(15), dp(15), dp(15), dp(15));
+        appearanceCard.setBackground(round(Color.WHITE, 17));
+        appearanceCard.setElevation(dp(1));
+        page.addView(appearanceCard, new LinearLayout.LayoutParams(-1, -2));
+        appearanceCard.addView(text("主题色", 16, INK, true));
+
+        boolean darkThemeNow = UiPalette.isDark();
+        LinearLayout themeOptions = new LinearLayout(this);
+        themeOptions.setPadding(dp(3), dp(3), dp(3), dp(3));
+        themeOptions.setBackground(round(MINT_PALE, 12));
+        themeOptions.addView(themePill("深绿", darkThemeNow), new LinearLayout.LayoutParams(0, dp(38), 1));
+        themeOptions.addView(themePill("浅绿", !darkThemeNow), new LinearLayout.LayoutParams(0, dp(38), 1));
+        LinearLayout.LayoutParams themeOptionsParams = new LinearLayout.LayoutParams(-1, -2);
+        themeOptionsParams.topMargin = dp(10);
+        appearanceCard.addView(themeOptions, themeOptionsParams);
+        TextView themeNote = text("切换后会重新打开首页，已选主题会保留。", 12, MUTED, false);
+        themeNote.setPadding(0, dp(9), 0, 0);
+        appearanceCard.addView(themeNote);
 
         LinearLayout sectionHeader = new LinearLayout(this);
         sectionHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -134,6 +161,23 @@ public final class SettingsActivity extends Activity {
         TextView noteBody = text("如果提醒没有按时出现，可以在息屏设置中查看精确闹钟、通知和锁屏全屏提醒权限。", 12, MUTED, false);
         noteBody.setPadding(0, dp(5), 0, 0);
         note.addView(noteBody);
+    }
+
+    private TextView themePill(String label, boolean selected) {
+        TextView view = text(label, 15, selected ? Color.WHITE : INK, selected);
+        view.setGravity(Gravity.CENTER);
+        if (selected) view.setBackground(round(GREEN, 10));
+        view.setOnClickListener(v -> {
+            String target = "深绿".equals(label) ? UiPalette.THEME_DARK : UiPalette.THEME_LIGHT;
+            if (target.equals(UiPalette.theme(this))) return;
+            UiPalette.setTheme(this, target);
+            android.widget.Toast.makeText(this, "已切换为" + label + "主题", android.widget.Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
+        return view;
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
