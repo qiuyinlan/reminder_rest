@@ -148,6 +148,15 @@ final class UiPalette {
         return hairlineColor;
     }
 
+    /** 颜色混合：以 base 为底、按比例混入 overlay，用于给卡片叠一层极淡的类目色。 */
+    static int blend(int base, int overlay, float overlayAmount) {
+        float keep = 1f - overlayAmount;
+        int r = Math.round(((base >> 16) & 0xff) * keep + ((overlay >> 16) & 0xff) * overlayAmount);
+        int g = Math.round(((base >> 8) & 0xff) * keep + ((overlay >> 8) & 0xff) * overlayAmount);
+        int b = Math.round((base & 0xff) * keep + (overlay & 0xff) * overlayAmount);
+        return 0xff000000 | (r << 16) | (g << 8) | b;
+    }
+
     // ---- 分类颜色（事项图标/时间线）----
     static int categoryKind(String title) {
         if (title == null) return CAT_OTHER;

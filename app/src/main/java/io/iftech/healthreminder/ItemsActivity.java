@@ -238,7 +238,7 @@ public final class ItemsActivity extends Activity {
                     new int[]{categoryTint(title), 0xff192f29});
         } else {
             background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    UiPalette.glassGradient());
+                    new int[]{UiPalette.blend(0xffffffff, categoryTint(title), 0.42f), 0xffffffff});
         }
         background.setCornerRadius(dp(20));
         background.setStroke(dp(1), UiPalette.hairline());
