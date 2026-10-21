@@ -97,8 +97,8 @@ final class UiPalette {
         } else {
             darkTheme = false;
             ACCENT = 0xff1f8a5f;
-            PAGE = 0xffffffff;
-            PAGE_LIGHT = 0xffffffff;
+            PAGE = 0xffeef8f1;
+            PAGE_LIGHT = 0xfff6fcf8;
             SOFT = 0xffd7f0e1;
             PALE = 0xffe7f7ee;
             SURFACE = 0xffffffff;
@@ -111,7 +111,7 @@ final class UiPalette {
             WARN_BORDER = 0xffeccba2;
             COMPANION = 0xff8a5bab;
             COUNTDOWN_INK = 0xff125f45;
-            pageGradient = new int[]{0xffffffff, 0xfffbfdfc, 0xfff5fbf8};
+            pageGradient = new int[]{0xfff6fcf8, 0xffeef8f1, 0xffe7f6ed};
             headGradient = new int[]{0xffccefdd, 0xffe0f7ea, 0xfff7fdfb};
             glassGradient = new int[]{0xffffffff, 0xfff3fbf7};
             heroGradient = new int[]{0xffc4ecda, 0xfff7fdfb};

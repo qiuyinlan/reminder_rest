@@ -232,13 +232,18 @@ public final class ItemsActivity extends Activity {
     }
 
     private GradientDrawable categorySurface(String title) {
+        int tint = categoryTint(title);
         GradientDrawable background;
         if (UiPalette.isDark()) {
             background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{categoryTint(title), 0xff192f29});
+                    new int[]{UiPalette.blend(0xff0a251c, tint, 0.90f),
+                            UiPalette.blend(0xff0a251c, tint, 0.55f),
+                            UiPalette.blend(0xff0a251c, tint, 0.30f)});
         } else {
             background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{UiPalette.blend(0xffffffff, categoryTint(title), 0.42f), 0xffffffff});
+                    new int[]{UiPalette.blend(0xffffffff, tint, 0.88f),
+                            UiPalette.blend(0xffffffff, tint, 0.55f),
+                            UiPalette.blend(0xffffffff, tint, 0.22f)});
         }
         background.setCornerRadius(dp(20));
         background.setStroke(dp(1), UiPalette.hairline());

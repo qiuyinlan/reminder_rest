@@ -1108,10 +1108,12 @@ public final class MainActivity extends Activity {
     /** 带类目色淡染的玻璃卡片。 */
     private GradientDrawable itemCard(String title) {
         int tint = iconTint(title);
-        int base = UiPalette.isDark() ? 0xff0f2b23 : 0xffffffff;
-        int start = UiPalette.blend(base, tint, UiPalette.isDark() ? 0.60f : 0.42f);
-        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{start, base});
+        boolean dark = UiPalette.isDark();
+        int base = dark ? 0xff0a251c : 0xffffffff;
+        int[] colors = dark
+                ? new int[]{UiPalette.blend(base, tint, 0.90f), UiPalette.blend(base, tint, 0.55f), UiPalette.blend(base, tint, 0.30f)}
+                : new int[]{UiPalette.blend(base, tint, 0.88f), UiPalette.blend(base, tint, 0.55f), UiPalette.blend(base, tint, 0.22f)};
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
         background.setCornerRadius(dp(22));
         background.setStroke(dp(1), UiPalette.hairline());
         return background;
