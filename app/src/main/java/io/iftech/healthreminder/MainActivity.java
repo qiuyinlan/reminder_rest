@@ -921,9 +921,15 @@ public final class MainActivity extends Activity {
                     String title = name.getText().toString().trim();
                     if (title.isEmpty()) { Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show(); return; }
                     ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
-                    updated.removeIf(rule -> rule.id == id);
-                    updated.add(ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], active[0])
-                            .withReminderMessage(existing == null ? "" : existing.reminderMessage));
+                    ReminderSettings.Rule saved = ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0], target[0], remindAfterTarget[0], active[0])
+                            .withReminderMessage(existing == null ? "" : existing.reminderMessage)
+                            .withIcon(existing == null ? "" : existing.icon);
+                    int replaceIndex = -1;
+                    for (int i = 0; i < updated.size(); i++) {
+                        if (updated.get(i).id == id) { replaceIndex = i; break; }
+                    }
+                    if (replaceIndex >= 0) updated.set(replaceIndex, saved);
+                    else updated.add(saved);
                     saveRules(updated);
                 });
         if (existing != null) dialog.setNeutralButton("删除", (d, w) -> {

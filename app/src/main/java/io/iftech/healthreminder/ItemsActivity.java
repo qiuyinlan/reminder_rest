@@ -500,14 +500,20 @@ public final class ItemsActivity extends Activity {
                 return;
             }
             ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
-            updated.removeIf(rule -> rule.id == id);
             ReminderSettings.Rule rule = specificTimeMode[0]
                     ? ReminderSettings.Rule.withSpecificTimes(id, title, start[0], end[0], interval[0],
                     timePoints, target[0], remindAfterTarget[0], enabled[0])
                     : ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0],
                     target[0], remindAfterTarget[0], enabled[0]);
-            updated.add(rule.withReminderMessage(reminderMessage.getText().toString())
-                    .withIcon(iconValue[0]));
+            rule = rule.withReminderMessage(reminderMessage.getText().toString())
+                    .withIcon(iconValue[0]);
+            // 原位替换，保持事项在列表里的顺序不变（新增才追加到末尾）
+            int replaceIndex = -1;
+            for (int i = 0; i < updated.size(); i++) {
+                if (updated.get(i).id == id) { replaceIndex = i; break; }
+            }
+            if (replaceIndex >= 0) updated.set(replaceIndex, rule);
+            else updated.add(rule);
             ReminderSettings.saveRules(this, updated);
             renderItems();
             editor.dismiss();
