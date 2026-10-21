@@ -28,7 +28,7 @@ final class BottomNavigationBar {
         bar.setGravity(Gravity.CENTER);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setBackground(barBackground(activity));
-        bar.setElevation(dp(activity, 1));
+        bar.setElevation(dp(activity, 6));
         for (int i = 0; i < LABELS.length; i++) {
             final int index = i;
             boolean active = i == selected;
@@ -42,37 +42,38 @@ final class BottomNavigationBar {
             Icon icon = new Icon(activity, i, color);
             FrameLayout iconStage = new FrameLayout(activity);
             iconStage.setBackground(active
-                    ? pill(activity, UiPalette.SOFT, 13)
-                    : pill(activity, Color.TRANSPARENT, 13));
+                    ? pill(activity, UiPalette.SOFT, 14)
+                    : pill(activity, Color.TRANSPARENT, 14));
             iconStage.addView(icon, new FrameLayout.LayoutParams(-1, -1));
-            cell.addView(iconStage, new LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 26)));
+            cell.addView(iconStage, new LinearLayout.LayoutParams(dp(activity, 46), dp(activity, 24)));
 
             TextView label = new TextView(activity);
             label.setText(LABELS[i]);
-            label.setTextSize(12);
+            label.setTextSize(11);
+            label.setLetterSpacing(0.05f);
             label.setTextColor(color);
             label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
             label.setGravity(Gravity.CENTER);
             label.setIncludeFontPadding(false);
-            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-1, dp(activity, 18));
-            labelParams.topMargin = dp(activity, 3);
+            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-1, dp(activity, 17));
+            labelParams.topMargin = dp(activity, 2);
             cell.addView(label, labelParams);
 
             if (actions != null && i < actions.length && actions[i] != null) {
                 cell.setOnClickListener(v -> actions[index].run());
             }
-            bar.addView(cell, new LinearLayout.LayoutParams(0, dp(activity, 60), 1));
+            bar.addView(cell, new LinearLayout.LayoutParams(0, -1, 1));
         }
         return bar;
     }
 
-    /** 白色卡片底 + 顶部 1dp 浅绿描边，顶部两角圆角，贴在页面底部。 */
+    /** 悬浮玻璃导航条：极淡渐变、四角圆角、极细描边。 */
     private static GradientDrawable barBackground(Activity activity) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(UiPalette.SURFACE);
-        float radius = dp(activity, 16);
-        shape.setCornerRadii(new float[]{radius, radius, radius, radius, 0f, 0f, 0f, 0f});
-        shape.setStroke(dp(activity, 1), UiPalette.BORDER);
+        GradientDrawable shape = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                UiPalette.glassGradient());
+        float radius = dp(activity, 24);
+        shape.setCornerRadii(new float[]{radius, radius, radius, radius, radius, radius, radius, radius});
+        shape.setStroke(dp(activity, 1), UiPalette.hairline());
         return shape;
     }
 

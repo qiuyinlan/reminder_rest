@@ -133,7 +133,11 @@ public final class CompanionLandingActivity extends Activity {
         });
         content.addView(start, new LinearLayout.LayoutParams(-1, dp(54)));
         setFocusMode(false);
-        screen.addView(createNavigation(), new LinearLayout.LayoutParams(-1, dp(60)));
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(-1, dp(64));
+        navParams.leftMargin = dp(14);
+        navParams.rightMargin = dp(14);
+        navParams.bottomMargin = dp(10);
+        screen.addView(createNavigation(), navParams);
         setContentView(screen);
     }
 

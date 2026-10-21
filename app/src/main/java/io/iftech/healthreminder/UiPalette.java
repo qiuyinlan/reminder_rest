@@ -37,6 +37,12 @@ final class UiPalette {
     private static boolean darkTheme;
     private static int[] pageGradient = {0xfff6fcf8, 0xffeef8f1, 0xffe9f6ef};
     private static int[] headGradient = {0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2};
+    /** 玻璃卡片：极淡渐变白，营造磨砂玻璃的柔光感。 */
+    private static int[] glassGradient = {0xffffffff, 0xfff2faf5};
+    /** 主状态卡：带一点点主题色的柔光渐变。 */
+    private static int[] heroGradient = {0xffdaf3e7, 0xfff4fcf9};
+    /** 卡片内的极细分隔线/描边。 */
+    private static int hairlineColor = 0x66b9dfcd;
     private static int[] catInk = {0xff247a88, 0xff4859b0, 0xff1f7d55, 0xff94650f, 0xff76439a, 0xffaa4a3d, 0xff1f8a5f, 0xff8a5bab};
     private static int[] catFill = {0xffd9f0f3, 0xffe3e8fb, 0xffd8f2e4, 0xfffdeed2, 0xfff0e2f7, 0xfffbe3e1, 0xffe2f5ea, 0xfff0e2f7};
     private static int[] catStroke = {0xffa8dbe2, 0xffb8c3ee, 0xffa7dfc2, 0xffeed0a2, 0xffdbbfe9, 0xfff0beb8, 0xffc3ead9, 0xffdbbfe9};
@@ -79,6 +85,9 @@ final class UiPalette {
             COMPANION = 0xffd7a6eb;
             pageGradient = new int[]{PAGE_LIGHT, PAGE, 0xff02140f};
             headGradient = new int[]{0xff0b3325, 0xff12352c, 0xff142d3c};
+            glassGradient = new int[]{0xff1c3d33, 0xff0f2b23};
+            heroGradient = new int[]{0xff0f3829, 0xff08251b};
+            hairlineColor = 0x33a5e8c0;
             catInk = new int[]{0xff70d6dd, 0xffa8b9ff, 0xff67d49b, 0xffffce78, 0xffd7a6eb, 0xffffa497, 0xff77d5bf, 0xffd7a6eb};
             catFill = new int[]{0xff173b40, 0xff292f4c, 0xff173d2d, 0xff49371f, 0xff3b2947, 0xff482b28, 0xff1e3b33, 0xff3b2947};
             catStroke = new int[]{0xff39717a, 0xff59648d, 0xff34724f, 0xff8a6935, 0xff765187, 0xff89514a, 0xff3f8377, 0xff765187};
@@ -100,6 +109,9 @@ final class UiPalette {
             COMPANION = 0xff8a5bab;
             pageGradient = new int[]{0xfff6fcf8, 0xffeef8f1, 0xffe9f6ef};
             headGradient = new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2};
+            glassGradient = new int[]{0xffffffff, 0xfff2faf5};
+            heroGradient = new int[]{0xffdaf3e7, 0xfff4fcf9};
+            hairlineColor = 0x66b9dfcd;
             catInk = new int[]{0xff247a88, 0xff4859b0, 0xff1f7d55, 0xff94650f, 0xff76439a, 0xffaa4a3d, 0xff1f8a5f, 0xff8a5bab};
             catFill = new int[]{0xffd9f0f3, 0xffe3e8fb, 0xffd8f2e4, 0xfffdeed2, 0xfff0e2f7, 0xfffbe3e1, 0xffe2f5ea, 0xfff0e2f7};
             catStroke = new int[]{0xffa8dbe2, 0xffb8c3ee, 0xffa7dfc2, 0xffeed0a2, 0xffdbbfe9, 0xfff0beb8, 0xffc3ead9, 0xffdbbfe9};
@@ -119,6 +131,21 @@ final class UiPalette {
     /** 头部/汇总卡渐变颜色（浅绿为薄荷白渐变，深绿为深绿玻璃渐变）。 */
     static int[] headGradient() {
         return headGradient.clone();
+    }
+
+    /** 玻璃卡片渐变（极淡的上下渐变，制造柔光玻璃质感）。 */
+    static int[] glassGradient() {
+        return glassGradient.clone();
+    }
+
+    /** 主状态卡渐变（比普通卡片多一点主题色调）。 */
+    static int[] heroGradient() {
+        return heroGradient.clone();
+    }
+
+    /** 卡片内部极细分隔线颜色。 */
+    static int hairline() {
+        return hairlineColor;
     }
 
     // ---- 分类颜色（事项图标/时间线）----

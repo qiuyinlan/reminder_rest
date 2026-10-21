@@ -830,7 +830,11 @@ public final class StatsActivity extends Activity {
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 null);
-        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(-1, dp(64));
+        navParams.leftMargin = dp(14);
+        navParams.rightMargin = dp(14);
+        navParams.bottomMargin = dp(10);
+        screen.addView(nav, navParams);
     }
 
     private LinearLayout summaryMetric(String label, int value, int accent) {

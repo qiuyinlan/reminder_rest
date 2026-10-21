@@ -156,29 +156,30 @@ public final class ItemsActivity extends Activity {
             int done = ReminderSettings.completedToday(this, rule.id);
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(14), dp(13), dp(14), dp(12));
+            card.setPadding(dp(16), dp(15), dp(16), dp(14));
             card.setBackground(categorySurface(rule.title));
-            card.setElevation(dp(1));
+            card.setElevation(dp(2));
             LinearLayout details = new LinearLayout(this);
             details.setOrientation(LinearLayout.VERTICAL);
             LinearLayout titleLine = new LinearLayout(this);
             titleLine.setGravity(Gravity.CENTER_VERTICAL);
             TextView marker = text(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1),
-                    13, categoryInk(rule.title), true);
+                    15, categoryInk(rule.title), true);
             marker.setGravity(Gravity.CENTER);
-            GradientDrawable markerBackground = round(categoryTint(rule.title), 12);
+            GradientDrawable markerBackground = round(categoryTint(rule.title), 22);
             markerBackground.setStroke(dp(1), categoryBorder(rule.title));
             marker.setBackground(markerBackground);
-            titleLine.addView(marker, new LinearLayout.LayoutParams(dp(32), dp(32)));
+            titleLine.addView(marker, new LinearLayout.LayoutParams(dp(44), dp(44)));
             TextView itemTitle = text(rule.title, 16, INK, true);
+            itemTitle.setLetterSpacing(0.01f);
             LinearLayout.LayoutParams itemTitleParams = new LinearLayout.LayoutParams(0, -2, 1);
-            itemTitleParams.leftMargin = dp(9);
+            itemTitleParams.leftMargin = dp(12);
             titleLine.addView(itemTitle, itemTitleParams);
             TextView count = text(done >= rule.dailyTarget ? "已达标" : done + " / " + rule.dailyTarget,
-                    12, categoryInk(rule.title), true);
+                    10, categoryInk(rule.title), true);
             count.setGravity(Gravity.CENTER);
             count.setPadding(dp(9), dp(5), dp(9), dp(5));
-            count.setBackground(round(categoryTint(rule.title), 13));
+            count.setBackground(round(categoryTint(rule.title), 10));
             titleLine.addView(count);
             details.addView(titleLine);
             ProgressBar itemProgress = progressBar(rule.dailyTarget, done);
@@ -237,10 +238,10 @@ public final class ItemsActivity extends Activity {
                     new int[]{categoryTint(title), 0xff192f29});
         } else {
             background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{UiPalette.SURFACE, UiPalette.PALE});
+                    UiPalette.glassGradient());
         }
-        background.setCornerRadius(dp(16));
-        background.setStroke(dp(1), UiPalette.BORDER);
+        background.setCornerRadius(dp(20));
+        background.setStroke(dp(1), UiPalette.hairline());
         return background;
     }
 
@@ -1017,7 +1018,11 @@ public final class ItemsActivity extends Activity {
                 null,
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });
-        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(-1, dp(64));
+        navParams.leftMargin = dp(14);
+        navParams.rightMargin = dp(14);
+        navParams.bottomMargin = dp(10);
+        screen.addView(nav, navParams);
     }
 
     private Context dialogContext() {

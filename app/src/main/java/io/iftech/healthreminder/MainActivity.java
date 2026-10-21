@@ -104,23 +104,28 @@ public final class MainActivity extends Activity {
         currentScroll.post(() -> currentScroll.scrollTo(0, previousScrollY));
 
         TextView date = label(DateFormat.getDateInstance(DateFormat.FULL)
-                .format(Calendar.getInstance().getTime()), 12, MUTED, false);
-        date.setPadding(0, 0, 0, dp(4));
+                .format(Calendar.getInstance().getTime()), 11, MUTED, false);
+        date.setLetterSpacing(0.14f);
+        date.setPadding(dp(2), 0, 0, dp(6));
         body.addView(date);
         LinearLayout top = row();
-        TextView brand = label("休息一下", 28, INK, true);
+        TextView brand = label("休息一下", 30, INK, true);
+        brand.setLetterSpacing(0.01f);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView settingsButton = label("设置  ›", 13, INK, true);
+        TextView settingsButton = label("设置", 12, INK, true);
         settingsButton.setGravity(Gravity.CENTER);
-        settingsButton.setPadding(dp(13), dp(8), dp(13), dp(8));
-        settingsButton.setBackground(outline(Color.WHITE, UiPalette.BORDER, 18));
+        settingsButton.setLetterSpacing(0.06f);
+        settingsButton.setPadding(dp(15), dp(9), dp(15), dp(9));
+        settingsButton.setBackground(outline(UiPalette.SOFT, UiPalette.BORDER, 18));
+        settingsButton.setElevation(dp(1));
         settingsButton.setContentDescription("设置");
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         top.addView(settingsButton);
         body.addView(top);
         TextView intro = label("给眼睛和身体留一点放松时间。", 13, MUTED, false);
+        intro.setLetterSpacing(0.03f);
         LinearLayout.LayoutParams introParams = full();
-        introParams.bottomMargin = dp(16);
+        introParams.bottomMargin = dp(20);
         body.addView(intro, introParams);
 
         List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
@@ -128,13 +133,15 @@ public final class MainActivity extends Activity {
         addPermissionBanner();
 
         LinearLayout sectionHead = row();
-        sectionHead.setPadding(0, dp(17), 0, dp(9));
-        sectionHead.addView(label("提醒事项", 19, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView manageItems = label("管理全部  ›", 12, INK, true);
+        sectionHead.setPadding(0, dp(22), 0, dp(10));
+        TextView sectionTitle = label("提醒事项", 18, INK, true);
+        sectionTitle.setLetterSpacing(0.02f);
+        sectionHead.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView manageItems = label("管理", 12, GREEN, true);
         manageItems.setGravity(Gravity.CENTER);
-        manageItems.setPadding(dp(11), dp(7), dp(11), dp(7));
-        manageItems.setTextColor(GREEN);
-        manageItems.setBackground(outline(Color.WHITE, UiPalette.BORDER, 16));
+        manageItems.setLetterSpacing(0.04f);
+        manageItems.setPadding(dp(13), dp(7), dp(13), dp(7));
+        manageItems.setBackground(round(UiPalette.SOFT, 14));
         manageItems.setOnClickListener(v -> startActivity(new Intent(this, ItemsActivity.class)));
         sectionHead.addView(manageItems);
         body.addView(sectionHead);
@@ -213,7 +220,11 @@ public final class MainActivity extends Activity {
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); },
                 () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); });
-        screen.addView(nav, new LinearLayout.LayoutParams(-1, dp(60)));
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(-1, dp(64));
+        navParams.leftMargin = dp(14);
+        navParams.rightMargin = dp(14);
+        navParams.bottomMargin = dp(10);
+        screen.addView(nav, navParams);
     }
 
     private void addTodayStatusCard(List<ReminderSettings.Rule> rules) {
@@ -226,8 +237,9 @@ public final class MainActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(14), dp(14), dp(12));
-        card.setBackground(homeStatusBackground());
+        card.setPadding(dp(20), dp(20), dp(20), dp(18));
+        card.setBackground(heroCard());
+        card.setElevation(dp(3));
 
         LinearLayout overview = row();
         WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.SAD);
@@ -235,15 +247,18 @@ public final class MainActivity extends Activity {
         bob.setDuration(2400);
         bob.setRepeatCount(ValueAnimator.INFINITE);
         face.post(bob::start);
-        overview.addView(face, new LinearLayout.LayoutParams(dp(58), dp(58)));
+        overview.addView(face, new LinearLayout.LayoutParams(dp(62), dp(62)));
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(dp(9), 0, dp(4), 0);
-        copy.addView(label(ReminderSettings.enabled(this) ? "提醒正在运行" : "提醒已暂停", 16, INK, true));
+        copy.setPadding(dp(13), 0, dp(8), 0);
+        TextView statusTitle = label(ReminderSettings.enabled(this) ? "提醒正在运行" : "提醒已暂停", 17, INK, true);
+        statusTitle.setLetterSpacing(0.02f);
+        copy.addView(statusTitle);
         TextView greeting = label(rules.isEmpty()
-                ? "添加计划，按时照顾自己" : "忙了一阵子啦，给身体留点空档", 11, MUTED, false);
-        greeting.setPadding(0, dp(4), 0, 0);
+                ? "添加计划，按时照顾自己" : "忙了一阵子啦，给身体留点空档", 12, MUTED, false);
+        greeting.setPadding(0, dp(5), 0, 0);
+        greeting.setLetterSpacing(0.02f);
         copy.addView(greeting);
         overview.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
@@ -265,18 +280,18 @@ public final class MainActivity extends Activity {
         card.addView(overview);
 
         View divider = new View(this);
-        divider.setBackgroundColor(LINE);
+        divider.setBackgroundColor(UiPalette.hairline());
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
-        dividerParams.topMargin = dp(12);
-        dividerParams.bottomMargin = dp(10);
+        dividerParams.topMargin = dp(16);
+        dividerParams.bottomMargin = dp(14);
         card.addView(divider, dividerParams);
 
         LinearLayout metrics = row();
-        metrics.addView(statusMetric("提醒事项", rules.size() + " 项"),
+        metrics.addView(statusMetric("今日完成", completed + " / " + Math.max(target, 1) + " 次"),
                 new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams completionParams = new LinearLayout.LayoutParams(0, -2, 1);
-        completionParams.leftMargin = dp(8);
-        metrics.addView(statusMetric("今日完成", completed + " / " + target + " 次"), completionParams);
+        completionParams.leftMargin = dp(14);
+        metrics.addView(statusMetric("提醒事项", rules.size() + " 项"), completionParams);
         card.addView(metrics);
 
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -284,30 +299,33 @@ public final class MainActivity extends Activity {
         progress.setMax(Math.max(1, target));
         progress.setProgress(Math.min(completed, Math.max(1, target)));
         progress.setProgressTintList(ColorStateList.valueOf(GREEN));
-        progress.setProgressBackgroundTintList(ColorStateList.valueOf(LINE));
+        progress.setProgressBackgroundTintList(ColorStateList.valueOf(UiPalette.hairline()));
         todayProgress = progress;
-        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(4));
-        progressParams.topMargin = dp(9);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(5));
+        progressParams.topMargin = dp(14);
         card.addView(progress, progressParams);
 
         TextView delivery = label("提醒通过系统通知送达", 10, MUTED, false);
+        delivery.setLetterSpacing(0.08f);
         LinearLayout.LayoutParams deliveryParams = full();
-        deliveryParams.topMargin = dp(7);
+        deliveryParams.topMargin = dp(10);
         card.addView(delivery, deliveryParams);
 
         LinearLayout.LayoutParams cardParams = full();
-        cardParams.bottomMargin = dp(12);
+        cardParams.bottomMargin = dp(14);
         body.addView(card, cardParams);
     }
 
     private LinearLayout statusMetric(String title, String value) {
         LinearLayout metric = new LinearLayout(this);
         metric.setOrientation(LinearLayout.VERTICAL);
-        metric.setPadding(dp(10), dp(8), dp(10), dp(8));
-        metric.setBackground(outline("今日完成".equals(title) ? UiPalette.SOFT : UiPalette.PALE, UiPalette.BORDER, 12));
-        metric.addView(label(title, 11, MUTED, false));
-        TextView amount = label(value, 17, INK, true);
-        amount.setPadding(0, dp(2), 0, 0);
+        metric.setPadding(dp(2), 0, 0, 0);
+        TextView caption = label(title, 10, MUTED, false);
+        caption.setLetterSpacing(0.12f);
+        metric.addView(caption);
+        TextView amount = label(value, 18, INK, true);
+        amount.setPadding(0, dp(4), 0, 0);
+        amount.setLetterSpacing(0.01f);
         if ("今日完成".equals(title)) completedMetric = amount;
         metric.addView(amount);
         return metric;
@@ -326,25 +344,29 @@ public final class MainActivity extends Activity {
                 && (!ReminderSettings.blockEnabled(this) || accessibility);
         LinearLayout banner = row();
         banner.setGravity(Gravity.CENTER_VERTICAL);
-        banner.setPadding(dp(11), dp(9), dp(12), dp(9));
-        banner.setBackground(outline(ready ? UiPalette.SOFT : UiPalette.WARN_SOFT,
-                ready ? UiPalette.BORDER : UiPalette.WARN_BORDER, 14));
+        banner.setPadding(dp(14), dp(11), dp(14), dp(11));
+        banner.setBackground(glassRound(16));
+        banner.setElevation(dp(1));
         int statusColor = ready ? INK : UiPalette.WARN;
-        TextView mark = label(ready ? "✓" : "!", 15, ready ? GREEN : statusColor, true);
+        TextView mark = label(ready ? "✓" : "!", 14, ready ? GREEN : statusColor, true);
         mark.setGravity(Gravity.CENTER);
-        mark.setBackground(round(ready ? MINT_LIGHT : UiPalette.WARN_SOFT, 10));
-        banner.addView(mark, new LinearLayout.LayoutParams(dp(32), dp(32)));
+        GradientDrawable markBackground = round(ready ? UiPalette.SOFT : UiPalette.WARN_SOFT, 30);
+        if (!ready) markBackground.setStroke(dp(1), UiPalette.WARN_BORDER);
+        mark.setBackground(markBackground);
+        banner.addView(mark, new LinearLayout.LayoutParams(dp(30), dp(30)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(dp(10), 0, dp(5), 0);
+        copy.setPadding(dp(11), 0, dp(5), 0);
         copy.addView(label(ready ? "提醒权限已就绪" : "提醒权限待检查", 13, statusColor, true));
         TextView detail = label(ready ? "通知、闹钟与后台运行可用" : "点击检查通知、闹钟和后台设置", 11, MUTED, false);
-        detail.setPadding(0, dp(2), 0, 0);
+        detail.setPadding(0, dp(3), 0, 0);
+        detail.setLetterSpacing(0.02f);
         copy.addView(detail);
         banner.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        banner.addView(label("›", 20, MUTED, false));
+        banner.addView(label("›", 18, MUTED, false));
         banner.setOnClickListener(v -> showPermissionChecklist());
         LinearLayout.LayoutParams params = full();
+        params.topMargin = dp(12);
         params.bottomMargin = dp(2);
         body.addView(banner, params);
     }
@@ -568,32 +590,40 @@ public final class MainActivity extends Activity {
         int done = ReminderSettings.completedToday(this, rule.id);
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(dp(12), dp(11), dp(12), dp(10));
-        item.setBackground(outline(iconTint(rule.title), iconBorder(rule.title), 16));
-        item.setElevation(dp(1));
+        item.setPadding(dp(16), dp(15), dp(16), dp(14));
+        item.setBackground(glassRound(22));
+        item.setElevation(dp(2));
 
         LinearLayout main = row();
-        TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 14, iconColor(rule.title), true);
+        TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 16, iconColor(rule.title), true);
         badge.setGravity(Gravity.CENTER);
-        badge.setBackground(round(iconTint(rule.title), 10));
-        main.addView(badge, new LinearLayout.LayoutParams(dp(34), dp(34)));
+        badge.setContentDescription(rule.title);
+        GradientDrawable badgeBackground = round(iconTint(rule.title), 22);
+        badgeBackground.setStroke(dp(1), iconBorder(rule.title));
+        badge.setBackground(badgeBackground);
+        main.addView(badge, new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(dp(10), 0, dp(6), 0);
+        copy.setPadding(dp(12), 0, dp(8), 0);
         LinearLayout titleLine = row();
-        titleLine.addView(label(rule.title, 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView targetBadge = label(done >= rule.dailyTarget ? "达标" : done + "/" + rule.dailyTarget,
+        TextView title = label(rule.title, 16, INK, true);
+        title.setLetterSpacing(0.01f);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        titleLine.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView targetBadge = label(done >= rule.dailyTarget ? "达标" : done + " / " + rule.dailyTarget,
                 10, iconColor(rule.title), true);
         targetBadge.setGravity(Gravity.CENTER);
-        targetBadge.setPadding(dp(7), dp(4), dp(7), dp(4));
-        targetBadge.setBackground(round(iconTint(rule.title), 12));
+        targetBadge.setPadding(dp(8), dp(4), dp(8), dp(4));
+        targetBadge.setBackground(round(iconTint(rule.title), 10));
         titleLine.addView(targetBadge);
         copy.addView(titleLine);
         TextView schedule = label(compactScheduleSummary(rule), 11, MUTED, false);
         schedule.setSingleLine(true);
+        schedule.setLetterSpacing(0.02f);
         schedule.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams scheduleParams = full();
-        scheduleParams.topMargin = dp(3);
+        scheduleParams.topMargin = dp(4);
         copy.addView(schedule, scheduleParams);
         main.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
@@ -604,6 +634,17 @@ public final class MainActivity extends Activity {
         active.setOnCheckedChangeListener((button, checked) -> saveRule(rule.withEnabled(checked)));
         main.addView(active);
         item.addView(main);
+
+        ProgressBar itemProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        itemProgress.setIndeterminate(false);
+        itemProgress.setMax(Math.max(1, rule.dailyTarget));
+        itemProgress.setProgress(Math.min(done, Math.max(1, rule.dailyTarget)));
+        itemProgress.setProgressTintList(ColorStateList.valueOf(iconColor(rule.title)));
+        itemProgress.setProgressBackgroundTintList(ColorStateList.valueOf(UiPalette.hairline()));
+        LinearLayout.LayoutParams itemProgressParams = new LinearLayout.LayoutParams(-1, dp(3));
+        itemProgressParams.topMargin = dp(13);
+        itemProgressParams.leftMargin = dp(56);
+        item.addView(itemProgress, itemProgressParams);
 
         String nextText;
         long nextAt = 0L;
@@ -621,26 +662,31 @@ public final class MainActivity extends Activity {
             nextText = countdownText(nextAt - System.currentTimeMillis());
             if (done >= rule.dailyTarget) nextText = "目标已达成，仍提醒 · " + nextText;
         }
-        TextView countdown = label(nextText, 11, done >= rule.dailyTarget ? INK : MUTED, done >= rule.dailyTarget);
+        TextView countdown = label(nextText, 11, done >= rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget);
         countdown.setSingleLine(true);
+        countdown.setLetterSpacing(0.02f);
         countdown.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (ticking) startCountdown(countdown, rule);
         LinearLayout actions = row();
         LinearLayout.LayoutParams actionsParams = full();
-        actionsParams.topMargin = dp(7);
+        actionsParams.topMargin = dp(11);
+        actionsParams.leftMargin = dp(56);
         item.addView(actions, actionsParams);
         actions.addView(countdown, new LinearLayout.LayoutParams(0, dp(30), 1));
         TextView complete = new TextView(this);
-        complete.setText("提前完成一次");
+        complete.setText("完成一次");
         complete.setTextSize(11);
         complete.setTextColor(iconColor(rule.title));
         complete.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         complete.setAllCaps(false);
         complete.setGravity(Gravity.CENTER);
-        complete.setPadding(dp(10), dp(5), dp(10), dp(5));
+        complete.setLetterSpacing(0.03f);
+        complete.setPadding(dp(13), dp(6), dp(13), dp(6));
         complete.setMinHeight(dp(30));
         complete.setIncludeFontPadding(false);
-        complete.setBackground(round(iconTint(rule.title), 14));
+        GradientDrawable completeBackground = round(iconTint(rule.title), 14);
+        completeBackground.setStroke(dp(1), iconBorder(rule.title));
+        complete.setBackground(completeBackground);
         complete.setOnClickListener(v -> {
             long now = System.currentTimeMillis();
             ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
@@ -650,7 +696,9 @@ public final class MainActivity extends Activity {
                     now, now, "提前完成一次");
             ReminderScheduler.update(this);
             int updatedDone = ReminderSettings.completedToday(this, rule.id);
-            targetBadge.setText(updatedDone >= rule.dailyTarget ? "达标" : updatedDone + "/" + rule.dailyTarget);
+            targetBadge.setText(updatedDone >= rule.dailyTarget ? "达标" : updatedDone + " / " + rule.dailyTarget);
+            itemProgress.setMax(Math.max(1, rule.dailyTarget));
+            itemProgress.setProgress(Math.min(updatedDone, Math.max(1, rule.dailyTarget)));
 
             int allDone = 0;
             int allTarget = 0;
@@ -658,7 +706,7 @@ public final class MainActivity extends Activity {
                 allDone += ReminderSettings.completedToday(this, current.id);
                 allTarget += current.dailyTarget;
             }
-            if (completedMetric != null) completedMetric.setText(allDone + " / " + allTarget + " 次");
+            if (completedMetric != null) completedMetric.setText(allDone + " / " + Math.max(allTarget, 1) + " 次");
             if (todayProgress != null) {
                 todayProgress.setMax(Math.max(1, allTarget));
                 todayProgress.setProgress(Math.min(allDone, Math.max(1, allTarget)));
@@ -667,20 +715,20 @@ public final class MainActivity extends Activity {
             boolean targetReached = updatedDone >= rule.dailyTarget;
             if (targetReached && !rule.remindAfterTarget) {
                 countdown.setText("✓ 今日目标已完成");
-                countdown.setTextColor(INK);
+                countdown.setTextColor(GREEN);
             } else {
                 long refreshedNextAt = ReminderScheduler.scheduledAt(this, rule.id);
                 if (refreshedNextAt <= 0L) refreshedNextAt = ReminderScheduler.nextTime(rule, now);
                 countdown.setText((targetReached ? "目标已达成，仍提醒 · " : "")
                         + countdownText(refreshedNextAt - now));
-                countdown.setTextColor(targetReached ? INK : MUTED);
+                countdown.setTextColor(targetReached ? GREEN : MUTED);
             }
         });
         actions.addView(complete);
         item.setOnClickListener(v -> openItemEditor(rule.id));
         item.setOnLongClickListener(v -> { openItemEditor(rule.id); return true; });
         LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-1, -2);
-        itemParams.bottomMargin = dp(9);
+        itemParams.bottomMargin = dp(12);
         parent.addView(item, itemParams);
     }
 
@@ -1017,17 +1065,27 @@ public final class MainActivity extends Activity {
     private LinearLayout columnCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(4), dp(14), dp(4));
-        card.setBackground(outline(Color.WHITE, UiPalette.BORDER, 16));
+        card.setPadding(dp(16), dp(6), dp(16), dp(6));
+        card.setBackground(glassRound(20));
         card.setElevation(dp(1));
         return card;
     }
 
-    private GradientDrawable homeStatusBackground() {
-        GradientDrawable background = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR, UiPalette.headGradient());
-        background.setCornerRadius(dp(18));
-        background.setStroke(dp(1), UiPalette.BORDER);
+    /** 玻璃质感的白色卡片：极淡渐变 + 极细描边 + 大圆角。 */
+    private GradientDrawable glassRound(int radius) {
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                UiPalette.glassGradient());
+        background.setCornerRadius(dp(radius));
+        background.setStroke(dp(1), UiPalette.hairline());
+        return background;
+    }
+
+    /** 首页主状态卡：带主题色柔光的玻璃卡片。 */
+    private GradientDrawable heroCard() {
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                UiPalette.heroGradient());
+        background.setCornerRadius(dp(26));
+        background.setStroke(dp(1), UiPalette.hairline());
         return background;
     }
 
