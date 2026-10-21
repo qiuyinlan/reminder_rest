@@ -461,6 +461,9 @@ public final class ItemsActivity extends Activity {
         enabledSwitch.setTextColor(INK);
         enabledSwitch.setTextSize(14);
         enabledSwitch.setMinHeight(dp(48));
+        // 点击开关时不要让表单滚动/把焦点抢走，保持弹窗内容不动
+        enabledSwitch.setFocusable(false);
+        enabledSwitch.setFocusableInTouchMode(false);
         enabledSwitch.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{Color.WHITE, Color.WHITE}));
         enabledSwitch.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{MINT, UiPalette.DISABLED}));
         enabledSwitch.setChecked(enabled[0]);
