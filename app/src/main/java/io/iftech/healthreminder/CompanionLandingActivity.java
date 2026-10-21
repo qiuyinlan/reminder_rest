@@ -13,6 +13,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 public final class CompanionLandingActivity extends Activity {
@@ -30,6 +31,7 @@ public final class CompanionLandingActivity extends Activity {
     private TextView prompt;
     private TextView detail;
     private TextView start;
+    private ImageView mascot;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -73,7 +75,7 @@ public final class CompanionLandingActivity extends Activity {
         info.setContentDescription("陪伴方式说明");
         info.setOnClickListener(v -> showStyledDialog(new AlertDialog.Builder(dialogContext())
                 .setTitle("陪伴方式")
-                .setMessage("轻松陪伴可以切到后台；专注陪伴会固定在全屏页面，系统会提示你固定此应用，固定期间不能切换到其他应用。")
+                .setMessage("轻松陪伴可以切到后台；专注陪伴会保持全屏，期间不能用返回键退出，点击结束按钮后退出。")
                 .setPositiveButton("知道了", null)
                 .create()));
         modeHeading.addView(info, new LinearLayout.LayoutParams(dp(28), dp(28)));
@@ -90,17 +92,18 @@ public final class CompanionLandingActivity extends Activity {
         modeCardParams.topMargin = dp(20);
         content.addView(modeCard, modeCardParams);
 
-        WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
+        mascot = new ImageView(this);
+        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
         LinearLayout illustration = new LinearLayout(this);
         illustration.setGravity(Gravity.CENTER);
         illustration.setBackground(round(MINT_LIGHT, 18));
-        LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(208), dp(208));
-        illustration.addView(face, faceParams);
+        LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(dp(205), dp(219));
+        illustration.addView(mascot, faceParams);
         LinearLayout.LayoutParams illustrationParams = new LinearLayout.LayoutParams(-1, dp(232));
         illustrationParams.topMargin = dp(18);
         content.addView(illustration, illustrationParams);
-        breatheX = android.animation.ObjectAnimator.ofFloat(face, View.SCALE_X, 1f, 1.09f, 1f);
-        breatheY = android.animation.ObjectAnimator.ofFloat(face, View.SCALE_Y, 1f, 1.09f, 1f);
+        breatheX = android.animation.ObjectAnimator.ofFloat(mascot, View.SCALE_X, 1f, 1.09f, 1f);
+        breatheY = android.animation.ObjectAnimator.ofFloat(mascot, View.SCALE_Y, 1f, 1.09f, 1f);
         breatheX.setDuration(4200);
         breatheY.setDuration(4200);
         breatheX.setRepeatCount(android.animation.ValueAnimator.INFINITE);
@@ -149,12 +152,13 @@ public final class CompanionLandingActivity extends Activity {
 
     private void setFocusMode(boolean focus) {
         focusMode = focus;
+        mascot.setImageResource(focus ? R.drawable.companion_reading : R.drawable.beans_relax);
         companionOption.setTextColor(focus ? MUTED : ACCENT);
         companionOption.setBackground(round(focus ? Color.TRANSPARENT : MINT_LIGHT, 10));
         focusOption.setTextColor(focus ? ACCENT : MUTED);
         focusOption.setBackground(round(focus ? MINT_LIGHT : Color.TRANSPARENT, 10));
         prompt.setText(focus ? "给自己一段专注时间" : "现在开始一段安静的陪伴");
-        detail.setText(focus ? "霸屏专注，结束后会记录陪伴时长。" : "可以切到后台，随时回来或结束。");
+        detail.setText(focus ? "全屏专注，结束后会记录陪伴时长。" : "可以切到后台，随时回来或结束。");
         start.setText(focus ? "开始专注陪伴" : "开始轻松陪伴");
     }
 

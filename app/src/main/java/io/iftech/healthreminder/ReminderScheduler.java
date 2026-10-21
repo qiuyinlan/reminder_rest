@@ -15,6 +15,9 @@ final class ReminderScheduler {
     private static final String SCHEDULE_PREFS = "reminder_schedule";
     private static final String KEY_SCREEN_OFF_PAUSED = "screen_off_paused";
     private static final String KEY_SCREEN_OFF_ALARM_SESSION_RULE = "screen_off_alarm_session_rule";
+    private static final String KEY_SCREEN_OFF_MARKED = "screen_off_marked";
+    private static final String KEY_SCREEN_ON_AT = "screen_on_at";
+    private static final long SCREEN_WAKE_GRACE_MS = 5_000L;
     private ReminderScheduler() { }
 
     static void update(Context context) {
@@ -24,7 +27,7 @@ final class ReminderScheduler {
             ReminderReceiver.stopAlarmVibration(context, "reminders or screen-off alarm disabled");
         }
         if (isInteractive(context) && isPaused(context)) resumeAfterScreenOn(context);
-        List<ReminderSettings.Rule> rules = ReminderSettings.rules(context);
+        List<ReminderSettings.Rule> rules = ReminderSettings.scheduledRules(context);
         boolean enabled = ReminderSettings.enabled(context);
         int sessionRuleId = schedulePrefs(context).getInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, -1);
         if (sessionRuleId >= 0) {
@@ -60,10 +63,7 @@ final class ReminderScheduler {
                 long now = System.currentTimeMillis();
                 if (next <= 0L) {
                     next = calculateNext(context, rule);
-                } else if (next <= now && (rule.specificTimeMode
-                        || !ReminderSettings.isWithinWindow(rule, now)
-                        || (!rule.remindAfterTarget
-                        && ReminderSettings.completedToday(context, rule.id) >= rule.dailyTarget))) {
+                } else if (next <= now) {
                     next = calculateNext(context, rule);
                 }
                 setScheduledAt(context, rule.id, next);
@@ -86,7 +86,7 @@ final class ReminderScheduler {
 
     static void refreshSchedulesForClockChange(Context context) {
         android.content.SharedPreferences.Editor editor = schedulePrefs(context).edit();
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (rule.enabled) {
                 editor.putLong(scheduleKey(rule.id), calculateNext(context, rule))
                         .remove(remainingKey(rule.id));
@@ -108,9 +108,35 @@ final class ReminderScheduler {
 
     static void clearScreenOffAlarmSession(Context context, String reason) {
         int ruleId = schedulePrefs(context).getInt(KEY_SCREEN_OFF_ALARM_SESSION_RULE, -1);
-        schedulePrefs(context).edit().remove(KEY_SCREEN_OFF_ALARM_SESSION_RULE).apply();
+        schedulePrefs(context).edit().remove(KEY_SCREEN_OFF_ALARM_SESSION_RULE)
+                .remove(KEY_SCREEN_OFF_MARKED).remove(KEY_SCREEN_ON_AT).apply();
         android.util.Log.i("HealthReminderAlarm", "screen-off alarm session cleared rule="
                 + ruleId + " reason=" + reason);
+    }
+
+    static void markScreenOff(Context context) {
+        schedulePrefs(context).edit().putBoolean(KEY_SCREEN_OFF_MARKED, true)
+                .remove(KEY_SCREEN_ON_AT).apply();
+    }
+
+    static void markScreenOn(Context context) {
+        if (schedulePrefs(context).getBoolean(KEY_SCREEN_OFF_MARKED, false)) {
+            schedulePrefs(context).edit().putLong(KEY_SCREEN_ON_AT, System.currentTimeMillis()).apply();
+        }
+    }
+
+    static void clearScreenOffMarker(Context context) {
+        schedulePrefs(context).edit().remove(KEY_SCREEN_OFF_MARKED).remove(KEY_SCREEN_ON_AT).apply();
+    }
+
+    static boolean screenWasOffForAlarm(Context context) {
+        android.content.SharedPreferences prefs = schedulePrefs(context);
+        if (!prefs.getBoolean(KEY_SCREEN_OFF_MARKED, false)) return false;
+        long screenOnAt = prefs.getLong(KEY_SCREEN_ON_AT, 0L);
+        if (screenOnAt == 0L) return true;
+        if (System.currentTimeMillis() - screenOnAt <= SCREEN_WAKE_GRACE_MS) return true;
+        clearScreenOffMarker(context);
+        return false;
     }
 
     static void resetNext(Context context, int ruleId) {
@@ -147,7 +173,7 @@ final class ReminderScheduler {
         long now = System.currentTimeMillis();
         android.content.SharedPreferences.Editor editor = schedulePrefs(context).edit()
                 .putBoolean(KEY_SCREEN_OFF_PAUSED, true);
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (!rule.enabled) {
                 editor.remove(remainingKey(rule.id)).remove(snoozeRemainingKey(rule.id));
                 continue;
@@ -177,7 +203,7 @@ final class ReminderScheduler {
         long now = System.currentTimeMillis();
         android.content.SharedPreferences prefs = schedulePrefs(context);
         android.content.SharedPreferences.Editor editor = prefs.edit().putBoolean(KEY_SCREEN_OFF_PAUSED, false);
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (!rule.enabled) {
                 editor.remove(remainingKey(rule.id)).remove(snoozeRemainingKey(rule.id));
                 continue;
@@ -213,6 +239,23 @@ final class ReminderScheduler {
         editor.apply();
     }
 
+    static void reconcileAfterScreenOn(Context context) {
+        if (!ReminderSettings.enabled(context)) return;
+        if (isPaused(context)) resumeAfterScreenOn(context);
+        if (!ReminderSettings.enabled(context)
+                || (!ReminderSettings.screenOffAlarm(context) && !isInteractive(context))) return;
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarms == null) return;
+        long now = System.currentTimeMillis();
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
+            if (!rule.enabled) continue;
+            long next = scheduledAt(context, rule.id);
+            if (next <= now) next = calculateNext(context, rule);
+            setScheduledAt(context, rule.id, next);
+            setAlarm(context, alarms, next, pendingIntent(context, rule.id, rule.title));
+        }
+    }
+
     private static void clearPauseState(Context context, List<ReminderSettings.Rule> rules) {
         android.content.SharedPreferences.Editor editor = schedulePrefs(context).edit()
                 .remove(KEY_SCREEN_OFF_PAUSED);
@@ -224,7 +267,7 @@ final class ReminderScheduler {
     }
 
     static void scheduleNext(Context context, int ruleId) {
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (rule.id == ruleId && rule.enabled && ReminderSettings.enabled(context)) {
                 scheduleNext(context, rule);
                 return;

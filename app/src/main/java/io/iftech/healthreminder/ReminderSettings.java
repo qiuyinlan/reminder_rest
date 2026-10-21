@@ -19,6 +19,9 @@ final class ReminderSettings {
     static final String KEY_ENABLED = "enabled";
     private static final String PREFS = "reminder_settings";
     private static final String RULES_KEY = "reminder_rules_v2";
+    private static final String ROUTINE_RULES_KEY = "routine_rules_v1";
+    static final int ROUTINE_WAKE_ID = 1000001;
+    static final int ROUTINE_SLEEP_ID = 1000002;
 
     static final class Rule {
         final int id;
@@ -26,6 +29,10 @@ final class ReminderSettings {
         /** 自定义图标（单个字符/符号）；为空时显示标题首字。 */
         final String icon;
         final String reminderMessage;
+        final String overlayArtwork;
+        /** 用户自选颜色（UiPalette 类目色编号 0..7）；-1 表示跟随标题自动配色。 */
+        final int color;
+        static final int COLOR_AUTO = -1;
         final int start;
         final int end;
         final int interval;
@@ -69,10 +76,22 @@ final class ReminderSettings {
                      int dailyTarget, boolean remindAfterTarget, boolean enabled,
                      boolean specificTimeMode, List<Integer> timePointsSeconds,
                      String reminderMessage, String icon) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, specificTimeMode, timePointsSeconds, reminderMessage, icon,
+                    ReminderArtworkCatalog.DEFAULT, COLOR_AUTO);
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds,
+                     String reminderMessage, String icon, String overlayArtwork, int color) {
             this.id = id;
             this.title = title;
             this.icon = icon == null ? "" : icon.trim();
             this.reminderMessage = reminderMessage == null ? "" : reminderMessage.trim();
+            this.overlayArtwork = overlayArtwork == null || ReminderArtworkCatalog.drawable(overlayArtwork) == 0
+                    ? ReminderArtworkCatalog.DEFAULT : overlayArtwork;
+            this.color = color >= 0 && color < UiPalette.COLOR_COUNT ? color : COLOR_AUTO;
             this.start = start;
             this.end = end;
             this.interval = interval;
@@ -105,22 +124,40 @@ final class ReminderSettings {
 
         Rule withReminderMessage(String message) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon);
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon, overlayArtwork, color);
         }
 
         Rule withIcon(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value);
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value, overlayArtwork, color);
+        }
+
+        Rule withOverlayArtwork(String value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, value, color);
+        }
+
+        Rule withColor(int value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, value);
         }
 
         Rule withEnabled(boolean value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, value, specificTimeMode, timePointsSeconds, reminderMessage, icon);
+                    remindAfterTarget, value, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, color);
         }
 
-        /** 卡片徽标文字：自定义图标优先，否则取标题首字。 */
+        /** 内置图片图标的存储值；没有设置图片图标时返回空串。 */
+        String iconImage() {
+            return ItemIconCatalog.isImageIcon(icon) ? icon : "";
+        }
+
+        /** 卡片徽标文字：图片图标取标题首字，自定义符号优先，否则取标题首字。 */
         String badgeText() {
-            if (!icon.isEmpty()) return icon;
+            if (!icon.isEmpty() && !ItemIconCatalog.isImageIcon(icon)) return icon;
             return title.isEmpty() ? "·" : title.substring(0, 1);
         }
 
@@ -140,6 +177,31 @@ final class ReminderSettings {
     static boolean screenOffVibrate(Context context) { return prefs(context).getBoolean("screen_off_vibrate", false); }
     static String screenOffRingtone(Context context) { return prefs(context).getString("screen_off_ringtone", null); }
 
+    /** 保活壁纸来源：内置壁纸或相册图片。 */
+    static String wallpaperSource(Context context) {
+        return prefs(context).getString("wallpaper_source", WallpaperCatalog.SOURCE_BUILTIN);
+    }
+
+    static void setWallpaperSource(Context context, String source) {
+        prefs(context).edit().putString("wallpaper_source", source).apply();
+    }
+
+    static String wallpaperBuiltinId(Context context) {
+        return prefs(context).getString("wallpaper_builtin", WallpaperCatalog.DEFAULT);
+    }
+
+    static void setWallpaperBuiltinId(Context context, String id) {
+        prefs(context).edit().putString("wallpaper_builtin", id).apply();
+    }
+
+    static String wallpaperUserUri(Context context) {
+        return prefs(context).getString("wallpaper_user_uri", null);
+    }
+
+    static void setWallpaperUserUri(Context context, String uri) {
+        prefs(context).edit().putString("wallpaper_user_uri", uri).apply();
+    }
+
     static Set<String> whitelist(Context context) {
         return new HashSet<>(prefs(context).getStringSet("whitelist", new HashSet<>()));
     }
@@ -156,6 +218,54 @@ final class ReminderSettings {
     static List<Rule> rules(Context context) {
         String encoded = prefs(context).getString(RULES_KEY, null);
         if (encoded == null) return migrateRules(context);
+        return decodeRules(encoded);
+    }
+
+    static List<Rule> routineRules(Context context) {
+        String encoded = prefs(context).getString(ROUTINE_RULES_KEY, null);
+        if (encoded != null) return decodeRules(encoded);
+        ArrayList<Rule> defaults = new ArrayList<>();
+        defaults.add(routineRule(ROUTINE_WAKE_ID, "起床", 7 * 3600,
+                "morning_scene", "早上好，该起床啦！"));
+        defaults.add(routineRule(ROUTINE_SLEEP_ID, "睡眠", 22 * 3600,
+                "sleep_scene", "主人，该睡觉啦，再不睡种子就发不了芽了！"));
+        writeRules(context, ROUTINE_RULES_KEY, defaults);
+        return defaults;
+    }
+
+    private static Rule routineRule(int id, String title, int secondOfDay, String artwork, String message) {
+        int minute = secondOfDay / 60;
+        ArrayList<Integer> times = new ArrayList<>();
+        times.add(secondOfDay);
+        return Rule.withSpecificTimes(id, title, minute, minute, 24 * 60 * 60,
+                        times, 1, false, true)
+                .withReminderMessage(message)
+                .withIcon(title.equals("起床") ? "☀" : "月")
+                .withOverlayArtwork(artwork);
+    }
+
+    static List<Rule> scheduledRules(Context context) {
+        ArrayList<Rule> all = new ArrayList<>(rules(context));
+        all.addAll(routineRules(context));
+        return all;
+    }
+
+    static void saveRoutineRules(Context context, List<Rule> routines) {
+        List<Rule> previous = routineRules(context);
+        for (Rule rule : previous) {
+            Rule updated = findRule(routines, rule.id);
+            if (updated == null || !sameRule(rule, updated)) {
+                ReminderScheduler.cancelRule(context, rule.id);
+            }
+        }
+        for (Rule rule : routines) {
+            if (findRule(previous, rule.id) == null) ReminderScheduler.resetNext(context, rule.id);
+        }
+        writeRules(context, ROUTINE_RULES_KEY, routines);
+        ReminderScheduler.update(context);
+    }
+
+    private static ArrayList<Rule> decodeRules(String encoded) {
         ArrayList<Rule> result = new ArrayList<>();
         try {
             JSONArray array = new JSONArray(encoded);
@@ -179,7 +289,9 @@ final class ReminderSettings {
                             times, rule.dailyTarget, rule.remindAfterTarget, rule.enabled);
                 }
                 result.add(rule.withReminderMessage(item.optString("reminderMessage", ""))
-                        .withIcon(item.optString("icon", "")));
+                        .withIcon(item.optString("icon", ""))
+                        .withColor(item.optInt("color", Rule.COLOR_AUTO))
+                        .withOverlayArtwork(item.optString("overlayArtwork", ReminderArtworkCatalog.DEFAULT)));
             }
         } catch (JSONException ignored) { }
         return result;
@@ -195,7 +307,7 @@ final class ReminderSettings {
             result.add(new Rule(id++, title, p.getInt("start_minute", 9 * 60),
                     p.getInt("end_minute", 18 * 60), p.getInt("interval", 30), true));
         }
-        writeRules(context, result);
+        writeRules(context, RULES_KEY, result);
         return result;
     }
 
@@ -212,7 +324,7 @@ final class ReminderSettings {
                 ReminderScheduler.resetNext(context, updated.id);
             }
         }
-        writeRules(context, rules);
+        writeRules(context, RULES_KEY, rules);
         ReminderScheduler.update(context);
     }
 
@@ -221,9 +333,11 @@ final class ReminderSettings {
         return null;
     }
 
+    /** 只关心会影响排期的字段；颜色只是视觉设置，改动它不该重置下一次提醒。 */
     private static boolean sameRule(Rule first, Rule second) {
         return first.id == second.id && first.title.equals(second.title)
                 && first.icon.equals(second.icon)
+                && first.overlayArtwork.equals(second.overlayArtwork)
                 && first.start == second.start && first.end == second.end
                 && first.intervalSeconds == second.intervalSeconds && first.dailyTarget == second.dailyTarget
                 && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled
@@ -231,7 +345,7 @@ final class ReminderSettings {
                 && first.timePointsSeconds.equals(second.timePointsSeconds);
     }
 
-    private static void writeRules(Context context, List<Rule> rules) {
+    private static void writeRules(Context context, String key, List<Rule> rules) {
         JSONArray array = new JSONArray();
         for (Rule rule : rules) {
             JSONObject item = new JSONObject();
@@ -239,7 +353,9 @@ final class ReminderSettings {
                 item.put("id", rule.id);
                 item.put("title", rule.title);
                 item.put("icon", rule.icon);
+                item.put("color", rule.color);
                 item.put("reminderMessage", rule.reminderMessage);
+                item.put("overlayArtwork", rule.overlayArtwork);
                 item.put("start", rule.start);
                 item.put("end", rule.end);
                 item.put("interval", rule.interval);
@@ -254,13 +370,18 @@ final class ReminderSettings {
                 array.put(item);
             } catch (JSONException ignored) { }
         }
-        prefs(context).edit().putString(RULES_KEY, array.toString()).apply();
+        prefs(context).edit().putString(key, array.toString()).apply();
     }
 
     static String reminderMessage(Context context, int ruleId, String action) {
-        Rule rule = findRule(rules(context), ruleId);
+        Rule rule = findRule(scheduledRules(context), ruleId);
         return rule != null && !rule.reminderMessage.isEmpty()
                 ? rule.reminderMessage : ReminderActivity.pleaFor(action);
+    }
+
+    static String overlayArtwork(Context context, int ruleId) {
+        Rule rule = findRule(scheduledRules(context), ruleId);
+        return rule == null ? ReminderArtworkCatalog.DEFAULT : rule.overlayArtwork;
     }
 
     static int nextRuleId(Context context) {
@@ -288,7 +409,7 @@ final class ReminderSettings {
     }
 
     static String nextType(Context context) {
-        List<Rule> rules = rules(context);
+        List<Rule> rules = scheduledRules(context);
         for (Rule rule : rules) if (rule.enabled) return rule.title;
         return "歇一歇";
     }

@@ -12,6 +12,7 @@ import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
+import android.app.KeyguardManager;
 import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -35,10 +36,14 @@ public final class ReminderReceiver extends BroadcastReceiver {
         boolean snooze = intent != null && intent.getBooleanExtra("snooze", false);
         int receivedRuleId = intent == null ? -1 : intent.getIntExtra("rule_id", -1);
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        KeyguardManager keyguard = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        boolean keyguardLocked = keyguard != null && keyguard.isKeyguardLocked();
+        boolean screenWasOff = ReminderScheduler.screenWasOffForAlarm(context);
         Log.i(TAG, "received snooze=" + snooze + " rule=" + receivedRuleId
                 + " enabled=" + ReminderSettings.enabled(context)
                 + " screenOffAlarm=" + ReminderSettings.screenOffAlarm(context)
-                + " interactive=" + (power == null || power.isInteractive()));
+                + " interactive=" + (power == null || power.isInteractive())
+                + " keyguardLocked=" + keyguardLocked + " screenWasOff=" + screenWasOff);
         if (snooze) {
             if (!ReminderSettings.enabled(context)) return;
             String action = intent.getStringExtra("action");
@@ -59,7 +64,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
         if (!ReminderSettings.enabled(context)) return;
         int ruleId = receivedRuleId;
         ReminderSettings.Rule rule = null;
-        for (ReminderSettings.Rule candidate : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule candidate : ReminderSettings.scheduledRules(context)) {
             if (candidate.id == ruleId && candidate.enabled) { rule = candidate; break; }
         }
         if (rule == null) {
@@ -79,9 +84,9 @@ public final class ReminderReceiver extends BroadcastReceiver {
             }
         }
         if (ReminderSettings.screenOffAlarm(context)
-                && (power == null || !power.isInteractive())
-                && (ReminderSettings.screenOffSound(context) || ReminderSettings.screenOffVibrate(context))) {
+                && ((power == null || !power.isInteractive()) || keyguardLocked || screenWasOff)) {
             ReminderScheduler.beginScreenOffAlarmSession(context, rule.id);
+            ReminderScheduler.clearScreenOffMarker(context);
             Log.i(TAG, "screen-off alarm session started rule=" + rule.id);
         }
         scheduleNextSafely(context, rule.id);
@@ -107,7 +112,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
     }
 
     private static boolean hasEnabledRule(Context context, int ruleId, String action) {
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(context)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (!rule.enabled) continue;
             if (ruleId >= 0 ? rule.id == ruleId : rule.title.equals(action)) return true;
         }
@@ -122,10 +127,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
 
     static void post(Context context, String action, int ruleId) {
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        KeyguardManager keyguard = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
         boolean screenOffAlarmEnabled = ReminderSettings.screenOffAlarm(context);
         boolean interactive = power == null || power.isInteractive();
+        boolean keyguardLocked = keyguard != null && keyguard.isKeyguardLocked();
         boolean alarmSession = ReminderScheduler.screenOffAlarmSessionActive(context, ruleId);
-        boolean alarmMode = screenOffAlarmEnabled && (!interactive || alarmSession);
+        boolean alarmMode = screenOffAlarmEnabled && (!interactive || keyguardLocked || alarmSession);
         boolean soundEnabled = alarmMode && ReminderSettings.screenOffSound(context);
         boolean vibrate = alarmMode && ReminderSettings.screenOffVibrate(context);
         boolean notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
@@ -133,7 +140,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
         Log.i(TAG, "post rule=" + ruleId + " screenOffEnabled=" + screenOffAlarmEnabled
                 + " alarmSession=" + alarmSession + " interactive=" + interactive
-                + " notificationsEnabled=" + notificationsEnabled);
+                + " keyguardLocked=" + keyguardLocked + " notificationsEnabled=" + notificationsEnabled);
         Uri alarmSound = alarmSound(context);
         boolean serviceRequestAccepted = alarmMode && (soundEnabled || vibrate)
                 && AlarmRingtoneService.start(context, alarmSound, soundEnabled, vibrate);
@@ -163,7 +170,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
             } catch (RuntimeException ignored) { }
         }
         String title = ReminderActivity.titleFor(action);
-        String message = ReminderActivity.pleaFor(action);
+        String message = ReminderSettings.reminderMessage(context, ruleId, action);
         androidx.core.app.NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setColor(UiPalette.ACCENT)

@@ -8,6 +8,7 @@ import android.content.ClipData;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -16,6 +17,7 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -165,13 +167,15 @@ public final class StatsActivity extends Activity {
         content.addView(dayHeading);
         int[] totals = totalsForDay(selected);
         LinearLayout summary = new LinearLayout(this);
-        summary.setGravity(Gravity.CENTER_VERTICAL);
-        summary.setPadding(dp(8), dp(14), dp(8), dp(14));
-        summary.setBackground(round(Color.WHITE, 16));
+        summary.setGravity(Gravity.CENTER);
+        summary.setPadding(dp(8), dp(12), dp(8), dp(12));
+        summary.setBackground(outline(Color.WHITE, BORDER, 16));
         lift(summary);
-        summary.addView(summaryMetric("完成", totals[0], GREEN), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("未完成", totals[1], WARN), new LinearLayout.LayoutParams(0, -2, 1));
-        summary.addView(summaryMetric("陪伴", totals[2], UiPalette.COMPANION), new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(summaryMetric("完成", totals[0], GREEN), new LinearLayout.LayoutParams(0, dp(46), 1));
+        summary.addView(summaryDivider(), new LinearLayout.LayoutParams(dp(1), dp(32)));
+        summary.addView(summaryMetric("未完成", totals[1], WARN), new LinearLayout.LayoutParams(0, dp(46), 1));
+        summary.addView(summaryDivider(), new LinearLayout.LayoutParams(dp(1), dp(32)));
+        summary.addView(summaryMetric("陪伴", totals[2], UiPalette.COMPANION), new LinearLayout.LayoutParams(0, dp(46), 1));
         content.addView(summary);
         LinearLayout pills = new LinearLayout(this);
         pills.setPadding(dp(5), dp(5), dp(5), dp(5));
@@ -184,10 +188,10 @@ public final class StatsActivity extends Activity {
         done.setOnClickListener(v -> { filter = ReminderRecord.KIND_DONE; render(); });
         missed.setOnClickListener(v -> { filter = ReminderRecord.KIND_MISSED; render(); });
         companion.setOnClickListener(v -> { filter = FILTER_COMPANION; render(); });
-        pills.addView(all, new LinearLayout.LayoutParams(0, dp(38), 1));
-        pills.addView(done, new LinearLayout.LayoutParams(0, dp(38), 1));
-        pills.addView(missed, new LinearLayout.LayoutParams(0, dp(38), 1));
-        pills.addView(companion, new LinearLayout.LayoutParams(0, dp(38), 1));
+        pills.addView(all, new LinearLayout.LayoutParams(0, dp(42), 1));
+        pills.addView(done, new LinearLayout.LayoutParams(0, dp(42), 1));
+        pills.addView(missed, new LinearLayout.LayoutParams(0, dp(42), 1));
+        pills.addView(companion, new LinearLayout.LayoutParams(0, dp(42), 1));
         LinearLayout.LayoutParams pillsParams = new LinearLayout.LayoutParams(-1, -2);
         pillsParams.topMargin = dp(10);
         pillsParams.bottomMargin = dp(8);
@@ -590,7 +594,7 @@ public final class StatsActivity extends Activity {
             LinearLayout details = new LinearLayout(this);
             details.setOrientation(LinearLayout.VERTICAL);
             details.setPadding(dp(15), dp(13), dp(15), dp(12));
-            details.setBackground(round(Color.WHITE, 14));
+            details.setBackground(pressable(round(Color.WHITE, 14)));
             lift(details);
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -630,6 +634,12 @@ public final class StatsActivity extends Activity {
                 note.setPadding(dp(20), dp(5), 0, 0);
                 details.addView(note);
             }
+            if ((ReminderRecord.KIND_COMPANION.equals(record.kind) || ReminderRecord.KIND_FOCUS.equals(record.kind))
+                    && record.reason != null && !record.reason.trim().isEmpty()) {
+                TextView note = text(record.reason.trim(), 12, MUTED, false);
+                note.setPadding(dp(20), dp(5), 0, 0);
+                details.addView(note);
+            }
             String timestamp = time(record.startedAt);
             if ((ReminderRecord.KIND_DONE.equals(record.kind) || ReminderRecord.KIND_COMPANION.equals(record.kind)
                     || ReminderRecord.KIND_FOCUS.equals(record.kind)) && record.endedAt > record.startedAt) {
@@ -646,10 +656,15 @@ public final class StatsActivity extends Activity {
             LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(0, -2, 1);
             detailsParams.bottomMargin = dp(9);
             item.addView(details, detailsParams);
-            item.setOnLongClickListener(v -> {
+            // 长按记录 → 编辑 / 删除这条时间记录。挂在卡片本身，
+            // 也让整行都响应该手势（点按仍然只是滑动列表）。
+            View.OnLongClickListener openActions = v -> {
+                v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 showRecordActions(record);
                 return true;
-            });
+            };
+            item.setOnLongClickListener(openActions);
+            details.setOnLongClickListener(openActions);
             content.addView(item, new LinearLayout.LayoutParams(-1, -2));
         }
         if (records.isEmpty()) {
@@ -667,21 +682,69 @@ public final class StatsActivity extends Activity {
         }
     }
 
+    /** 长按记录后的操作面板：两行卡片式操作，比系统列表更清楚也更顺手。 */
     private void showRecordActions(ReminderRecord record) {
+        LinearLayout board = new LinearLayout(this);
+        board.setOrientation(LinearLayout.VERTICAL);
+        board.setPadding(dp(16), 0, dp(16), dp(4));
+
+        TextView summary = text(recordSummary(record), 12, MUTED, false);
+        summary.setPadding(dp(2), dp(2), 0, dp(6));
+        board.addView(summary);
+
         AlertDialog dialog = new AlertDialog.Builder(dialogContext())
-                .setItems(new String[]{"编辑记录", "删除记录"}, (actionDialog, which) -> {
-                    if (which == 0) editRecord(record);
-                    else showStyledDialog(new AlertDialog.Builder(dialogContext())
-                            .setMessage("删除这条记录？")
-                            .setNegativeButton("取消", null)
-                            .setPositiveButton("删除", (confirm, selected) -> {
-                                ReminderRecord.delete(this, record.id);
-                                render();
-                            })
-                            .create());
-                })
+                .setTitle(record.action)
+                .setView(board)
+                .setNegativeButton("取消", null)
                 .create();
+        board.addView(recordActionRow("编辑时间记录", "改名称、开始 / 结束时间或备注", false,
+                () -> { dialog.dismiss(); editRecord(record); }));
+        board.addView(recordActionRow("删除这条记录", "删除后无法恢复", true,
+                () -> { dialog.dismiss(); confirmDeleteRecord(record); }));
         showStyledDialog(dialog);
+    }
+
+    private View recordActionRow(String title, String detail, boolean danger, Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(14), dp(11), dp(14), dp(11));
+        row.setBackground(outline(danger ? UiPalette.WARN_SOFT : UiPalette.PALE, BORDER, 14));
+        row.addView(text(title, 15, danger ? WARN : INK, true));
+        TextView sub = text(detail, 11, MUTED, false);
+        sub.setPadding(0, dp(3), 0, 0);
+        sub.setLetterSpacing(0.02f);
+        row.addView(sub);
+        row.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(8);
+        row.setLayoutParams(params);
+        return row;
+    }
+
+    private void confirmDeleteRecord(ReminderRecord record) {
+        showStyledDialog(new AlertDialog.Builder(dialogContext())
+                .setTitle("删除记录")
+                .setMessage("删除「" + record.action + "」这条记录？删除后无法恢复。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (dialog, which) -> {
+                    ReminderRecord.delete(this, record.id);
+                    render();
+                })
+                .create());
+    }
+
+    /** 记录的一行摘要，用于操作面板顶部。 */
+    private String recordSummary(ReminderRecord record) {
+        String kind = ReminderRecord.KIND_DONE.equals(record.kind) ? "做了"
+                : ReminderRecord.KIND_MISSED.equals(record.kind) ? "没做"
+                : ReminderRecord.KIND_FOCUS.equals(record.kind) ? "专注陪伴" : "陪伴";
+        String range = time(record.startedAt);
+        if (record.endedAt > record.startedAt) range += " - " + time(record.endedAt);
+        return kind + " · " + shortDate(record.startedAt) + " " + range;
+    }
+
+    private String shortDate(long timestamp) {
+        return new SimpleDateFormat("M月d日", Locale.CHINA).format(new Date(timestamp));
     }
 
     private void editRecord(ReminderRecord record) {
@@ -689,6 +752,8 @@ public final class StatsActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(4), dp(18), dp(8));
 
+        TextView nameLabel = text("记录名称", 13, MUTED, true);
+        form.addView(nameLabel);
         EditText action = new EditText(dialogContext());
         action.setSingleLine(true);
         action.setHint("记录名称");
@@ -697,22 +762,74 @@ public final class StatsActivity extends Activity {
         action.setHintTextColor(MUTED);
         action.setPadding(dp(13), dp(10), dp(13), dp(10));
         action.setMinHeight(dp(48));
-        action.setBackground(outline(MINT_PALE, BORDER, 12));
+        action.setBackground(UiPalette.inputBackground(this, MINT_PALE, 12));
         form.addView(action);
+
+        // 只有「做了 / 没做」的记录才允许改类型；陪伴类记录保持原样。
+        final boolean kindEditable = ReminderRecord.KIND_DONE.equals(record.kind)
+                || ReminderRecord.KIND_MISSED.equals(record.kind);
+        final String[] kind = {record.kind};
+        if (kindEditable) {
+            TextView kindLabel = text("记录类型", 13, MUTED, true);
+            LinearLayout.LayoutParams kindLabelParams = new LinearLayout.LayoutParams(-1, -2);
+            kindLabelParams.topMargin = dp(12);
+            form.addView(kindLabel, kindLabelParams);
+            LinearLayout kinds = new LinearLayout(this);
+            kinds.setOrientation(LinearLayout.HORIZONTAL);
+            kinds.setPadding(dp(4), dp(4), dp(4), dp(4));
+            kinds.setBackground(round(MINT_PALE, 12));
+            TextView doneOption = recordKindOption("做了", ReminderRecord.KIND_DONE.equals(kind[0]));
+            TextView missedOption = recordKindOption("没做", ReminderRecord.KIND_MISSED.equals(kind[0]));
+            kinds.addView(doneOption, new LinearLayout.LayoutParams(0, dp(42), 1));
+            kinds.addView(missedOption, new LinearLayout.LayoutParams(0, dp(42), 1));
+            Runnable refreshKind = () -> {
+                setRecordKindSelected(doneOption, ReminderRecord.KIND_DONE.equals(kind[0]));
+                setRecordKindSelected(missedOption, ReminderRecord.KIND_MISSED.equals(kind[0]));
+            };
+            doneOption.setOnClickListener(v -> { kind[0] = ReminderRecord.KIND_DONE; refreshKind.run(); });
+            missedOption.setOnClickListener(v -> { kind[0] = ReminderRecord.KIND_MISSED; refreshKind.run(); });
+            LinearLayout.LayoutParams kindsParams = new LinearLayout.LayoutParams(-1, -2);
+            kindsParams.topMargin = dp(4);
+            form.addView(kinds, kindsParams);
+        }
 
         long[] startedAt = {record.startedAt};
         long[] endedAt = {record.endedAt};
-        TextView start = recordTimeField("开始时间", startedAt[0]);
-        TextView end = recordTimeField("结束时间", endedAt[0]);
-        start.setOnClickListener(v -> pickRecordTime(start, startedAt, "开始时间"));
-        end.setOnClickListener(v -> pickRecordTime(end, endedAt, "结束时间"));
-        form.addView(start);
-        form.addView(end);
+        TextView timeLabel = text("时间", 13, MUTED, true);
+        LinearLayout.LayoutParams timeLabelParams = new LinearLayout.LayoutParams(-1, -2);
+        timeLabelParams.topMargin = dp(12);
+        form.addView(timeLabel, timeLabelParams);
+        TextView durationHint = text("", 12, MUTED, false);
+        final Runnable refreshDuration = () -> updateDurationHint(durationHint, startedAt[0], endedAt[0]);
+        LinearLayout startRow = recordTimeRow("开始时间", startedAt, refreshDuration);
+        LinearLayout endRow = recordTimeRow("结束时间", endedAt, refreshDuration);
+        form.addView(startRow);
+        form.addView(endRow);
+        durationHint.setPadding(dp(2), dp(8), 0, 0);
+        form.addView(durationHint);
+        refreshDuration.run();
+
+        TextView reasonLabel = text("备注", 13, MUTED, true);
+        LinearLayout.LayoutParams reasonLabelParams = new LinearLayout.LayoutParams(-1, -2);
+        reasonLabelParams.topMargin = dp(12);
+        form.addView(reasonLabel, reasonLabelParams);
+        EditText reason = new EditText(dialogContext());
+        reason.setSingleLine(true);
+        reason.setHint("选填，例如：临时有事、做完的感受");
+        // “提前完成”是内部标记，不展示给用户编辑。
+        reason.setText("提前完成".equals(record.reason) ? "" : record.reason);
+        reason.setTextColor(INK);
+        reason.setHintTextColor(MUTED);
+        reason.setPadding(dp(13), dp(10), dp(13), dp(10));
+        reason.setMinHeight(dp(48));
+        reason.setBackground(UiPalette.inputBackground(this, MINT_PALE, 12));
+        form.addView(reason);
 
         AlertDialog dialog = new AlertDialog.Builder(dialogContext())
                 .setTitle("编辑记录")
                 .setView(form)
                 .setNegativeButton("取消", null)
+                .setNeutralButton("删除", null)
                 .setPositiveButton("保存", null)
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -725,45 +842,119 @@ public final class StatsActivity extends Activity {
                         Toast.makeText(this, "结束时间不能早于开始时间", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    ReminderRecord.update(this, new ReminderRecord(record.id, title, record.kind,
-                            startedAt[0], endedAt[0], record.reason));
+                    String note = reason.getText().toString().trim();
+                    if (note.isEmpty() && "提前完成".equals(record.reason)) note = "提前完成";
+                    ReminderRecord.update(this, new ReminderRecord(record.id, title, kind[0],
+                            startedAt[0], endedAt[0], note));
                     dialog.dismiss();
                     render();
                 }));
+        dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "删除", (confirm, which) ->
+                showStyledDialog(new AlertDialog.Builder(dialogContext())
+                        .setMessage("删除这条记录？")
+                        .setNegativeButton("取消", null)
+                        .setPositiveButton("删除", (deleteDialog, selected) -> {
+                            ReminderRecord.delete(this, record.id);
+                            dialog.dismiss();
+                            render();
+                        })
+                        .create()));
         showStyledDialog(dialog);
     }
 
-    private TextView recordTimeField(String label, long timestamp) {
-        TextView field = text(label + "\n" + recordDateTime(timestamp), 14, INK, true);
-        field.setPadding(dp(13), dp(11), dp(13), dp(11));
-        field.setBackground(outline(MINT_LIGHT, BORDER, 12));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = dp(9);
-        field.setLayoutParams(params);
-        return field;
+    /** 编辑记录里的「做了 / 没做」分段控件。 */
+    private TextView recordKindOption(String label, boolean selected) {
+        TextView option = text(label, 14, selected ? Color.WHITE : INK, true);
+        option.setGravity(Gravity.CENTER);
+        setRecordKindSelected(option, selected);
+        return option;
     }
 
-    private void pickRecordTime(TextView field, long[] timestamp, String label) {
-        Calendar selectedTime = Calendar.getInstance();
-        selectedTime.setTimeInMillis(timestamp[0]);
-        new DatePickerDialog(dialogContext(), (datePicker, year, monthOfYear, dayOfMonth) -> {
-            selectedTime.set(Calendar.YEAR, year);
-            selectedTime.set(Calendar.MONTH, monthOfYear);
-            selectedTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-            new TimePickerDialog(dialogContext(), (timePicker, hour, minute) -> {
-                selectedTime.set(Calendar.HOUR_OF_DAY, hour);
-                selectedTime.set(Calendar.MINUTE, minute);
-                selectedTime.set(Calendar.SECOND, 0);
-                selectedTime.set(Calendar.MILLISECOND, 0);
-                timestamp[0] = selectedTime.getTimeInMillis();
-                field.setText(label + "\n" + recordDateTime(timestamp[0]));
-            }, selectedTime.get(Calendar.HOUR_OF_DAY), selectedTime.get(Calendar.MINUTE), true).show();
-        }, selectedTime.get(Calendar.YEAR), selectedTime.get(Calendar.MONTH),
-                selectedTime.get(Calendar.DAY_OF_MONTH)).show();
+    private void setRecordKindSelected(TextView option, boolean selected) {
+        option.setTextColor(selected ? Color.WHITE : INK);
+        if (selected) {
+            GradientDrawable background = round(MINT, 10);
+            option.setBackground(background);
+            lift(option);
+        } else {
+            option.setBackground(round(UiPalette.SOFT, 10));
+            option.setElevation(0f);
+        }
+    }
+
+    /**
+     * 时间字段：左侧是时间（点一下用「时/分/秒」滚轮改），右侧是日期胶囊（点一下用「年/月/日」滚轮改）。
+     * 两个选择都和霸屏页「临时有事」里的滚轮一个样式。
+     */
+    private LinearLayout recordTimeRow(String label, final long[] timestamp, final Runnable onChanged) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(13), dp(9), dp(10), dp(9));
+        row.setBackground(outline(MINT_PALE, BORDER, 12));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setGravity(Gravity.CENTER_VERTICAL);
+        TextView caption = text(label, 11, MUTED, false);
+        final TextView value = text(time(timestamp[0]), 17, INK, true);
+        value.setPadding(0, dp(2), 0, 0);
+        copy.addView(caption);
+        copy.addView(value);
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        final TextView dateChip = text(shortDate(timestamp[0]) + "  ›", 12, GREEN, true);
+        dateChip.setGravity(Gravity.CENTER);
+        dateChip.setPadding(dp(10), dp(6), dp(10), dp(6));
+        dateChip.setBackground(round(MINT_LIGHT, 10));
+        row.addView(dateChip);
+
+        final Runnable refresh = () -> {
+            value.setText(time(timestamp[0]));
+            dateChip.setText(shortDate(timestamp[0]) + "  ›");
+            if (onChanged != null) onChanged.run();
+        };
+        row.setOnClickListener(v -> {
+            Calendar current = Calendar.getInstance();
+            current.setTimeInMillis(timestamp[0]);
+            int secondsOfDay = current.get(Calendar.HOUR_OF_DAY) * 3600
+                    + current.get(Calendar.MINUTE) * 60 + current.get(Calendar.SECOND);
+            WheelPicker.time(dialogContext(), "选择" + label, "确定", secondsOfDay, true, picked -> {
+                Calendar updated = Calendar.getInstance();
+                updated.setTimeInMillis(timestamp[0]);
+                updated.set(Calendar.HOUR_OF_DAY, picked / 3600);
+                updated.set(Calendar.MINUTE, picked / 60 % 60);
+                updated.set(Calendar.SECOND, picked % 60);
+                timestamp[0] = updated.getTimeInMillis();
+                refresh.run();
+            }).show();
+        });
+        dateChip.setOnClickListener(v -> {
+            Calendar current = Calendar.getInstance();
+            current.setTimeInMillis(timestamp[0]);
+            WheelPicker.date(dialogContext(), "选择日期", current, picked -> {
+                Calendar updated = Calendar.getInstance();
+                updated.setTimeInMillis(timestamp[0]);
+                updated.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH), picked.get(Calendar.DAY_OF_MONTH));
+                timestamp[0] = updated.getTimeInMillis();
+                refresh.run();
+            }).show();
+        });
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(7);
+        row.setLayoutParams(params);
+        return row;
+    }
+
+    private void updateDurationHint(TextView hint, long startedAt, long endedAt) {
+        if (endedAt <= startedAt) {
+            hint.setText("");
+            return;
+        }
+        hint.setText("这段记录持续 " + duration((endedAt - startedAt) / 1000));
     }
 
     private String recordDateTime(long timestamp) {
-        return new SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINA).format(new Date(timestamp));
+        return new SimpleDateFormat("yyyy年M月d日 HH:mm:ss", Locale.CHINA).format(new Date(timestamp));
     }
 
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
@@ -792,14 +983,24 @@ public final class StatsActivity extends Activity {
         return totals;
     }
 
-    /** 分类颜色（浅底可读的深色；深绿主题用亮色系）。 */
+    /** 分类颜色（浅底可读的深色；深绿主题用亮色系）。事项自选过颜色时以自选色为准。 */
     private int categoryColor(String action) {
-        return UiPalette.categoryInk(UiPalette.categoryKind(action));
+        return UiPalette.categoryInk(recordColorKind(action));
     }
 
     /** 分类浅色底（对应 iconTint），用于时间标签等胶囊。 */
     private int categoryTint(String action) {
-        return UiPalette.categoryFill(UiPalette.categoryKind(action));
+        return UiPalette.categoryFill(recordColorKind(action));
+    }
+
+    /** 记录对应的类目色：优先取同名事项的自选颜色，找不到就按名称自动归类。 */
+    private int recordColorKind(String action) {
+        if (action != null && !action.isEmpty()) {
+            for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
+                if (action.equals(rule.title)) return UiPalette.colorKind(rule.color, rule.title);
+            }
+        }
+        return UiPalette.categoryKind(action);
     }
 
     private final class TimelineRail extends View {
@@ -839,23 +1040,36 @@ public final class StatsActivity extends Activity {
 
     private LinearLayout summaryMetric(String label, int value, int accent) {
         LinearLayout metric = new LinearLayout(this);
-        metric.setOrientation(LinearLayout.VERTICAL);
+        metric.setOrientation(LinearLayout.HORIZONTAL);
         metric.setGravity(Gravity.CENTER);
-        TextView count = text(String.valueOf(value), 20, accent, true);
-        TextView caption = text(label, 11, MUTED, false);
+        TextView count = text(String.valueOf(value), 22, accent, true);
+        TextView caption = text(label, 13, MUTED, true);
         LinearLayout.LayoutParams captionParams = new LinearLayout.LayoutParams(-2, -2);
-        captionParams.topMargin = dp(3);
+        captionParams.leftMargin = dp(6);
         metric.addView(count);
         metric.addView(caption, captionParams);
         return metric;
     }
 
+    private View summaryDivider() {
+        View divider = new View(this);
+        divider.setBackgroundColor(BORDER);
+        return divider;
+    }
+
     private TextView pill(String label, boolean selected) {
         TextView view = text(label, 14, selected ? Color.WHITE : INK, true);
         view.setGravity(Gravity.CENTER);
+        view.setClickable(true);
+        view.setFocusable(true);
+        view.setSelected(selected);
+        view.setContentDescription(label + (selected ? "，已选中" : "，筛选记录"));
         if (selected) {
             view.setBackground(round(MINT, 12));
             lift(view);
+        } else {
+            GradientDrawable shape = round(UiPalette.SOFT, 10);
+            view.setBackground(new RippleDrawable(ColorStateList.valueOf(MINT_LIGHT), shape, shape));
         }
         return view;
     }
@@ -916,6 +1130,15 @@ public final class StatsActivity extends Activity {
     }
     private GradientDrawable round(int color, int radius) {
         GradientDrawable shape = new GradientDrawable(); shape.setColor(UiPalette.surface(color)); shape.setCornerRadius(dp(radius)); if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER); return shape;
+    }
+
+    /** 卡片按下时的水波纹反馈，长按记录时能立刻看到响应。 */
+    private Drawable pressable(GradientDrawable content) {
+        if (Build.VERSION.SDK_INT < 21) return content;
+        Drawable mask = content.getConstantState() == null
+                ? content : content.getConstantState().newDrawable().mutate();
+        return new RippleDrawable(ColorStateList.valueOf((0x2a << 24) | (UiPalette.ACCENT & 0xffffff)),
+                content, mask);
     }
     private GradientDrawable outline(int fillColor, int strokeColor, int radius) {
         GradientDrawable shape = round(fillColor, radius);

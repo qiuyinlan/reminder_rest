@@ -35,10 +35,12 @@ public final class ReminderApplication extends Application {
         BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override public void onReceive(Context context, Intent intent) {
                 if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                    ReminderScheduler.markScreenOff(context);
                     ReminderScheduler.pauseForScreenOff(context);
                 } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-                    Log.i("HealthReminderAlarm", "screen on; reconciling scheduled reminders");
-                    ReminderScheduler.update(context);
+                    ReminderScheduler.markScreenOn(context);
+                    Log.i("HealthReminderAlarm", "screen on; resuming paused reminders");
+                    ReminderScheduler.reconcileAfterScreenOn(context);
                 }
             }
         };
@@ -50,6 +52,9 @@ public final class ReminderApplication extends Application {
 
         PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
         if (power != null && power.isInteractive()) ReminderScheduler.resumeAfterScreenOn(this);
-        else ReminderScheduler.pauseForScreenOff(this);
+        else {
+            ReminderScheduler.markScreenOff(this);
+            ReminderScheduler.pauseForScreenOff(this);
+        }
     }
 }

@@ -17,8 +17,11 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.text.InputType;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -65,12 +68,6 @@ public final class CompanionActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        if (focusMode && android.os.Build.VERSION.SDK_INT >= 23) {
-            android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
-            if (manager == null || manager.getLockTaskModeState() == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
-                try { startLockTask(); } catch (RuntimeException ignored) { }
-            }
-        }
         handler.removeCallbacks(ticker);
         ticker.run();
         updateMusicButton();
@@ -99,12 +96,14 @@ public final class CompanionActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(24), dp(72), dp(24), dp(28));
+        content.setPadding(dp(24), dp(8), dp(24), dp(28));
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(-1, -1);
         root.addView(content, contentParams);
 
         TextView title = text(focusMode ? "专注陪伴" : "轻松陪伴", 22, INK, true);
-        content.addView(title);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setMinHeight(dp(48));
+        content.addView(title, new LinearLayout.LayoutParams(-1, dp(48)));
         title.setTextColor(INK);
         TextView subtitle = text(focusMode ? "留一点安静时间，把注意力放回手边。"
                 : "不用做什么，先陪自己呼吸一会儿。", 15, MUTED, false);
@@ -112,10 +111,12 @@ public final class CompanionActivity extends Activity {
         content.addView(subtitle);
         subtitle.setTextColor(MUTED);
 
-        WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
+        ImageView face = new ImageView(this);
+        face.setImageResource(focusMode ? R.drawable.companion_reading : R.drawable.beans_relax);
+        face.setScaleType(ImageView.ScaleType.FIT_CENTER);
         FrameLayout faceStage = new FrameLayout(this);
         faceStage.setBackground(round(MINT_LIGHT, 18));
-        FrameLayout.LayoutParams faceParams = new FrameLayout.LayoutParams(dp(216), dp(216), Gravity.CENTER);
+        FrameLayout.LayoutParams faceParams = new FrameLayout.LayoutParams(dp(216), dp(231), Gravity.CENTER);
         faceStage.addView(face, faceParams);
         LinearLayout.LayoutParams faceStageParams = new LinearLayout.LayoutParams(dp(240), dp(240));
         faceStageParams.topMargin = dp(12);
@@ -209,7 +210,7 @@ public final class CompanionActivity extends Activity {
                     .putExtra(CompanionAudioService.EXTRA_MUSIC_PLAYING, play));
         });
         FrameLayout.LayoutParams musicParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.RIGHT);
-        musicParams.setMargins(0, focusMode ? dp(12) : dp(36), dp(16), 0);
+        musicParams.setMargins(0, dp(8), dp(24), 0);
         root.addView(musicButton, musicParams);
         setContentView(root);
     }
@@ -256,27 +257,38 @@ public final class CompanionActivity extends Activity {
     }
 
     private void endSession() {
-        if (!focusMode) {
-            stopCompanionSession();
-            return;
-        }
+        EditText note = new EditText(this);
+        note.setSingleLine(false);
+        note.setMinLines(2);
+        note.setMaxLines(4);
+        note.setTextSize(15);
+        note.setTextColor(INK);
+        note.setHintTextColor(MUTED);
+        note.setHint("例如：整理了桌面、读了几页书");
+        note.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        note.setGravity(Gravity.TOP | Gravity.START);
+        note.setPadding(dp(14), dp(12), dp(14), dp(12));
+        note.setBackground(UiPalette.inputBackground(this, 0xfff7fffa, 12));
+        LinearLayout noteContainer = new LinearLayout(this);
+        noteContainer.setOrientation(LinearLayout.VERTICAL);
+        noteContainer.setPadding(dp(24), 0, dp(24), dp(8));
+        noteContainer.addView(note, new LinearLayout.LayoutParams(-1, -2));
+
         AlertDialog confirmDialog = new AlertDialog.Builder(dialogContext())
-                .setMessage("真的要结束了吗？")
-                .setNegativeButton("再陪伴一会", null)
-                .setPositiveButton("结束", (dialog, which) -> stopCompanionSession())
+                .setTitle("结束陪伴")
+                .setMessage("记一下刚才做了什么吧？（选填，不记也可以）")
+                .setView(noteContainer)
+                .setNegativeButton("继续陪伴", null)
+                .setPositiveButton("退出陪伴", (dialog, which) -> stopCompanionSession(note.getText().toString().trim()))
                 .create();
         showStyledDialog(confirmDialog);
     }
 
-    private void stopCompanionSession() {
+    private void stopCompanionSession(String note) {
         startService(new Intent(this, CompanionAudioService.class)
-                .setAction(CompanionAudioService.ACTION_STOP));
-        if (focusMode && android.os.Build.VERSION.SDK_INT >= 23) {
-            android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
-            if (manager != null && manager.getLockTaskModeState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
-                try { stopLockTask(); } catch (RuntimeException ignored) { }
-            }
-        }
+                .setAction(CompanionAudioService.ACTION_STOP)
+                .putExtra(CompanionAudioService.EXTRA_SESSION_NOTE, note));
         finish();
         overridePendingTransition(0, 0);
     }
@@ -294,7 +306,6 @@ public final class CompanionActivity extends Activity {
 
     @Override public void onBackPressed() {
         if (focusMode) {
-            endSession();
             return;
         }
         super.onBackPressed();

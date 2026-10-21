@@ -127,6 +127,16 @@ final class UiPalette {
         return color == 0xffffffff || color == 0xfffefefe ? SURFACE : color;
     }
 
+    /** Readable input surface shared by editable fields across screens and dialogs. */
+    static GradientDrawable inputBackground(Context context, int lightFill, int radiusDp) {
+        float density = context.getResources().getDisplayMetrics().density;
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(darkTheme ? 0xff1b493b : surface(lightFill));
+        background.setCornerRadius(Math.round(radiusDp * density));
+        background.setStroke(Math.max(1, Math.round(density)), darkTheme ? ACCENT : BORDER);
+        return background;
+    }
+
     /** 页面渐变背景。 */
     static GradientDrawable page() {
         return new GradientDrawable(GradientDrawable.Orientation.TL_BR, pageGradient.clone());
@@ -184,6 +194,16 @@ final class UiPalette {
 
     static int categoryStroke(int kind) {
         return kind < catStroke.length ? catStroke[kind] : catStroke[CAT_OTHER];
+    }
+
+    /** 可选的类目色数量（事项自选颜色的取值范围）。 */
+    static final int COLOR_COUNT = 8;
+
+    /**
+     * 事项颜色的最终类目编号：用户在事项里选过就用自选色，否则按标题自动归类。
+     */
+    static int colorKind(int overrideKind, String title) {
+        return overrideKind >= 0 && overrideKind < COLOR_COUNT ? overrideKind : categoryKind(title);
     }
 
     /** 应用系统栏外观：浅色主题用深色图标，深色主题用浅色图标。 */

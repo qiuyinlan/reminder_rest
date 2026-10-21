@@ -58,16 +58,17 @@ public final class ReminderActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-        setReminderSystemBarBackground();
         action = getIntent().getStringExtra("action");
         ruleId = getIntent().getIntExtra("rule_id", -1);
         if (action == null) action = "歇一歇";
+        setReminderSystemBarBackground();
         reasonFromOverlay = getIntent().getBooleanExtra("enter_reason", false);
         if (reasonFromOverlay) {
             sessionId = java.util.UUID.randomUUID().toString();
             startedAt = System.currentTimeMillis();
             LinearLayout background = new LinearLayout(this);
-            background.setBackground(UiPalette.page());
+            background.setBackgroundColor(ReminderArtworkCatalog.scenePageColor(
+                    ReminderSettings.overlayArtwork(this, ruleId)));
             setContentView(background);
             askReason();
             return;
@@ -85,13 +86,18 @@ public final class ReminderActivity extends Activity {
             beginDoing();
             return;
         }
-        UiPalette.applyWindow(getWindow());
+        setReminderSystemBarBackground();
+        String artworkId = ReminderSettings.overlayArtwork(this, ruleId);
+        boolean customScene = ReminderArtworkCatalog.isCustomScene(artworkId);
+        int textColor = ReminderArtworkCatalog.sceneTextColor(artworkId);
+        int mutedColor = ReminderArtworkCatalog.sceneMutedColor(artworkId);
+        int surfaceColor = ReminderArtworkCatalog.sceneSurfaceColor(artworkId);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(20), dp(12), dp(20), dp(12));
-        root.setBackground(UiPalette.page());
+        root.setBackgroundColor(ReminderArtworkCatalog.scenePageColor(artworkId));
         setContentView(root);
 
         ScrollView pageScroll = new ScrollView(this);
@@ -102,60 +108,46 @@ public final class ReminderActivity extends Activity {
         reminderCard.setOrientation(LinearLayout.VERTICAL);
         reminderCard.setGravity(Gravity.CENTER_HORIZONTAL);
         reminderCard.setPadding(dp(20), dp(18), dp(20), dp(22));
-        reminderCard.setBackground(round(Color.WHITE, 18));
+        reminderCard.setBackground(round(customScene ? surfaceColor : Color.WHITE, 18));
         reminderCard.setElevation(dp(2));
         pageScroll.addView(reminderCard, new ScrollView.LayoutParams(-1, -2));
         root.addView(pageScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        TextView overline = text("哪怕做一秒，身体也会舒服一点！\n求求主人了。", 13, TEXT_PRIMARY, true);
+        TextView overline = text("哪怕做一秒，身体也会舒服一点！\n求求主人了。", 13, textColor, true);
         overline.setGravity(Gravity.CENTER);
         overline.setLineSpacing(dp(2), 1f);
         overline.setPadding(dp(14), dp(8), dp(14), dp(8));
-        overline.setBackground(round(SOFT_BACKGROUND, 12));
+        overline.setBackground(round(customScene ? ReminderArtworkCatalog.scenePageColor(artworkId)
+                : SOFT_BACKGROUND, 12));
         reminderCard.addView(overline);
         FrameLayout animation = new FrameLayout(this);
-        if (isTypingReminder(action)) {
-            animation.addView(new TypingSceneView(this), new FrameLayout.LayoutParams(-1, -1));
-        } else {
-            WellnessAnimationView.Mood mood = isWaterReminder(action) ? WellnessAnimationView.Mood.SEED
-                    : action.contains("护眼") ? WellnessAnimationView.Mood.TIRED : WellnessAnimationView.Mood.SAD;
-            WellnessAnimationView face = new WellnessAnimationView(this,
-                    mood);
-            face.setScaleX(.82f);
-            face.setScaleY(.82f);
-            face.setAlpha(0f);
-            face.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(620)
-                    .setInterpolator(new OvershootInterpolator(1.15f)).start();
-            ObjectAnimator bob = ObjectAnimator.ofFloat(face, View.TRANSLATION_Y, 0f, -dp(8), 0f);
-            bob.setDuration(2400);
-            bob.setStartDelay(620);
-            bob.setRepeatCount(ValueAnimator.INFINITE);
-            face.post(bob::start);
-            animation.addView(face, new FrameLayout.LayoutParams(dp(220), dp(210), Gravity.CENTER));
-        }
-        animation.setBackground(round(SOFT_BACKGROUND, 16));
-        int sceneHeight = isTypingReminder(action) ? 180 : 205;
+        String displayedArtwork = isTypingReminder(action) && ReminderArtworkCatalog.DEFAULT.equals(artworkId)
+                ? "thinking" : artworkId;
+        animation.addView(new ReminderArtworkView(this, displayedArtwork),
+                new FrameLayout.LayoutParams(-1, -1));
+        animation.setBackground(round(customScene ? surfaceColor : SOFT_BACKGROUND, 16));
+        int sceneHeight = ReminderArtworkCatalog.isCustomScene(artworkId) ? 245 : 205;
         LinearLayout.LayoutParams sceneParams = new LinearLayout.LayoutParams(-1, dp(sceneHeight));
         sceneParams.topMargin = dp(12);
         sceneParams.bottomMargin = dp(16);
         reminderCard.addView(animation, sceneParams);
-        TextView title = text(titleFor(action), isTypingReminder(action) ? 25 : 27, TEXT_PRIMARY, true);
+        TextView title = text(titleFor(action), isTypingReminder(action) ? 25 : 27, textColor, true);
         title.setGravity(Gravity.CENTER);
         reminderCard.addView(title);
-        TextView plea = text(ReminderSettings.reminderMessage(this, ruleId, action), 16, TEXT_MUTED, false);
+        TextView plea = text(ReminderSettings.reminderMessage(this, ruleId, action), 16, mutedColor, false);
         plea.setGravity(Gravity.CENTER);
         plea.setLineSpacing(dp(3), 1f);
         LinearLayout.LayoutParams pleaParams = new LinearLayout.LayoutParams(-1, -2);
         pleaParams.topMargin = dp(10);
         reminderCard.addView(plea, pleaParams);
 
-        Button done = button("好啦，我去做", GREEN, Color.WHITE);
+        Button done = button("好啦，我去做", ReminderArtworkCatalog.sceneAccentColor(artworkId), Color.WHITE);
         done.setOnClickListener(v -> beginDoing());
         root.addView(done, new LinearLayout.LayoutParams(-1, dp(54)));
-        TextView snooze = text("临时有事，稍后提醒我", 15, TEXT_PRIMARY, true);
+        TextView snooze = text("临时有事，稍后提醒我", 15, textColor, true);
         snooze.setGravity(Gravity.CENTER);
         snooze.setPadding(0, 0, 0, 0);
-        snooze.setBackground(round(SOFT_BACKGROUND, 14));
+        snooze.setBackground(round(customScene ? surfaceColor : SOFT_BACKGROUND, 14));
         snooze.setOnClickListener(v -> {
             ReminderReceiver.stopAlarmVibration(this, "user chose snooze");
             ReminderRecord.recordSnoozed(this, action, System.currentTimeMillis());
@@ -188,7 +180,13 @@ public final class ReminderActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(20), dp(12), dp(20), dp(12));
-        root.setBackground(UiPalette.page());
+        String artworkId = ReminderSettings.overlayArtwork(this, ruleId);
+        boolean customScene = ReminderArtworkCatalog.isCustomScene(artworkId);
+        int textColor = ReminderArtworkCatalog.sceneTextColor(artworkId);
+        int mutedColor = ReminderArtworkCatalog.sceneMutedColor(artworkId);
+        int surfaceColor = ReminderArtworkCatalog.sceneSurfaceColor(artworkId);
+        int accentColor = ReminderArtworkCatalog.sceneAccentColor(artworkId);
+        root.setBackgroundColor(ReminderArtworkCatalog.scenePageColor(artworkId));
         setContentView(root);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         ScrollView waitingScroll = new ScrollView(this);
@@ -198,44 +196,51 @@ public final class ReminderActivity extends Activity {
         waitingCard.setOrientation(LinearLayout.VERTICAL);
         waitingCard.setGravity(Gravity.CENTER_HORIZONTAL);
         waitingCard.setPadding(dp(20), dp(18), dp(20), dp(20));
-        waitingCard.setBackground(round(Color.WHITE, 18));
+        waitingCard.setBackground(round(customScene ? surfaceColor : Color.WHITE, 18));
         waitingCard.setElevation(dp(2));
         waitingScroll.addView(waitingCard, new ScrollView.LayoutParams(-1, -2));
         root.addView(waitingScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        TextView waitingHeader = text("我在这里等你回来", 17, TEXT_PRIMARY, true);
+        TextView waitingHeader = text("我在这里等你回来", 17, textColor, true);
         waitingHeader.setTextSize(13);
         waitingHeader.setPadding(dp(14), dp(8), dp(14), dp(8));
-        waitingHeader.setBackground(round(SOFT_BACKGROUND, 12));
+        waitingHeader.setBackground(round(customScene ? ReminderArtworkCatalog.scenePageColor(artworkId)
+                : SOFT_BACKGROUND, 12));
         waitingCard.addView(waitingHeader);
-        WellnessAnimationView smile = new WellnessAnimationView(this, WellnessAnimationView.Mood.BREATHING);
+        ReminderArtworkView smile = new ReminderArtworkView(this, "doing");
         waitingCard.addView(smile, new LinearLayout.LayoutParams(dp(210), dp(210)));
-        TextView message = text("正在等你去做：" + titleFor(action), 22, TEXT_PRIMARY, true);
+        TextView message = text("正在等你去做：" + titleFor(action), 22, textColor, true);
         message.setGravity(Gravity.CENTER);
-        waitingCard.addView(message);
-        elapsedLabel = text("00:00", 20, GREEN, true);
-        elapsedLabel.setBackground(round(SOFT_BACKGROUND, 14));
+        LinearLayout.LayoutParams messageParams = new LinearLayout.LayoutParams(-1, -2);
+        messageParams.topMargin = dp(4);
+        messageParams.bottomMargin = dp(14);
+        waitingCard.addView(message, messageParams);
+        elapsedLabel = text("00:00", 20, accentColor, true);
+        elapsedLabel.setBackground(round(customScene ? ReminderArtworkCatalog.scenePageColor(artworkId)
+                : SOFT_BACKGROUND, 14));
         elapsedLabel.setGravity(Gravity.CENTER);
         elapsedLabel.setPadding(dp(18), dp(10), dp(18), dp(10));
-        waitingCard.addView(elapsedLabel);
+        waitingCard.addView(elapsedLabel, new LinearLayout.LayoutParams(-2, -2));
         completionNote = new EditText(this);
         completionNote.setSingleLine(true);
         completionNote.setTextSize(15);
-        completionNote.setTextColor(TEXT_PRIMARY);
-        completionNote.setHintTextColor(TEXT_MUTED);
+        completionNote.setTextColor(textColor);
+        completionNote.setHintTextColor(mutedColor);
         completionNote.setHint("做了什么？（选填）");
         completionNote.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         completionNote.setPadding(dp(14), dp(10), dp(14), dp(10));
-        completionNote.setBackground(round(SOFT_BACKGROUND, 12));
+        completionNote.setBackground(UiPalette.inputBackground(this,
+                customScene ? ReminderArtworkCatalog.scenePageColor(artworkId) : SOFT_BACKGROUND, 12));
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, dp(50));
+        noteParams.topMargin = dp(12);
         noteParams.bottomMargin = dp(12);
         waitingCard.addView(completionNote, noteParams);
-        Button completed = button("已做完", GREEN, Color.WHITE);
+        Button completed = button("已做完", accentColor, Color.WHITE);
         completed.setOnClickListener(v -> completeSession());
         root.addView(completed, new LinearLayout.LayoutParams(-1, dp(54)));
-        TextView missed = text("临时有事，没做", 15, TEXT_PRIMARY, true);
+        TextView missed = text("临时有事，没做", 15, textColor, true);
         missed.setGravity(Gravity.CENTER);
         missed.setPadding(0, 0, 0, 0);
-        missed.setBackground(round(SOFT_BACKGROUND, 14));
+        missed.setBackground(round(customScene ? surfaceColor : SOFT_BACKGROUND, 14));
         missed.setOnClickListener(v -> askReason());
         LinearLayout.LayoutParams missedParams = new LinearLayout.LayoutParams(-1, dp(48));
         missedParams.topMargin = dp(8);
@@ -249,13 +254,22 @@ public final class ReminderActivity extends Activity {
 
     private void setReminderSystemBarBackground() {
         UiPalette.applyWindow(getWindow());
+        int color = ReminderArtworkCatalog.scenePageColor(ReminderSettings.overlayArtwork(this, ruleId));
+        getWindow().setStatusBarColor(color);
+        getWindow().setNavigationBarColor(color);
+        if (ReminderArtworkCatalog.isSleepScene(ReminderSettings.overlayArtwork(this, ruleId))) {
+            getWindow().getDecorView().setSystemUiVisibility(0);
+        } else if (ReminderArtworkCatalog.isMorningScene(ReminderSettings.overlayArtwork(this, ruleId))) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
     }
 
     private void completeSession() {
         long ended = System.currentTimeMillis();
         String note = completionNote == null ? "" : completionNote.getText().toString().trim();
         ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_DONE, startedAt, ended, note);
-        for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(this)) {
             if (rule.title.equals(action)) {
                 ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
                 ReminderScheduler.resetNext(this, rule.id);
@@ -275,6 +289,12 @@ public final class ReminderActivity extends Activity {
         TextView title = text("临时有事", 21, TEXT_PRIMARY, true);
         content.addView(title);
 
+        ReminderArtworkView busy = new ReminderArtworkView(this, "busy");
+        LinearLayout.LayoutParams busyParams = new LinearLayout.LayoutParams(dp(126), dp(142));
+        busyParams.gravity = Gravity.CENTER_HORIZONTAL;
+        busyParams.topMargin = dp(6);
+        content.addView(busy, busyParams);
+
         TextView subtitle = text("记下为什么没能完成，也可以选择稍后提醒。", 14, TEXT_MUTED, false);
         subtitle.setPadding(0, dp(7), 0, dp(18));
         content.addView(subtitle);
@@ -287,7 +307,7 @@ public final class ReminderActivity extends Activity {
         reason.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         reason.setSingleLine(true);
         reason.setPadding(dp(14), dp(10), dp(14), dp(10));
-        reason.setBackground(round(SOFT_BACKGROUND, 12));
+        reason.setBackground(UiPalette.inputBackground(this, SOFT_BACKGROUND, 12));
         LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(-1, -2);
         reasonParams.topMargin = dp(4);
         content.addView(reason, reasonParams);
@@ -321,14 +341,19 @@ public final class ReminderActivity extends Activity {
         LinearLayout hourColumn = new LinearLayout(this);
         hourColumn.setGravity(Gravity.CENTER);
         hourColumn.setOrientation(LinearLayout.HORIZONTAL);
-        NumberPicker hourPicker = new NumberPicker(this);
+        // NumberPicker 跟随主题取色：浅色主题用浅色上下文（深色文字），深色主题用深色上下文（浅色文字）。
+        android.view.ContextThemeWrapper pickerTheme = new android.view.ContextThemeWrapper(
+                this, UiPalette.isDark() ? android.R.style.Theme_Material : android.R.style.Theme_Material_Light);
+        NumberPicker hourPicker = new NumberPicker(pickerTheme);
         hourPicker.setMinValue(0);
         hourPicker.setMaxValue(23);
         hourPicker.setValue(0);
-        NumberPicker minutePicker = new NumberPicker(this);
+        NumberPicker minutePicker = new NumberPicker(pickerTheme);
         minutePicker.setMinValue(0);
         minutePicker.setMaxValue(59);
         minutePicker.setValue(15);
+        stylePickerText(hourPicker);
+        stylePickerText(minutePicker);
         hourColumn.addView(hourPicker, new LinearLayout.LayoutParams(dp(88), dp(112)));
             hourColumn.addView(text("小时", 13, TEXT_MUTED, false));
         LinearLayout minuteColumn = new LinearLayout(this);
@@ -520,6 +545,34 @@ public final class ReminderActivity extends Activity {
         button.setBackground(background);
         button.setElevation(dp(2));
         return button;
+    }
+
+    /**
+     * NumberPicker 是框架控件，默认跟随深色 AppCompat 主题用白色文字，在浅色对话框里看不清。
+     * 选中值由内部 EditText 绘制，其余滚动项由内部画笔绘制，两处都改成深色。
+     */
+    /**
+     * NumberPicker 是框架控件，默认跟随深色 AppCompat 主题用白色文字，在浅色对话框里看不清。
+     * 选中值由内部 EditText 绘制，其余滚动项由内部画笔绘制，两处都改成深色；
+     * 若厂商皮肤覆盖了颜色，则退化为用浅色主题上下文创建滚轴。
+     */
+    private void stylePickerText(NumberPicker picker) {
+        for (int i = 0; i < picker.getChildCount(); i++) {
+            View child = picker.getChildAt(i);
+            if (child instanceof EditText) {
+                ((EditText) child).setTextColor(TEXT_PRIMARY);
+                child.setBackground(null);
+            }
+        }
+        try {
+            java.lang.reflect.Field wheelPaint = NumberPicker.class.getDeclaredField("mSelectorWheelPaint");
+            wheelPaint.setAccessible(true);
+            Object value = wheelPaint.get(picker);
+            if (value instanceof android.graphics.Paint) {
+                ((android.graphics.Paint) value).setColor(TEXT_PRIMARY);
+            }
+        } catch (Exception ignored) { }
+        picker.invalidate();
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

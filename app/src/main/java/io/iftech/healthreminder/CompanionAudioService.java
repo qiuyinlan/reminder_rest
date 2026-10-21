@@ -25,6 +25,7 @@ public final class CompanionAudioService extends Service {
     static final String EXTRA_SOUND_ID = "sound_id";
     static final String EXTRA_MUSIC_PLAYING = "music_playing";
     static final String EXTRA_FOCUS_MODE = "focus_mode";
+    static final String EXTRA_SESSION_NOTE = "session_note";
     private static final String PREFS = "companion_session";
     private static final String KEY_STARTED_AT = "started_at";
     private static final String KEY_MUSIC = "music_playing";
@@ -84,7 +85,7 @@ public final class CompanionAudioService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(action)) {
-            stopSession();
+            stopSession(intent == null ? "" : intent.getStringExtra(EXTRA_SESSION_NOTE));
             return START_NOT_STICKY;
         }
 
@@ -161,7 +162,7 @@ public final class CompanionAudioService extends Service {
         player = null;
     }
 
-    private void stopSession() {
+    private void stopSession(String note) {
         long start = startedAt(this);
         boolean focus = isFocusSession(this);
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
@@ -170,7 +171,7 @@ public final class CompanionAudioService extends Service {
             long end = Math.max(start, System.currentTimeMillis());
             ReminderRecord.finish(this, (focus ? "focus-" : "companion-") + start,
                     focus ? "专注陪伴" : "轻松陪伴", focus ? ReminderRecord.KIND_FOCUS : ReminderRecord.KIND_COMPANION,
-                    start, end, "");
+                    start, end, note == null ? "" : note.trim());
         }
         stopForeground(true);
         stopSelf();

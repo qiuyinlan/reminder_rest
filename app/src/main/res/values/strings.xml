@@ -1,4 +1,4 @@
 <resources>
-    <string name="wellness_wallpaper_description">绿色背景与舒展表情的陪伴壁纸。设置后可能降低系统回收概率，不保证应用持续运行。</string>
+    <string name="wellness_wallpaper_description">好好歇会保活壁纸：可换成自己的照片或应用内置壁纸。设为动态壁纸后可能降低系统回收概率，不保证应用持续运行。</string>
     <string name="accessibility_service_description">仅用于识别当前打开的应用，并在你选择的时段提醒休息；不读取屏幕文字或窗口内容。</string>
 </resources>

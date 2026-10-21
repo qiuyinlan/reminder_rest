@@ -22,6 +22,7 @@ import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.ProgressBar;
@@ -157,17 +158,21 @@ public final class ItemsActivity extends Activity {
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(dp(16), dp(15), dp(16), dp(14));
-            card.setBackground(categorySurface(rule.title));
+            card.setBackground(categorySurface(rule));
             card.setElevation(dp(2));
             LinearLayout details = new LinearLayout(this);
             details.setOrientation(LinearLayout.VERTICAL);
             LinearLayout titleLine = new LinearLayout(this);
             titleLine.setGravity(Gravity.CENTER_VERTICAL);
-            TextView marker = text(rule.badgeText(),
-                    15, categoryInk(rule.title), true);
+            ItemIconView marker = new ItemIconView(this);
+            marker.setTextSize(15);
+            marker.setTextColor(ruleInk(rule));
+            marker.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             marker.setGravity(Gravity.CENTER);
-            GradientDrawable markerBackground = round(categoryTint(rule.title), 22);
-            markerBackground.setStroke(dp(1), categoryBorder(rule.title));
+            marker.setPadding(dp(7), dp(7), dp(7), dp(7));
+            marker.bindIcon(rule.iconImage(), rule.badgeText());
+            GradientDrawable markerBackground = round(ruleTint(rule), 22);
+            markerBackground.setStroke(dp(1), ruleStroke(rule));
             marker.setBackground(markerBackground);
             titleLine.addView(marker, new LinearLayout.LayoutParams(dp(44), dp(44)));
             TextView itemTitle = text(rule.title, 16, INK, true);
@@ -176,22 +181,22 @@ public final class ItemsActivity extends Activity {
             itemTitleParams.leftMargin = dp(12);
             titleLine.addView(itemTitle, itemTitleParams);
             TextView count = text(done >= rule.dailyTarget ? "已达标" : done + " / " + rule.dailyTarget,
-                    10, categoryInk(rule.title), true);
+                    10, ruleInk(rule), true);
             count.setGravity(Gravity.CENTER);
             count.setPadding(dp(9), dp(5), dp(9), dp(5));
-            count.setBackground(round(categoryTint(rule.title), 10));
+            count.setBackground(round(ruleTint(rule), 10));
             titleLine.addView(count);
             details.addView(titleLine);
-            ProgressBar itemProgress = progressBar(rule.dailyTarget, done);
+            ProgressBar itemProgress = progressBar(rule.dailyTarget, done, ruleInk(rule));
             LinearLayout.LayoutParams itemProgressParams = new LinearLayout.LayoutParams(-1, dp(4));
             itemProgressParams.topMargin = dp(11);
             details.addView(itemProgress, itemProgressParams);
             LinearLayout meta = new LinearLayout(this);
             meta.setGravity(Gravity.CENTER_VERTICAL);
             meta.setPadding(0, dp(10), 0, 0);
-            TextView schedule = text(scheduleSummary(rule), 12, categoryInk(rule.title), false);
+            TextView schedule = text(scheduleSummary(rule), 12, ruleInk(rule), false);
             schedule.setPadding(dp(9), dp(5), dp(9), dp(5));
-            schedule.setBackground(round(categoryTint(rule.title), 10));
+            schedule.setBackground(round(ruleTint(rule), 10));
             meta.addView(schedule, new LinearLayout.LayoutParams(0, -2, 1));
             TextView targetBehavior = text(rule.remindAfterTarget ? "继续提醒" : "达标停止", 11, MUTED, false);
             targetBehavior.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
@@ -214,13 +219,30 @@ public final class ItemsActivity extends Activity {
     }
 
     private ProgressBar progressBar(int target, int done) {
+        return progressBar(target, done, MINT);
+    }
+
+    private ProgressBar progressBar(int target, int done, int tint) {
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(false);
         progress.setMax(Math.max(1, target));
         progress.setProgress(Math.min(Math.max(0, done), Math.max(1, target)));
-        progress.setProgressTintList(ColorStateList.valueOf(MINT));
+        progress.setProgressTintList(ColorStateList.valueOf(tint));
         progress.setProgressBackgroundTintList(ColorStateList.valueOf(LINE));
         return progress;
+    }
+
+    /** 事项最终使用的颜色（自选优先，否则按标题自动归类）。 */
+    private int ruleInk(ReminderSettings.Rule rule) {
+        return UiPalette.categoryInk(UiPalette.colorKind(rule.color, rule.title));
+    }
+
+    private int ruleTint(ReminderSettings.Rule rule) {
+        return UiPalette.categoryFill(UiPalette.colorKind(rule.color, rule.title));
+    }
+
+    private int ruleStroke(ReminderSettings.Rule rule) {
+        return UiPalette.categoryStroke(UiPalette.colorKind(rule.color, rule.title));
     }
 
     private int categoryInk(String title) {
@@ -231,8 +253,8 @@ public final class ItemsActivity extends Activity {
         return UiPalette.categoryFill(UiPalette.categoryKind(title));
     }
 
-    private GradientDrawable categorySurface(String title) {
-        int tint = categoryTint(title);
+    private GradientDrawable categorySurface(ReminderSettings.Rule rule) {
+        int tint = ruleTint(rule);
         GradientDrawable background;
         if (UiPalette.isDark()) {
             background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -298,32 +320,83 @@ public final class ItemsActivity extends Activity {
         name.setText(existing == null ? "" : existing.title);
         form.addView(name);
 
-        final String[] iconValues = {"", "💧", "👁", "🚶", "🧘", "🌿", "⏰", "☕", "🎧", "📖", "🌙", "⭐", "🍵", "🌸", "🎯", "💤"};
-        final String[] iconLabels = {"默认（取标题第一个字）", "水滴 💧", "眼睛 👁", "走路 🚶", "冥想 🧘", "叶子 🌿",
-                "闹钟 ⏰", "咖啡 ☕", "耳机 🎧", "书本 📖", "月亮 🌙", "星星 ⭐", "喝茶 🍵", "花朵 🌸", "目标 🎯", "睡觉 💤"};
         final String[] iconValue = {existing == null ? "" : existing.icon};
         LinearLayout iconRow = new LinearLayout(this);
         iconRow.setGravity(Gravity.CENTER_VERTICAL);
-        iconRow.setPadding(0, dp(10), 0, 0);
+        iconRow.setPadding(0, dp(12), 0, 0);
         TextView iconLabel = text("图标", 13, MUTED, true);
         iconRow.addView(iconLabel, new LinearLayout.LayoutParams(0, -2, 1));
-        final TextView iconPreview = text(iconValue[0].isEmpty() ? "默认" : iconValue[0], 15, INK, true);
+
+        final ItemIconView iconPreview = new ItemIconView(this);
+        iconPreview.setTextSize(17);
+        iconPreview.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        iconPreview.setTextColor(INK);
         iconPreview.setGravity(Gravity.CENTER);
-        iconPreview.setMinWidth(dp(72));
-        iconPreview.setPadding(dp(12), dp(8), dp(12), dp(8));
-        iconPreview.setBackground(round(Color.WHITE, 10));
-        iconPreview.setOnClickListener(v -> {
-            AlertDialog iconDialog = new AlertDialog.Builder(dialogContext())
-                    .setTitle("选择图标")
-                    .setItems(iconLabels, (dialog, which) -> {
-                        iconValue[0] = iconValues[which];
-                        iconPreview.setText(iconValues[which].isEmpty() ? "默认" : iconValues[which]);
-                    })
-                    .create();
-            showStyledDialog(iconDialog);
-        });
-        iconRow.addView(iconPreview);
+        iconPreview.setPadding(dp(7), dp(7), dp(7), dp(7));
+        final LinearLayout iconChoice = new LinearLayout(this);
+        iconChoice.setGravity(Gravity.CENTER_VERTICAL);
+        iconChoice.setPadding(dp(5), dp(4), dp(12), dp(4));
+        iconChoice.setBackground(round(Color.WHITE, 12));
+        iconChoice.addView(iconPreview, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        final TextView iconName = text("", 13, MUTED, true);
+        iconName.setPadding(dp(10), 0, 0, 0);
+        iconChoice.addView(iconName);
+        iconRow.addView(iconChoice);
         form.addView(iconRow);
+        final Runnable refreshIcon = () -> {
+            String value = iconValue[0];
+            iconPreview.bindIcon(value, value.isEmpty() ? "首" : value);
+            iconPreview.setTextColor(INK);
+            iconName.setText(ItemIconPicker.describe(value) + "  ›");
+        };
+        refreshIcon.run();
+        iconChoice.setOnClickListener(v -> showStyledDialog(ItemIconPicker.build(dialogContext(), iconValue[0], picked -> {
+            iconValue[0] = picked;
+            refreshIcon.run();
+        })));
+
+        // 自选颜色：默认跟随名称自动配色，选了就以自选色为准。
+        final int[] colorValue = {existing == null ? ReminderSettings.Rule.COLOR_AUTO : existing.color};
+        LinearLayout colorRow = new LinearLayout(this);
+        colorRow.setGravity(Gravity.CENTER_VERTICAL);
+        colorRow.setPadding(0, dp(12), 0, 0);
+        TextView colorLabel = text("颜色", 13, MUTED, true);
+        colorRow.addView(colorLabel, new LinearLayout.LayoutParams(0, -2, 1));
+        final TextView colorSwatch = new TextView(this);
+        colorSwatch.setGravity(Gravity.CENTER);
+        colorSwatch.setTextSize(15);
+        colorSwatch.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        final LinearLayout colorChoice = new LinearLayout(this);
+        colorChoice.setGravity(Gravity.CENTER_VERTICAL);
+        colorChoice.setPadding(dp(5), dp(4), dp(12), dp(4));
+        colorChoice.setBackground(round(Color.WHITE, 12));
+        colorChoice.addView(colorSwatch, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        final TextView colorName = text("", 13, MUTED, true);
+        colorName.setPadding(dp(10), 0, 0, 0);
+        colorChoice.addView(colorName);
+        colorRow.addView(colorChoice);
+        form.addView(colorRow);
+        final Runnable refreshColor = () -> {
+            String title = name.getText().toString().trim();
+            int kind = UiPalette.colorKind(colorValue[0], title);
+            GradientDrawable swatch = new GradientDrawable();
+            swatch.setShape(GradientDrawable.OVAL);
+            swatch.setColor(UiPalette.categoryFill(kind));
+            swatch.setStroke(dp(1), UiPalette.categoryStroke(kind));
+            colorSwatch.setBackground(swatch);
+            colorName.setText(ItemColorPicker.describe(colorValue[0]) + "  ›");
+        };
+        refreshColor.run();
+        colorChoice.setOnClickListener(v -> showStyledDialog(ItemColorPicker.build(dialogContext(),
+                colorValue[0], picked -> {
+                    colorValue[0] = picked;
+                    refreshColor.run();
+                })));
+        name.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) { }
+            @Override public void afterTextChanged(android.text.Editable text) { refreshColor.run(); }
+        });
 
         form.addView(editorLabel("霸屏提醒语句", true));
         EditText reminderMessage = styledInput(android.text.InputType.TYPE_CLASS_TEXT
@@ -334,6 +407,73 @@ public final class ItemsActivity extends Activity {
         reminderMessage.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(120)});
         reminderMessage.setText(existing == null ? "" : existing.reminderMessage);
         form.addView(reminderMessage);
+
+        form.addView(editorLabel("霸屏页面", true));
+        String[] artworkLabels = ReminderArtworkCatalog.labels();
+        String[] artworkIds = new String[artworkLabels.length];
+        for (int i = 0; i < artworkIds.length; i++) artworkIds[i] = ReminderArtworkCatalog.idAt(i);
+        String[] artworkValue = {existing == null ? ReminderArtworkCatalog.DEFAULT : existing.overlayArtwork};
+        LinearLayout artworkRow = new LinearLayout(this);
+        artworkRow.setGravity(Gravity.CENTER_VERTICAL);
+        artworkRow.setPadding(dp(8), dp(6), dp(10), dp(6));
+        artworkRow.setBackground(round(Color.WHITE, 12));
+        FrameLayout artworkPreview = new FrameLayout(this);
+        artworkPreview.setBackground(round(MINT_PALE, 10));
+        artworkRow.addView(artworkPreview, new LinearLayout.LayoutParams(dp(52), dp(58)));
+        setArtworkPreview(artworkPreview, artworkValue[0]);
+        Button artworkButton = new Button(this);
+        styleControlButton(artworkButton);
+        artworkButton.setText(ReminderArtworkCatalog.label(artworkValue[0]) + "  ›");
+        artworkButton.setOnClickListener(v -> {
+            LinearLayout options = new LinearLayout(dialogContext());
+            options.setOrientation(LinearLayout.VERTICAL);
+            options.setPadding(dp(16), dp(4), dp(16), dp(8));
+            ScrollView optionScroll = new ScrollView(dialogContext());
+            optionScroll.setVerticalScrollBarEnabled(false);
+            for (int i = 0; i < artworkIds.length; i++) {
+                final String optionId = artworkIds[i];
+                LinearLayout option = new LinearLayout(dialogContext());
+                option.setGravity(Gravity.CENTER_VERTICAL);
+                option.setPadding(dp(8), dp(5), dp(12), dp(5));
+                option.setBackground(round(optionId.equals(artworkValue[0]) ? MINT_PALE : Color.TRANSPARENT, 10));
+                FrameLayout thumbnail = new FrameLayout(dialogContext());
+                thumbnail.setBackground(round(Color.WHITE, 8));
+                option.addView(thumbnail, new LinearLayout.LayoutParams(dp(48), dp(54)));
+                setArtworkPreview(thumbnail, optionId);
+                TextView optionLabel = text(artworkLabels[i], 15, INK, optionId.equals(artworkValue[0]));
+                LinearLayout.LayoutParams optionLabelParams = new LinearLayout.LayoutParams(0, -2, 1);
+                optionLabelParams.leftMargin = dp(14);
+                option.addView(optionLabel, optionLabelParams);
+                if (optionId.equals(artworkValue[0])) {
+                    TextView selectedMark = text("✓", 17, GREEN, true);
+                    option.addView(selectedMark);
+                }
+                option.setContentDescription("选择" + artworkLabels[i]);
+                option.setOnClickListener(choice -> {
+                    artworkValue[0] = optionId;
+                    artworkButton.setText(ReminderArtworkCatalog.label(optionId) + "  ›");
+                    setArtworkPreview(artworkPreview, optionId);
+                    ((AlertDialog) choice.getTag()).dismiss();
+                });
+                options.addView(option, new LinearLayout.LayoutParams(-1, dp(64)));
+            }
+            int maxHeight = Math.min(dp(460), getResources().getDisplayMetrics().heightPixels - dp(220));
+            optionScroll.addView(options, new ScrollView.LayoutParams(-1, -2));
+            optionScroll.setLayoutParams(new LinearLayout.LayoutParams(-1, maxHeight));
+            AlertDialog artworkDialog = new AlertDialog.Builder(dialogContext())
+                    .setTitle("选择霸屏页面")
+                    .setView(optionScroll)
+                    .setNegativeButton("取消", null)
+                    .create();
+            for (int i = 0; i < options.getChildCount(); i++) {
+                options.getChildAt(i).setTag(artworkDialog);
+            }
+            showStyledDialog(artworkDialog);
+        });
+        LinearLayout.LayoutParams artworkButtonParams = new LinearLayout.LayoutParams(0, dp(48), 1);
+        artworkButtonParams.leftMargin = dp(10);
+        artworkRow.addView(artworkButton, artworkButtonParams);
+        form.addView(artworkRow, new LinearLayout.LayoutParams(-1, -2));
 
 
         form.addView(editorLabel("提醒方式", true));
@@ -356,14 +496,16 @@ public final class ItemsActivity extends Activity {
         LinearLayout to = timeField("结束时间", end[0]);
         TextView fromValue = (TextView) from.getChildAt(1);
         TextView toValue = (TextView) to.getChildAt(1);
-        from.setOnClickListener(v -> showStyledDialog(new TimePickerDialog(dialogContext(), (picker, hour, minute) -> {
-            start[0] = hour * 60 + minute;
-            fromValue.setText(MainActivity.clock(start[0]));
-        }, start[0] / 60, start[0] % 60, true)));
-        to.setOnClickListener(v -> showStyledDialog(new TimePickerDialog(dialogContext(), (picker, hour, minute) -> {
-            end[0] = hour * 60 + minute;
-            toValue.setText(MainActivity.clock(end[0]));
-        }, end[0] / 60, end[0] % 60, true)));
+        from.setOnClickListener(v -> WheelPicker.time(dialogContext(), "开始时间", "确定",
+                start[0] * 60, false, picked -> {
+                    start[0] = Math.max(0, Math.min(24 * 60 - 1, picked / 60));
+                    fromValue.setText(MainActivity.clock(start[0]));
+                }).show());
+        to.setOnClickListener(v -> WheelPicker.time(dialogContext(), "结束时间", "确定",
+                end[0] * 60, false, picked -> {
+                    end[0] = Math.max(0, Math.min(24 * 60 - 1, picked / 60));
+                    toValue.setText(MainActivity.clock(end[0]));
+                }).show());
         LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(0, -2, 1);
         timeParams.rightMargin = dp(6);
         timeRow.addView(from, timeParams);
@@ -491,9 +633,18 @@ public final class ItemsActivity extends Activity {
         formScroll.setVerticalScrollBarEnabled(false);
         formScroll.addView(form);
         AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext()).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
-                .setView(formScroll).setNegativeButton("取消", null).setPositiveButton("保存", null);
-        if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> { ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this)); updated.removeIf(rule -> rule.id == id); ReminderSettings.saveRules(this, updated); renderItems(); });
+                .setView(formScroll)
+                .setNegativeButton("取消", (dialog, which) -> returnHomeAfterEditor())
+                .setPositiveButton("保存", null);
+        if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> {
+            ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
+            updated.removeIf(rule -> rule.id == id);
+            ReminderSettings.saveRules(this, updated);
+            renderItems();
+            returnHomeAfterEditor();
+        });
         AlertDialog editor = builder.create();
+        editor.setOnCancelListener(dialog -> returnHomeAfterEditor());
         editor.setOnShowListener(ignored -> editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String title = name.getText().toString().trim();
             if (title.isEmpty()) {
@@ -511,7 +662,9 @@ public final class ItemsActivity extends Activity {
                     : ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0],
                     target[0], remindAfterTarget[0], enabled[0]);
             rule = rule.withReminderMessage(reminderMessage.getText().toString())
-                    .withIcon(iconValue[0]);
+                    .withIcon(iconValue[0])
+                    .withColor(colorValue[0])
+                    .withOverlayArtwork(artworkValue[0]);
             // 原位替换，保持事项在列表里的顺序不变（新增才追加到末尾）
             int replaceIndex = -1;
             for (int i = 0; i < updated.size(); i++) {
@@ -522,17 +675,20 @@ public final class ItemsActivity extends Activity {
             ReminderSettings.saveRules(this, updated);
             renderItems();
             editor.dismiss();
-            if (returnToHome) {
-                startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-                finish();
-                overridePendingTransition(0, 0);
-            }
+            returnHomeAfterEditor();
         }));
         showStyledDialog(editor);
         if (editor.getWindow() != null) {
             editor.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+    }
+
+    private void returnHomeAfterEditor() {
+        if (!returnToHome) return;
+        startActivity(new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+        finish();
+        overridePendingTransition(0, 0);
     }
 
     private void showItemHistory(ReminderSettings.Rule rule) {
@@ -583,10 +739,11 @@ public final class ItemsActivity extends Activity {
         panel.addView(historyScroll, new LinearLayout.LayoutParams(-1, dp(300)));
 
         Runnable refresh = () -> renderItemHistory(rule, selectedDay, dateLabel, totals, history);
-        View.OnClickListener chooseDate = v -> showStyledDialog(new DatePickerDialog(dialogContext(), (picker, year, month, day) -> {
-            selectedDay.set(year, month, day);
+        View.OnClickListener chooseDate = v -> WheelPicker.date(dialogContext(), "选择日期", selectedDay, picked -> {
+            selectedDay.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH),
+                    picked.get(Calendar.DAY_OF_MONTH));
             refresh.run();
-        }, selectedDay.get(Calendar.YEAR), selectedDay.get(Calendar.MONTH), selectedDay.get(Calendar.DAY_OF_MONTH)));
+        }).show();
         calendarButton.setOnClickListener(chooseDate);
         dateLabel.setOnClickListener(chooseDate);
         previous.setOnClickListener(v -> { selectedDay.add(Calendar.DAY_OF_MONTH, -1); refresh.run(); });
@@ -708,49 +865,78 @@ public final class ItemsActivity extends Activity {
         return field;
     }
 
-    private void chooseInterval(int[] interval, Button button) {
-        List<Integer> saved = readSavedIntervals();
-        List<Integer> favorites = readFavoriteIntervals();
-        saved.sort((a, b) -> {
-            int favoriteOrder = Boolean.compare(favorites.contains(b), favorites.contains(a));
-            return favoriteOrder != 0 ? favoriteOrder : Integer.compare(a, b);
-        });
-        LinearLayout options = new LinearLayout(this);
-        options.setOrientation(LinearLayout.VERTICAL);
-        options.setPadding(dp(18), dp(6), dp(18), dp(8));
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(false);
-        scroll.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(360)));
-        scroll.addView(options);
-        AlertDialog intervalDialog = new AlertDialog.Builder(dialogContext())
+    /** 提醒间隔：快捷胶囊 + 「时 / 分 / 秒」滚轮，和霸屏页「临时有事」的滚轮同一套操作。 */
+    private void chooseInterval(final int[] interval, final Button button) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(4), dp(16), dp(4));
+
+        LinearLayout quickRow = new LinearLayout(this);
+        quickRow.setOrientation(LinearLayout.HORIZONTAL);
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (int minutes : new int[]{5, 10, 15, 30}) {
+            TextView chip = text(minutes + " 分钟", 13, GREEN, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(0, dp(8), 0, dp(8));
+            chip.setBackground(round(MINT_LIGHT, 11));
+            final int seconds = minutes * 60;
+            chip.setOnClickListener(v -> {
+                setInterval(interval, button, seconds);
+                if (holder[0] != null) holder[0].dismiss();
+            });
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, -2, 1);
+            chipParams.rightMargin = dp(6);
+            quickRow.addView(chip, chipParams);
+        }
+        content.addView(quickRow);
+
+        final TextView preview = text(intervalText(interval[0]), 20, UiPalette.COUNTDOWN_INK, true);
+        preview.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1, -2);
+        previewParams.topMargin = dp(14);
+        previewParams.bottomMargin = dp(8);
+        content.addView(preview, previewParams);
+
+        LinearLayout wheels = new LinearLayout(this);
+        wheels.setGravity(Gravity.CENTER);
+        wheels.setOrientation(LinearLayout.HORIZONTAL);
+        wheels.setPadding(dp(6), dp(8), dp(6), dp(8));
+        wheels.setBackground(round(MINT_PALE, 14));
+        NumberPicker hours = WheelPicker.wheel(this, 0, 23, interval[0] / 3600, true);
+        NumberPicker minutes = WheelPicker.wheel(this, 0, 59, interval[0] / 60 % 60, true);
+        NumberPicker seconds = WheelPicker.wheel(this, 0, 59, interval[0] % 60, true);
+        addIntervalWheel(wheels, hours, "小时");
+        addIntervalWheel(wheels, minutes, "分钟");
+        addIntervalWheel(wheels, seconds, "秒");
+        content.addView(wheels, new LinearLayout.LayoutParams(-1, -2));
+
+        final Runnable refresh = () -> preview.setText(intervalText(
+                hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue()));
+        NumberPicker.OnValueChangeListener changed = (picker, oldValue, newValue) -> refresh.run();
+        hours.setOnValueChangedListener(changed);
+        minutes.setOnValueChangedListener(changed);
+        seconds.setOnValueChangedListener(changed);
+
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext())
                 .setTitle("提醒间隔")
-                .setView(scroll)
-                .setNegativeButton("管理自定义", (dialog, which) -> manageSavedIntervals(interval, button))
-                .setNeutralButton("自定义", (dialog, which) -> showCustomIntervalPicker(interval, button))
-                .setPositiveButton("完成", null)
+                .setView(content)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确定", null)
                 .create();
-        if (!favorites.isEmpty()) {
-            addIntervalSection(options, "常用时间");
-            for (int value : saved) {
-                if (favorites.contains(value)) addIntervalOption(options, intervalDialog, interval, button,
-                        value, interval[0] == value, true);
-            }
-        }
-        boolean hasCustom = false;
-        for (int value : saved) hasCustom |= !favorites.contains(value);
-        if (hasCustom) {
-            addIntervalSection(options, "自定义时间");
-            for (int value : saved) {
-                if (!favorites.contains(value)) addIntervalOption(options, intervalDialog, interval, button,
-                        value, interval[0] == value, false);
-            }
-        }
-        addIntervalSection(options, "快捷间隔");
-        for (int value : new int[]{5, 10, 15, 20, 30, 45, 60, 90}) {
-            int seconds = value * 60;
-            addIntervalOption(options, intervalDialog, interval, button, seconds, interval[0] == seconds, false);
-        }
-        showStyledDialog(intervalDialog);
+        holder[0] = dialog;
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                int total = hours.getValue() * 3600 + minutes.getValue() * 60 + seconds.getValue();
+                if (total <= 0) {
+                    Toast.makeText(this, "提醒间隔至少为 1 秒", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                setInterval(interval, button, total);
+                dialog.dismiss();
+            });
+            styleDialog(dialog, Math.min(getResources().getDisplayMetrics().widthPixels - dp(36), dp(480)));
+        });
+        dialog.show();
     }
 
     private void addIntervalSection(LinearLayout parent, String title) {
@@ -786,21 +972,9 @@ public final class ItemsActivity extends Activity {
         fields.setOrientation(LinearLayout.HORIZONTAL);
         fields.setPadding(dp(12), dp(8), dp(12), dp(8));
         fields.setBackground(round(MINT_PALE, 12));
-        NumberPicker hours = new NumberPicker(this);
-        hours.setMinValue(0);
-        hours.setMaxValue(23);
-        hours.setWrapSelectorWheel(false);
-        hours.setValue(interval[0] / 3600);
-        NumberPicker minutes = new NumberPicker(this);
-        minutes.setMinValue(0);
-        minutes.setMaxValue(59);
-        minutes.setWrapSelectorWheel(false);
-        minutes.setValue(interval[0] / 60 % 60);
-        NumberPicker seconds = new NumberPicker(this);
-        seconds.setMinValue(0);
-        seconds.setMaxValue(59);
-        seconds.setWrapSelectorWheel(false);
-        seconds.setValue(interval[0] % 60);
+        NumberPicker hours = WheelPicker.wheel(this, 0, 23, interval[0] / 3600, true);
+        NumberPicker minutes = WheelPicker.wheel(this, 0, 59, interval[0] / 60 % 60, true);
+        NumberPicker seconds = WheelPicker.wheel(this, 0, 59, interval[0] % 60, true);
         addIntervalWheel(fields, hours, "小时");
         addIntervalWheel(fields, minutes, "分钟");
         addIntervalWheel(fields, seconds, "秒");
@@ -999,13 +1173,7 @@ public final class ItemsActivity extends Activity {
     }
 
     private NumberPicker timePointWheel(int min, int max, int value) {
-        NumberPicker picker = new NumberPicker(this);
-        picker.setMinValue(min);
-        picker.setMaxValue(max);
-        picker.setValue(value);
-        picker.setWrapSelectorWheel(true);
-        picker.setFormatter(number -> String.format(Locale.ROOT, "%02d", number));
-        return picker;
+        return WheelPicker.wheel(this, min, max, value, true);
     }
 
     private void renderTimePoints(List<Integer> timePoints, LinearLayout rows) {
@@ -1123,7 +1291,7 @@ public final class ItemsActivity extends Activity {
         input.setHintTextColor(MUTED);
         input.setPadding(dp(14), dp(10), dp(14), dp(10));
         input.setMinHeight(dp(48));
-        input.setBackground(round(MINT_PALE, 10));
+        input.setBackground(UiPalette.inputBackground(this, MINT_PALE, 10));
         return input;
     }
 
@@ -1161,19 +1329,20 @@ public final class ItemsActivity extends Activity {
     }
 
     private void styleWheel(NumberPicker picker) {
-        picker.setBackground(round(MINT_PALE, 10));
-        View child = picker.getChildAt(0);
-        if (child instanceof EditText) {
-            EditText value = (EditText) child;
-            value.setTextColor(INK);
-            value.setTextSize(20);
-            value.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            value.setBackgroundColor(Color.TRANSPARENT);
-        }
+        WheelPicker.style(picker);
     }
 
     private TextView text(String value, int size, int color, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return t; }
     private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(UiPalette.surface(color)); d.setCornerRadius(dp(radius)); if (color == Color.WHITE) d.setStroke(dp(1), UiPalette.BORDER); return d; }
+
+    private void setArtworkPreview(FrameLayout preview, String artworkId) {
+        preview.removeAllViews();
+        int drawable = ReminderArtworkCatalog.drawable(artworkId);
+        ImageView image = new ImageView(this);
+        image.setImageResource(drawable);
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.addView(image, new FrameLayout.LayoutParams(-1, -1));
+    }
     private GradientDrawable circle(int color) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setShape(GradientDrawable.OVAL); return d; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private float dp(float value) { return value * getResources().getDisplayMetrics().density; }

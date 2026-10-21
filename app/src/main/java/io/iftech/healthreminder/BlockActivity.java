@@ -59,10 +59,10 @@ public final class BlockActivity extends Activity {
         TextView title = text("先休息一下，好不好？", 26, TEXT_PRIMARY, true);
         title.setGravity(Gravity.CENTER);
         blockCard.addView(title);
-        WellnessAnimationView face = new WellnessAnimationView(this, WellnessAnimationView.Mood.SAD);
+        ReminderArtworkView face = new ReminderArtworkView(this, "sad");
         FrameLayout scene = new FrameLayout(this);
         scene.setBackground(round(SOFT_BACKGROUND, 18));
-        scene.addView(face, new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER));
+        scene.addView(face, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout.LayoutParams faceParams = new LinearLayout.LayoutParams(-1, dp(205));
         faceParams.topMargin = dp(14);
         faceParams.bottomMargin = dp(16);

@@ -6,6 +6,7 @@ import android.content.Intent;
 
 public final class ScreenUnlockReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
-        ReminderScheduler.resumeAfterScreenOn(context);
+        ReminderScheduler.markScreenOn(context);
+        ReminderScheduler.reconcileAfterScreenOn(context);
     }
 }

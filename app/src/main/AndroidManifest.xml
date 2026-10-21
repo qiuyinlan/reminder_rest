@@ -48,6 +48,7 @@
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity android:name=".ScreenOffSettingsActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".WallpaperSettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".ItemsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".CompanionLandingActivity" android:exported="false" android:screenOrientation="portrait" />
@@ -105,6 +106,7 @@
         <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
