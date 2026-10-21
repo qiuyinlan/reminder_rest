@@ -163,7 +163,7 @@ public final class ItemsActivity extends Activity {
             details.setOrientation(LinearLayout.VERTICAL);
             LinearLayout titleLine = new LinearLayout(this);
             titleLine.setGravity(Gravity.CENTER_VERTICAL);
-            TextView marker = text(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1),
+            TextView marker = text(rule.badgeText(),
                     15, categoryInk(rule.title), true);
             marker.setGravity(Gravity.CENTER);
             GradientDrawable markerBackground = round(categoryTint(rule.title), 22);
@@ -292,6 +292,34 @@ public final class ItemsActivity extends Activity {
         name.setHint("例如：喝水、站起来活动");
         name.setText(existing == null ? "" : existing.title);
         form.addView(name);
+
+        final String[] iconValues = {"", "💧", "👁", "🚶", "🧘", "🌿", "⏰", "☕", "🎧", "📖", "🌙", "⭐", "🍵", "🌸", "🎯", "💤"};
+        final String[] iconLabels = {"默认（取标题第一个字）", "水滴 💧", "眼睛 👁", "走路 🚶", "冥想 🧘", "叶子 🌿",
+                "闹钟 ⏰", "咖啡 ☕", "耳机 🎧", "书本 📖", "月亮 🌙", "星星 ⭐", "喝茶 🍵", "花朵 🌸", "目标 🎯", "睡觉 💤"};
+        final String[] iconValue = {existing == null ? "" : existing.icon};
+        LinearLayout iconRow = new LinearLayout(this);
+        iconRow.setGravity(Gravity.CENTER_VERTICAL);
+        iconRow.setPadding(0, dp(10), 0, 0);
+        TextView iconLabel = text("图标", 13, MUTED, true);
+        iconRow.addView(iconLabel, new LinearLayout.LayoutParams(0, -2, 1));
+        final TextView iconPreview = text(iconValue[0].isEmpty() ? "默认" : iconValue[0], 15, INK, true);
+        iconPreview.setGravity(Gravity.CENTER);
+        iconPreview.setMinWidth(dp(72));
+        iconPreview.setPadding(dp(12), dp(8), dp(12), dp(8));
+        iconPreview.setBackground(round(Color.WHITE, 10));
+        iconPreview.setOnClickListener(v -> {
+            AlertDialog iconDialog = new AlertDialog.Builder(dialogContext())
+                    .setTitle("选择图标")
+                    .setItems(iconLabels, (dialog, which) -> {
+                        iconValue[0] = iconValues[which];
+                        iconPreview.setText(iconValues[which].isEmpty() ? "默认" : iconValues[which]);
+                    })
+                    .create();
+            showStyledDialog(iconDialog);
+        });
+        iconRow.addView(iconPreview);
+        form.addView(iconRow);
+
         form.addView(editorLabel("霸屏提醒语句", true));
         EditText reminderMessage = styledInput(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
@@ -475,7 +503,8 @@ public final class ItemsActivity extends Activity {
                     timePoints, target[0], remindAfterTarget[0], enabled[0])
                     : ReminderSettings.Rule.withIntervalSeconds(id, title, start[0], end[0], interval[0],
                     target[0], remindAfterTarget[0], enabled[0]);
-            updated.add(rule.withReminderMessage(reminderMessage.getText().toString()));
+            updated.add(rule.withReminderMessage(reminderMessage.getText().toString())
+                    .withIcon(iconValue[0]));
             ReminderSettings.saveRules(this, updated);
             renderItems();
             editor.dismiss();

@@ -23,6 +23,8 @@ final class ReminderSettings {
     static final class Rule {
         final int id;
         final String title;
+        /** 自定义图标（单个字符/符号）；为空时显示标题首字。 */
+        final String icon;
         final String reminderMessage;
         final int start;
         final int end;
@@ -59,8 +61,17 @@ final class ReminderSettings {
         private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
                      int dailyTarget, boolean remindAfterTarget, boolean enabled,
                      boolean specificTimeMode, List<Integer> timePointsSeconds, String reminderMessage) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, specificTimeMode, timePointsSeconds, reminderMessage, "");
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds,
+                     String reminderMessage, String icon) {
             this.id = id;
             this.title = title;
+            this.icon = icon == null ? "" : icon.trim();
             this.reminderMessage = reminderMessage == null ? "" : reminderMessage.trim();
             this.start = start;
             this.end = end;
@@ -94,12 +105,23 @@ final class ReminderSettings {
 
         Rule withReminderMessage(String message) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message);
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon);
+        }
+
+        Rule withIcon(String value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value);
         }
 
         Rule withEnabled(boolean value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, value, specificTimeMode, timePointsSeconds, reminderMessage);
+                    remindAfterTarget, value, specificTimeMode, timePointsSeconds, reminderMessage, icon);
+        }
+
+        /** 卡片徽标文字：自定义图标优先，否则取标题首字。 */
+        String badgeText() {
+            if (!icon.isEmpty()) return icon;
+            return title.isEmpty() ? "·" : title.substring(0, 1);
         }
 
     }
@@ -156,7 +178,8 @@ final class ReminderSettings {
                     rule = Rule.withSpecificTimes(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds,
                             times, rule.dailyTarget, rule.remindAfterTarget, rule.enabled);
                 }
-                result.add(rule.withReminderMessage(item.optString("reminderMessage", "")));
+                result.add(rule.withReminderMessage(item.optString("reminderMessage", ""))
+                        .withIcon(item.optString("icon", "")));
             }
         } catch (JSONException ignored) { }
         return result;
@@ -200,6 +223,7 @@ final class ReminderSettings {
 
     private static boolean sameRule(Rule first, Rule second) {
         return first.id == second.id && first.title.equals(second.title)
+                && first.icon.equals(second.icon)
                 && first.start == second.start && first.end == second.end
                 && first.intervalSeconds == second.intervalSeconds && first.dailyTarget == second.dailyTarget
                 && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled
@@ -214,6 +238,7 @@ final class ReminderSettings {
             try {
                 item.put("id", rule.id);
                 item.put("title", rule.title);
+                item.put("icon", rule.icon);
                 item.put("reminderMessage", rule.reminderMessage);
                 item.put("start", rule.start);
                 item.put("end", rule.end);

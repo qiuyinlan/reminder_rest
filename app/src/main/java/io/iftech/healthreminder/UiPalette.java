@@ -33,6 +33,8 @@ final class UiPalette {
     static int WARN_BORDER = 0xffeccba2;
     /** 陪伴类目色（统计页汇总、时间线）。 */
     static int COMPANION = 0xff8a5bab;
+    /** 倒计时数字色（比主色更深/更亮，保证数字醒目）。 */
+    static int COUNTDOWN_INK = 0xff125f45;
 
     private static boolean darkTheme;
     private static int[] pageGradient = {0xfff6fcf8, 0xffeef8f1, 0xffe9f6ef};
@@ -83,6 +85,7 @@ final class UiPalette {
             WARN_SOFT = 0xff402c24;
             WARN_BORDER = 0xffaa7152;
             COMPANION = 0xffd7a6eb;
+            COUNTDOWN_INK = 0xff8cecc0;
             pageGradient = new int[]{PAGE_LIGHT, PAGE, 0xff02140f};
             headGradient = new int[]{0xff0b3325, 0xff12352c, 0xff142d3c};
             glassGradient = new int[]{0xff1c3d33, 0xff0f2b23};
@@ -107,6 +110,7 @@ final class UiPalette {
             WARN_SOFT = 0xfffff2e2;
             WARN_BORDER = 0xffeccba2;
             COMPANION = 0xff8a5bab;
+            COUNTDOWN_INK = 0xff125f45;
             pageGradient = new int[]{0xfff6fcf8, 0xffeef8f1, 0xffe9f6ef};
             headGradient = new int[]{0xffe6f7ee, 0xffddf1ea, 0xffe9f6f2};
             glassGradient = new int[]{0xffffffff, 0xfff2faf5};

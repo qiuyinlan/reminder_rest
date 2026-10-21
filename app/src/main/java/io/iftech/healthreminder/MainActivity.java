@@ -19,6 +19,11 @@ import android.animation.ValueAnimator;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.accessibility.AccessibilityManager;
 import android.view.Gravity;
 import android.view.View;
@@ -596,7 +601,7 @@ public final class MainActivity extends Activity {
         if (!rule.enabled) item.setAlpha(0.62f);
 
         LinearLayout main = row();
-        TextView badge = label(rule.title.isEmpty() ? "·" : rule.title.substring(0, 1), 15, iconColor(rule.title), true);
+        TextView badge = label(rule.badgeText(), 15, iconColor(rule.title), true);
         badge.setGravity(Gravity.CENTER);
         badge.setContentDescription(rule.title);
         GradientDrawable badgeBackground = round(iconTint(rule.title), 20);
@@ -642,8 +647,9 @@ public final class MainActivity extends Activity {
         schedule.setLetterSpacing(0.02f);
         schedule.setEllipsize(android.text.TextUtils.TruncateAt.END);
         metaLine.addView(schedule, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView countdown = label(" · " + nextText, 10,
+        TextView countdown = label("", 11,
                 ticking && done < rule.dailyTarget ? GREEN : MUTED, done >= rule.dailyTarget);
+        countdown.setText(countdownStyled(" · " + nextText));
         countdown.setSingleLine(true);
         countdown.setLetterSpacing(0.02f);
         countdown.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -704,12 +710,12 @@ public final class MainActivity extends Activity {
 
             boolean targetReached = updatedDone >= rule.dailyTarget;
             if (targetReached && !rule.remindAfterTarget) {
-                countdown.setText(" · 今日已完成");
+                countdown.setText(countdownStyled(" · 今日已完成"));
                 countdown.setTextColor(MUTED);
             } else {
                 long refreshedNextAt = ReminderScheduler.scheduledAt(this, rule.id);
                 if (refreshedNextAt <= 0L) refreshedNextAt = ReminderScheduler.nextTime(rule, now);
-                countdown.setText(" · " + countdownText(refreshedNextAt - now));
+                countdown.setText(countdownStyled(" · " + countdownText(refreshedNextAt - now)));
                 countdown.setTextColor(targetReached ? MUTED : GREEN);
             }
         });
@@ -784,6 +790,25 @@ public final class MainActivity extends Activity {
         return result.toString();
     }
 
+    /** 倒计时里的数字放大一档并加深颜色，单位文字保持小号。 */
+    private CharSequence countdownStyled(String text) {
+        SpannableStringBuilder builder = new SpannableStringBuilder(text);
+        int numberColor = UiPalette.COUNTDOWN_INK;
+        int index = 0;
+        while (index < builder.length()) {
+            if (!Character.isDigit(builder.charAt(index))) {
+                index++;
+                continue;
+            }
+            int start = index;
+            while (index < builder.length() && Character.isDigit(builder.charAt(index))) index++;
+            builder.setSpan(new RelativeSizeSpan(1.22f), start, index, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new ForegroundColorSpan(numberColor), start, index, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new StyleSpan(Typeface.BOLD), start, index, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return builder;
+    }
+
     private void startCountdown(TextView view, ReminderSettings.Rule rule) {
         Runnable ticker = new Runnable() {
             @Override public void run() {
@@ -795,7 +820,7 @@ public final class MainActivity extends Activity {
                 if (nextAt <= 0L) nextAt = ReminderScheduler.nextTime(rule, now);
                 String value = countdownText(nextAt - now);
                 if (targetReached) value = "目标已达成";
-                view.setText(" · " + value);
+                view.setText(countdownStyled(" · " + value));
                 view.setTextColor(targetReached ? MUTED : GREEN);
                 view.postDelayed(this, 1000);
             }
