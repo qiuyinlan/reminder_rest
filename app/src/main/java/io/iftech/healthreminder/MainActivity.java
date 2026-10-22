@@ -60,6 +60,8 @@ public final class MainActivity extends Activity {
     private boolean reopenPermissionGuide;
     private TextView completedMetric;
     private ProgressBar todayProgress;
+    private static final String ONBOARDING_PREFS = "welcome_letter";
+    private static final String KEY_WELCOME_SEEN = "seen_v1";
 
     @Override
     protected void onCreate(Bundle state) {
@@ -76,12 +78,17 @@ public final class MainActivity extends Activity {
         }
         UiPalette.applyWindow(getWindow());
         ReminderScheduler.update(this);
-        render();
+        if (getSharedPreferences(ONBOARDING_PREFS, MODE_PRIVATE).getBoolean(KEY_WELCOME_SEEN, false)) {
+            enterHome();
+        } else {
+            showWelcomeLetter();
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        AppUpdateManager.resumePendingInstall(this);
         if (body != null) {
             ReminderScheduler.reconcileAfterScreenOn(this);
             render();
@@ -233,6 +240,86 @@ public final class MainActivity extends Activity {
         navParams.rightMargin = dp(14);
         navParams.bottomMargin = dp(10);
         screen.addView(nav, navParams);
+    }
+
+    private void showWelcomeLetter() {
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setBackgroundColor(UiPalette.PAGE);
+        screen.setPadding(dp(18), dp(12), dp(18), dp(18));
+
+        LinearLayout topBar = row();
+        TextView space = label("", 16, INK, false);
+        topBar.addView(space, new LinearLayout.LayoutParams(0, dp(44), 1));
+        TextView close = label("×", 28, MUTED, false);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("关闭引导信");
+        close.setBackground(round(Color.WHITE, 22));
+        topBar.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        close.setOnClickListener(v -> enterHome());
+        screen.addView(topBar);
+
+        ScrollView letterScroll = new ScrollView(this);
+        letterScroll.setFillViewport(true);
+        letterScroll.setClipToPadding(false);
+        LinearLayout.LayoutParams letterScrollParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        letterScrollParams.topMargin = dp(8);
+        letterScrollParams.bottomMargin = dp(14);
+        screen.addView(letterScroll, letterScrollParams);
+
+        LinearLayout paper = new LinearLayout(this);
+        paper.setOrientation(LinearLayout.VERTICAL);
+        paper.setPadding(dp(24), dp(30), dp(24), dp(30));
+        GradientDrawable paperBackground = new GradientDrawable();
+        paperBackground.setColor(UiPalette.surface(Color.WHITE));
+        paperBackground.setCornerRadius(dp(3));
+        paperBackground.setStroke(dp(1), UiPalette.isDark() ? 0xff32624f : UiPalette.BORDER);
+        paper.setBackground(paperBackground);
+        letterScroll.addView(paper, new ScrollView.LayoutParams(-1, -2));
+
+        TextView title = label("写给刚来这里的你", 23, INK, true);
+        title.setGravity(Gravity.CENTER);
+        title.setPadding(0, 0, 0, dp(24));
+        paper.addView(title, full());
+
+        addLetterParagraph(paper, "你好，我是「休息豆芽」的开发者，很高兴见到你。", true);
+        addLetterParagraph(paper, "我做这个 App，是因为我发现有时候明明累了，却还是停不下来，忘了歇一会儿。", false);
+        addLetterParagraph(paper, "学习停不下来，工作停不下来，玩还是停不下来。", false);
+        addLetterParagraph(paper, "身体支撑着我们的一举一动，但是我们却没有腾出时间，让它休息休息。", false);
+        addLetterParagraph(paper, "身体是脆弱的，过度的劳累会让它不堪重负。\n但身体又是强大的，我们好好对它，它也会积极地自愈。", true);
+        addLetterParagraph(paper, "所以，我想做一个APP，让可爱灵动的豆芽，强制提醒你去休息，好好爱护自己的身体。", false);
+        addLetterParagraph(paper, "你可以按自己的情况安排提醒，豆芽会担起责任，好好监督你，让你百忙之余也不要忘了身体。", false);
+        addLetterParagraph(paper, "累了，也可以来这里听听声音，让豆芽陪你待一会儿。", false);
+        addLetterParagraph(paper, "谢谢你愿意试试「好好歇会」。", false);
+        addLetterParagraph(paper, "希望它能陪你一起，爱护你的身体，\n平时记得做想做的事，\n也要记得照顾好自己。", false);
+
+        TextView signature = label("— 「休息豆芽」开发者", 14, MUTED, true);
+        signature.setGravity(Gravity.RIGHT);
+        signature.setPadding(0, dp(8), 0, 0);
+        paper.addView(signature, full());
+
+        TextView begin = label("开始使用", 15, UiPalette.ACCENT, true);
+        begin.setGravity(Gravity.CENTER);
+        begin.setBackground(round(UiPalette.SOFT, 18));
+        begin.setContentDescription("开始使用好好歇会");
+        screen.addView(begin, new LinearLayout.LayoutParams(-1, dp(48)));
+        begin.setOnClickListener(v -> enterHome());
+        setContentView(screen);
+    }
+
+    private void addLetterParagraph(LinearLayout paper, String content, boolean emphasize) {
+        TextView paragraph = label(content, 15, emphasize ? INK : MUTED, emphasize);
+        paragraph.setLineSpacing(dp(4), 1f);
+        LinearLayout.LayoutParams params = full();
+        params.bottomMargin = dp(17);
+        paper.addView(paragraph, params);
+    }
+
+    private void enterHome() {
+        getSharedPreferences(ONBOARDING_PREFS, MODE_PRIVATE).edit()
+                .putBoolean(KEY_WELCOME_SEEN, true).apply();
+        render();
+        AppUpdateManager.check(this, false);
     }
 
     private void addTodayStatusCard(List<ReminderSettings.Rule> rules) {

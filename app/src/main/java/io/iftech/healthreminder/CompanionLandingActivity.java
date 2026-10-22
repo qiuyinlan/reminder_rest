@@ -59,9 +59,11 @@ public final class CompanionLandingActivity extends Activity {
         modes.setPadding(dp(4), dp(4), dp(4), dp(4));
         modes.setBackground(round(MINT_PALE, 12));
         companionOption = modeOption("轻松陪伴");
-        focusOption = modeOption("专注陪伴");
+        focusOption = modeOption("专注陪伴  PRO");
         companionOption.setOnClickListener(v -> setFocusMode(false));
-        focusOption.setOnClickListener(v -> setFocusMode(true));
+        focusOption.setOnClickListener(v -> MembershipAccess.requirePremium(this, "专注陪伴为会员功能", active -> {
+            if (active) setFocusMode(true);
+        }));
         modes.addView(companionOption, new LinearLayout.LayoutParams(0, dp(40), 1));
         modes.addView(focusOption, new LinearLayout.LayoutParams(0, dp(40), 1));
         LinearLayout modeHeading = new LinearLayout(this);
@@ -128,11 +130,13 @@ public final class CompanionLandingActivity extends Activity {
         start.setBackground(round(ACCENT, 16));
         start.setElevation(dp(1));
         start.setOnClickListener(v -> {
-            Intent companion = new Intent(this, CompanionActivity.class);
-            companion.putExtra(CompanionAudioService.EXTRA_FOCUS_MODE, focusMode);
-            startActivity(companion);
-            overridePendingTransition(0, 0);
-            finish();
+            if (MembershipPolicy.requiresMembershipForFocusMode(focusMode)) {
+                MembershipAccess.requirePremium(this, "专注陪伴为会员功能", active -> {
+                    if (active) startCompanion();
+                });
+                return;
+            }
+            startCompanion();
         });
         content.addView(start, new LinearLayout.LayoutParams(-1, dp(54)));
         setFocusMode(false);
@@ -142,6 +146,14 @@ public final class CompanionLandingActivity extends Activity {
         navParams.bottomMargin = dp(10);
         screen.addView(createNavigation(), navParams);
         setContentView(screen);
+    }
+
+    private void startCompanion() {
+        Intent companion = new Intent(this, CompanionActivity.class);
+        companion.putExtra(CompanionAudioService.EXTRA_FOCUS_MODE, focusMode);
+        startActivity(companion);
+        overridePendingTransition(0, 0);
+        finish();
     }
 
     private TextView modeOption(String label) {
@@ -155,7 +167,7 @@ public final class CompanionLandingActivity extends Activity {
         mascot.setImageResource(focus ? R.drawable.companion_reading : R.drawable.beans_relax);
         companionOption.setTextColor(focus ? MUTED : ACCENT);
         companionOption.setBackground(round(focus ? Color.TRANSPARENT : MINT_LIGHT, 10));
-        focusOption.setTextColor(focus ? ACCENT : MUTED);
+        focusOption.setTextColor(focus ? ACCENT : UiPalette.MUTED);
         focusOption.setBackground(round(focus ? MINT_LIGHT : Color.TRANSPARENT, 10));
         prompt.setText(focus ? "给自己一段专注时间" : "现在开始一段安静的陪伴");
         detail.setText(focus ? "全屏专注，结束后会记录陪伴时长。" : "可以切到后台，随时回来或结束。");

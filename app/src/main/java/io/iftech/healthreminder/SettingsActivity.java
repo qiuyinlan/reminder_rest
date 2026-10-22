@@ -21,6 +21,11 @@ public final class SettingsActivity extends Activity {
     private int PAPER = UiPalette.PAGE;
     private int LINE = UiPalette.BORDER;
 
+    @Override protected void onResume() {
+        super.onResume();
+        AppUpdateManager.resumePendingInstall(this);
+    }
+
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
@@ -52,6 +57,53 @@ public final class SettingsActivity extends Activity {
         TextView subtitle = text("让提醒方式更贴合你的日常", 13, MUTED, false);
         subtitle.setPadding(dp(54), dp(5), 0, 0);
         page.addView(subtitle);
+
+        LinearLayout membership = new LinearLayout(this);
+        membership.setGravity(Gravity.CENTER_VERTICAL);
+        membership.setPadding(dp(15), dp(14), dp(14), dp(14));
+        membership.setBackground(round(Color.WHITE, 14));
+        membership.setOnClickListener(v -> startActivity(new Intent(this, MembershipActivity.class)));
+        LinearLayout.LayoutParams membershipParams = new LinearLayout.LayoutParams(-1, -2);
+        membershipParams.topMargin = dp(16);
+        page.addView(membership, membershipParams);
+        TextView memberMark = text("会", 17, GREEN, true);
+        memberMark.setGravity(Gravity.CENTER);
+        memberMark.setBackground(round(MINT_PALE, 12));
+        LinearLayout.LayoutParams memberMarkParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        memberMarkParams.rightMargin = dp(12);
+        membership.addView(memberMark, memberMarkParams);
+        LinearLayout memberCopy = new LinearLayout(this);
+        memberCopy.setOrientation(LinearLayout.VERTICAL);
+        memberCopy.addView(text("会员与账号", 15, INK, true));
+        TextView memberDetail = text("邮箱登录 · 兑换会员码", 12, MUTED, false);
+        memberDetail.setPadding(0, dp(4), 0, 0);
+        memberCopy.addView(memberDetail);
+        membership.addView(memberCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        membership.addView(text("›", 23, GREEN, false));
+
+        LinearLayout update = new LinearLayout(this);
+        update.setGravity(Gravity.CENTER_VERTICAL);
+        update.setPadding(dp(15), dp(13), dp(14), dp(13));
+        update.setBackground(round(Color.WHITE, 14));
+        update.setOnClickListener(v -> AppUpdateManager.check(this, true));
+        LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(-1, -2);
+        updateParams.topMargin = dp(9);
+        page.addView(update, updateParams);
+        TextView updateMark = text("↻", 21, GREEN, true);
+        updateMark.setGravity(Gravity.CENTER);
+        updateMark.setBackground(round(MINT_PALE, 12));
+        LinearLayout.LayoutParams updateMarkParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        updateMarkParams.rightMargin = dp(12);
+        update.addView(updateMark, updateMarkParams);
+        LinearLayout updateCopy = new LinearLayout(this);
+        updateCopy.setOrientation(LinearLayout.VERTICAL);
+        updateCopy.addView(text("检查应用更新", 15, INK, true));
+        TextView updateDetail = text(BuildConfig.UPDATE_MANIFEST_URL.isEmpty()
+                ? "启动自动检查（需配置更新地址）" : "启动自动检查已开启", 12, MUTED, false);
+        updateDetail.setPadding(0, dp(4), 0, 0);
+        updateCopy.addView(updateDetail);
+        update.addView(updateCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        update.addView(text("›", 23, GREEN, false));
 
         LinearLayout intro = new LinearLayout(this);
         intro.setGravity(Gravity.CENTER_VERTICAL);

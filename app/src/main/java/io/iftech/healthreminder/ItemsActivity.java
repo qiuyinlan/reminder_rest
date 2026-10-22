@@ -49,6 +49,8 @@ public final class ItemsActivity extends Activity {
     private int MUTED = UiPalette.MUTED;
     private int PAPER = UiPalette.PAGE;
     private LinearLayout list;
+    private TextView addFab;
+    private TextView addFabPro;
     private boolean returnToHome;
 
     @Override public void onCreate(Bundle state) {
@@ -67,15 +69,22 @@ public final class ItemsActivity extends Activity {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         addNavigation(screen);
         frame.addView(screen);
-        TextView add = text("＋", 28, Color.WHITE, false);
-        add.setGravity(Gravity.CENTER);
-        add.setBackground(circle(MINT));
-        add.setElevation(dp(5));
-        add.setContentDescription("添加提醒事项");
+        addFab = text("＋", 28, Color.WHITE, false);
+        addFab.setGravity(Gravity.CENTER);
+        addFab.setBackground(circle(MINT));
+        addFab.setElevation(dp(5));
+        addFab.setContentDescription("添加提醒事项");
         FrameLayout.LayoutParams fab = new FrameLayout.LayoutParams(dp(54), dp(54), Gravity.RIGHT | Gravity.BOTTOM);
         fab.setMargins(0, 0, dp(20), dp(78));
-        frame.addView(add, fab);
-        add.setOnClickListener(v -> editRule(null));
+        frame.addView(addFab, fab);
+        addFab.setOnClickListener(v -> editRule(null));
+        addFabPro = text("PRO", 9, Color.WHITE, true);
+        addFabPro.setGravity(Gravity.CENTER);
+        addFabPro.setBackground(round(UiPalette.MUTED, 6));
+        FrameLayout.LayoutParams proBadge = new FrameLayout.LayoutParams(dp(30), dp(18), Gravity.RIGHT | Gravity.BOTTOM);
+        proBadge.setMargins(0, 0, dp(14), dp(123));
+        frame.addView(addFabPro, proBadge);
+        addFabPro.setVisibility(View.GONE);
         setContentView(frame);
         renderItems();
         if (state == null) {
@@ -98,14 +107,19 @@ public final class ItemsActivity extends Activity {
     private void renderItems() {
         list.removeAllViews();
         List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
+        boolean itemLimitReached = MembershipPolicy.requiresMembershipForNewItem(rules.size());
+        addFabPro.setVisibility(itemLimitReached ? View.VISIBLE : View.GONE);
+        addFab.setBackground(circle(itemLimitReached ? UiPalette.MUTED : MINT));
+        addFab.setContentDescription(itemLimitReached ? "添加提醒事项，PRO" : "添加提醒事项");
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("今日行动", 26, INK, true);
         heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView addLabel = text("添加", 13, GREEN, true);
+        TextView addLabel = text(itemLimitReached ? "添加  PRO" : "添加", 13,
+                itemLimitReached ? UiPalette.MUTED : GREEN, true);
         addLabel.setGravity(Gravity.CENTER);
         addLabel.setPadding(dp(12), dp(8), dp(12), dp(8));
-        addLabel.setBackground(round(MINT_LIGHT, 13));
+        addLabel.setBackground(round(itemLimitReached ? UiPalette.PALE : MINT_LIGHT, 13));
         addLabel.setOnClickListener(v -> editRule(null));
         heading.addView(addLabel);
         list.addView(heading);
@@ -297,6 +311,16 @@ public final class ItemsActivity extends Activity {
     }
 
     private void editRule(ReminderSettings.Rule existing) {
+        if (existing == null && MembershipPolicy.requiresMembershipForNewItem(ReminderSettings.rules(this).size())) {
+            MembershipAccess.requirePremium(this, "免费版最多可新建 3 个事项", active -> {
+                if (active) editRuleInternal(null);
+            });
+            return;
+        }
+        editRuleInternal(existing);
+    }
+
+    private void editRuleInternal(ReminderSettings.Rule existing) {
         int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
         int[] start = {existing == null ? 9 * 60 : existing.start};
         int[] end = {existing == null ? 18 * 60 : existing.end};
@@ -431,6 +455,7 @@ public final class ItemsActivity extends Activity {
             ScrollView optionScroll = new ScrollView(dialogContext());
             optionScroll.setVerticalScrollBarEnabled(false);
             for (int i = 0; i < artworkIds.length; i++) {
+                final int artworkIndex = i;
                 final String optionId = artworkIds[i];
                 LinearLayout option = new LinearLayout(dialogContext());
                 option.setGravity(Gravity.CENTER_VERTICAL);
@@ -440,20 +465,38 @@ public final class ItemsActivity extends Activity {
                 thumbnail.setBackground(round(Color.WHITE, 8));
                 option.addView(thumbnail, new LinearLayout.LayoutParams(dp(48), dp(54)));
                 setArtworkPreview(thumbnail, optionId);
-                TextView optionLabel = text(artworkLabels[i], 15, INK, optionId.equals(artworkValue[0]));
+                boolean premiumArtwork = MembershipPolicy.requiresMembershipForArtwork(artworkIndex);
+                if (premiumArtwork) thumbnail.setAlpha(0.48f);
+                TextView optionLabel = text(artworkLabels[i], 15,
+                        premiumArtwork ? UiPalette.MUTED : INK, optionId.equals(artworkValue[0]));
                 LinearLayout.LayoutParams optionLabelParams = new LinearLayout.LayoutParams(0, -2, 1);
                 optionLabelParams.leftMargin = dp(14);
                 option.addView(optionLabel, optionLabelParams);
-                if (optionId.equals(artworkValue[0])) {
+                if (premiumArtwork) {
+                    TextView proBadge = text("PRO", 10, UiPalette.MUTED, true);
+                    proBadge.setGravity(Gravity.CENTER);
+                    proBadge.setPadding(dp(6), dp(3), dp(6), dp(3));
+                    proBadge.setBackground(round(UiPalette.PALE, 6));
+                    option.addView(proBadge);
+                } else if (optionId.equals(artworkValue[0])) {
                     TextView selectedMark = text("✓", 17, GREEN, true);
                     option.addView(selectedMark);
                 }
                 option.setContentDescription("选择" + artworkLabels[i]);
                 option.setOnClickListener(choice -> {
-                    artworkValue[0] = optionId;
-                    artworkButton.setText(ReminderArtworkCatalog.label(optionId) + "  ›");
-                    setArtworkPreview(artworkPreview, optionId);
-                    ((AlertDialog) choice.getTag()).dismiss();
+                    Runnable applyChoice = () -> {
+                        artworkValue[0] = optionId;
+                        artworkButton.setText(ReminderArtworkCatalog.label(optionId) + "  ›");
+                        setArtworkPreview(artworkPreview, optionId);
+                        ((AlertDialog) choice.getTag()).dismiss();
+                    };
+                    if (MembershipPolicy.requiresMembershipForArtwork(artworkIndex)) {
+                        MembershipAccess.requirePremium(this, "免费版可使用前 3 个霸屏页面", active -> {
+                            if (active) applyChoice.run();
+                        });
+                    } else {
+                        applyChoice.run();
+                    }
                 });
                 options.addView(option, new LinearLayout.LayoutParams(-1, dp(64)));
             }
