@@ -1,0 +1,7 @@
+{
+  "versionCode": 3,
+  "versionName": "0.1.2",
+  "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/latest/download/rest-bean.apk",
+  "sha256": "33f7c5a73041724a7b2f21e43643b695d6a7e8b2613f83dded2792621c437a64",
+  "notes": "首次使用信纸引导、会员功能入口优化与自动更新支持。"
+}
