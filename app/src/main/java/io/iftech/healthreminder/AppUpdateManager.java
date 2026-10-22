@@ -78,6 +78,7 @@ final class AppUpdateManager {
         long now = System.currentTimeMillis();
         android.content.SharedPreferences prefs = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
         if (!manual && now - prefs.getLong(LAST_CHECK, 0) < CHECK_INTERVAL_MS) return;
+        if (manual) toast(activity, "正在检查更新，请稍候…");
         prefs.edit().putLong(LAST_CHECK, now).apply();
         new Thread(() -> {
             UpdateInfo update = null;
@@ -85,7 +86,7 @@ final class AppUpdateManager {
             try {
                 update = parseManifest(requestText(manifestUrl));
                 if (update.versionCode <= BuildConfig.VERSION_CODE) update = null;
-            } catch (IOException | JSONException e) {
+            } catch (IOException | JSONException | IllegalStateException e) {
                 failure = "检查更新失败，请检查网络后重试";
             }
             UpdateInfo found = update;
@@ -163,7 +164,6 @@ final class AppUpdateManager {
     private static String requestText(String url) throws IOException {
         HttpURLConnection connection = openHttps(url);
         try {
-            connection.setRequestProperty("Accept", "application/json");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(15000);
             try (InputStream input = connection.getInputStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -182,7 +182,6 @@ final class AppUpdateManager {
         HttpURLConnection connection = openHttps(url);
         connection.setConnectTimeout(15000);
         connection.setReadTimeout(30000);
-        connection.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream");
         try {
             int length = connection.getContentLength();
             if (length > MAX_APK_BYTES) throw new IOException("更新包超过大小限制");
@@ -216,6 +215,7 @@ final class AppUpdateManager {
             connection.setUseCaches(false);
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(15000);
+            connection.setRequestProperty("Accept", "application/json, application/vnd.android.package-archive, application/octet-stream");
             int status = connection.getResponseCode();
             if (status >= 300 && status < 400) {
                 String location = connection.getHeaderField("Location");
@@ -273,6 +273,11 @@ final class AppUpdateManager {
     }
 
     private static void install(Activity activity, File apk) {
+        try {
+        if (!apk.isFile()) {
+            toast(activity, "更新包不存在，请重新检查并下载更新");
+            return;
+        }
         if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) {
             Toast.makeText(activity, "请允许好好歇会安装此来源的应用，然后返回继续", Toast.LENGTH_LONG).show();
             Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -286,6 +291,9 @@ final class AppUpdateManager {
                 .setDataAndType(uri, "application/vnd.android.package-archive")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         activity.startActivity(intent);
+        } catch (RuntimeException e) {
+            toast(activity, "无法打开系统安装页面，请从 GitHub Release 手动下载安装包");
+        }
     }
 
     private static boolean isHttps(String value) { return value != null && value.startsWith("https://"); }
