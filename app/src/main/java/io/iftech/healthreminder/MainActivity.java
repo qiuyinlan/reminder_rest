@@ -143,6 +143,7 @@ public final class MainActivity extends Activity {
 
         List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
         addTodayStatusCard(rules);
+        addDailyBodyNote();
         addPermissionBanner();
 
         LinearLayout sectionHead = row();
@@ -240,6 +241,42 @@ public final class MainActivity extends Activity {
         navParams.rightMargin = dp(14);
         navParams.bottomMargin = dp(10);
         screen.addView(nav, navParams);
+    }
+
+    private void addDailyBodyNote() {
+        LinearLayout card = columnCard();
+        TextView title = label("今天身体怎么样？", 17, INK, true);
+        card.addView(title);
+        TextView hint = label("自动保存在本机，可在统计里按日期查看", 12, MUTED, false);
+        hint.setPadding(0, dp(6), 0, dp(10));
+        card.addView(hint);
+        EditText note = new EditText(this);
+        note.setTextSize(15);
+        note.setTextColor(INK);
+        note.setHintTextColor(MUTED);
+        note.setHint("记下今天的精神、睡眠，或身体的小变化……");
+        note.setGravity(Gravity.TOP | Gravity.LEFT);
+        note.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        note.setMinLines(3);
+        note.setMaxLines(7);
+        note.setPadding(dp(12), dp(10), dp(12), dp(10));
+        note.setBackground(round(UiPalette.PALE, 12));
+        note.setContentDescription("每日身体情况");
+        Calendar noteDay = Calendar.getInstance();
+        note.setText(DailyBodyNote.read(this, noteDay));
+        note.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                DailyBodyNote.save(MainActivity.this, noteDay, s.toString());
+            }
+            @Override public void afterTextChanged(android.text.Editable s) { }
+        });
+        card.addView(note, full());
+        LinearLayout.LayoutParams params = full();
+        params.topMargin = dp(14);
+        body.addView(card, params);
     }
 
     private void showWelcomeLetter() {

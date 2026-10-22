@@ -165,6 +165,22 @@ public final class StatsActivity extends Activity {
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
         dayHeading.setPadding(dp(2), dp(18), dp(2), dp(9));
         content.addView(dayHeading);
+        LinearLayout bodyNote = new LinearLayout(this);
+        bodyNote.setOrientation(LinearLayout.VERTICAL);
+        bodyNote.setPadding(dp(16), dp(14), dp(16), dp(14));
+        bodyNote.setBackground(round(Color.WHITE, 16));
+        bodyNote.addView(text("身体情况", 16, INK, true));
+        String dailyNote = DailyBodyNote.read(this, selected);
+        TextView noteText = text(dailyNote.trim().isEmpty()
+                ? "这一天还没有身体记录，可在首页记录今天的情况。" : dailyNote,
+                14, dailyNote.trim().isEmpty() ? MUTED : INK, false);
+        noteText.setPadding(0, dp(8), 0, 0);
+        noteText.setLineSpacing(dp(4), 1f);
+        noteText.setTextIsSelectable(true);
+        bodyNote.addView(noteText);
+        LinearLayout.LayoutParams bodyNoteParams = new LinearLayout.LayoutParams(-1, -2);
+        bodyNoteParams.bottomMargin = dp(12);
+        content.addView(bodyNote, bodyNoteParams);
         int[] totals = totalsForDay(selected);
         LinearLayout summary = new LinearLayout(this);
         summary.setGravity(Gravity.CENTER);
