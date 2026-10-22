@@ -299,7 +299,8 @@ final class ReminderSettings {
 
     private static List<Rule> migrateRules(Context context) {
         SharedPreferences p = prefs(context);
-        Set<String> selected = p.getStringSet("types", new HashSet<>(java.util.Arrays.asList(TYPES)));
+        // Fresh installs start empty; retain explicitly saved choices from the legacy app.
+        Set<String> selected = p.getStringSet("types", new HashSet<>());
         ArrayList<Rule> result = new ArrayList<>();
         int id = 1;
         for (String title : TYPES) {
