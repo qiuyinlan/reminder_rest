@@ -1,7 +1,7 @@
 {
-    "versionCode":  6,
-    "versionName":  "0.1.5",
-    "apkUrl":  "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.1.5/rest-bean.apk",
-    "sha256":  "c279c5f5da5f917475916f73abb4973661d83a5187e33d1a5753af0a1ec58b20",
-    "notes":  "修复更新网络请求异常，增加检查进度和安装失败提示。旧版如无法完成更新，请从 Release 手动安装。"
+    "versionCode":  7,
+    "versionName":  "0.1.6",
+    "apkUrl":  "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.1.6/rest-bean.apk",
+    "sha256":  "097fafe1cdbfa4d91bab2268ea5f070c7ff25ceb74375f01314e78cf76356288",
+    "notes":  "修复陪伴服务被系统回收后自动恢复时错误延长计时的问题。"
 }

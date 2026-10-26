@@ -83,6 +83,13 @@ public final class CompanionAudioService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Android may redeliver a sticky service with a null intent after the
+        // process is reclaimed. Resume only an existing session; never create
+        // a new session as a side effect of that system restart.
+        if (intent == null && startedAt(this) == 0L) {
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(action)) {
             stopSession(intent == null ? "" : intent.getStringExtra(EXTRA_SESSION_NOTE));

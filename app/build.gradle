@@ -22,8 +22,8 @@ android {
         applicationId 'io.iftech.healthreminder'
         minSdk 26
         targetSdk 35
-        versionCode 6
-        versionName '0.1.5'
+        versionCode 7
+        versionName '0.1.6'
         buildConfigField 'String', 'MEMBERSHIP_API_BASE_URL', '"' + (providers.gradleProperty('membershipApiBaseUrl').orElse(providers.environmentVariable('MEMBERSHIP_API_BASE_URL').orElse('')).get().replace('\\', '\\\\').replace('"', '\\"')) + '"'
         buildConfigField 'String', 'UPDATE_MANIFEST_URL', '"' + (providers.gradleProperty('updateManifestUrl').orElse(providers.environmentVariable('UPDATE_MANIFEST_URL').orElse('https://raw.githubusercontent.com/qiuyinlan/reminder_rest/main/update-manifest.json')).get().replace('\\', '\\\\').replace('"', '\\"')) + '"'
     }
