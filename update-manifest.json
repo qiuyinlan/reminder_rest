@@ -1,7 +1,7 @@
 {
-    "versionCode":  7,
-    "versionName":  "0.1.6",
-    "apkUrl":  "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.1.6/rest-bean.apk",
-    "sha256":  "097fafe1cdbfa4d91bab2268ea5f070c7ff25ceb74375f01314e78cf76356288",
-    "notes":  "修复陪伴服务被系统回收后自动恢复时错误延长计时的问题。"
+    "versionCode":  8,
+    "versionName":  "0.1.7",
+    "apkUrl":  "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.1.7/rest-bean.apk",
+    "sha256":  "c74d69e5353e65343d79b639e27e30faab933516f9364e843a44c4d3501288b0",
+    "notes":  "修复 Android 15 及更新系统全面屏显示时，顶部按钮与状态栏重叠的问题，自动避开状态栏、屏幕挖孔和底部导航区域。"
 }

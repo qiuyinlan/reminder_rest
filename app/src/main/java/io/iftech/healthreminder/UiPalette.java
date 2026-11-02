@@ -213,6 +213,23 @@ final class UiPalette {
         window.setBackgroundDrawable(page());
         int lightIcons = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         window.getDecorView().setSystemUiVisibility(darkTheme ? 0 : lightIcons);
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            // Android 15 enforces edge-to-edge for targetSdk 35. Protect the
+            // stable content container so replacing a page keeps its safe area.
+            window.setDecorFitsSystemWindows(false);
+            View content = window.getDecorView().findViewById(android.R.id.content);
+            if (content != null) {
+                content.setOnApplyWindowInsetsListener((view, insets) -> {
+                    android.graphics.Insets safe = insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars()
+                                    | android.view.WindowInsets.Type.displayCutout()
+                                    | android.view.WindowInsets.Type.ime());
+                    view.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+                    return android.view.WindowInsets.CONSUMED;
+                });
+                content.requestApplyInsets();
+            }
+        }
     }
 
     static final int CAT_WATER = 0;
