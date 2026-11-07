@@ -150,13 +150,17 @@ public final class ReminderReceiver extends BroadcastReceiver {
         String channelId = createChannel(context, alarmMode,
                 soundEnabled && !serviceRequestAccepted, vibrate && !serviceRequestAccepted, alarmSound);
         if (action == null) action = ReminderSettings.nextType(context);
-        Intent open = new Intent(context, ReminderActivity.class).putExtra("action", action).putExtra("rule_id", ruleId)
+        ReminderSettings.Rule rule = ReminderSettings.ruleById(context, ruleId);
+        Class<?> target = rule != null && rule.isTaskModule() ? TaskReminderActivity.class : ReminderActivity.class;
+        Intent open = new Intent(context, target).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 702, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Intent dismissed = new Intent(context, ReminderReceiver.class).setAction(ACTION_STOP_ALARM_VIBRATION);
         PendingIntent delete = PendingIntent.getBroadcast(context, 704, dismissed,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        boolean covered = ReminderOverlayWindow.show(context, action, ruleId);
+        boolean covered = rule != null && !rule.isBodyModule()
+                ? false
+                : ReminderOverlayWindow.show(context, action, ruleId);
         Log.i(TAG, "overlayCovered=" + covered);
         if (covered && !screenOffAlarmEnabled) {
             NotificationManagerCompat.from(context).cancel(703);

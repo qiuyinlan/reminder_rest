@@ -183,6 +183,7 @@ public final class CompanionLandingActivity extends Activity {
     private LinearLayout createNavigation() {
         return BottomNavigationBar.create(this, BottomNavigationBar.COMPANION,
                 () -> open(MainActivity.class),
+                () -> open(TaskActivity.class),
                 () -> open(ItemsActivity.class),
                 null,
                 () -> open(StatsActivity.class));

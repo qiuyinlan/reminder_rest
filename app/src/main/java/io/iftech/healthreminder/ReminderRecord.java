@@ -94,8 +94,42 @@ final class ReminderRecord {
         finish(context, id, action, KIND_MISSED, timestamp, timestamp, "稍后提醒");
     }
 
-    static List<ReminderRecord> all(Context context) {
-        ArrayList<ReminderRecord> result = new ArrayList<>();
+    /** 当天开始时间戳（本地时区 00:00）。 */
+    static long dayStart(long timeMillis) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(timeMillis);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    /** 某模块某天是否有完成记录（按事项标题匹配）。 */
+    static boolean completedOn(Context context, String module, String action, long dayStart) {
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        for (ReminderRecord record : all(context)) {
+            if (!record.module.equals(module)) continue;
+            if (!KIND_DONE.equals(record.kind)) continue;
+            if (!record.action.equals(action)) continue;
+            if (record.endedAt >= dayStart && record.endedAt < dayEnd) return true;
+        }
+        return false;
+    }
+
+    /** 删除某模块某天的全部记录（用于「重置今日」）。 */
+    static void deleteForDay(Context context, String module, long dayStart) {
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        JSONArray records = new JSONArray();
+        for (ReminderRecord record : all(context)) {
+            boolean match = record.module.equals(module)
+                    && record.endedAt >= dayStart && record.endedAt < dayEnd;
+            if (!match) records.put(record.toJson());
+        }
+        prefs(context).edit().putString("records", records.toString()).apply();
+    }
+
+    static List<ReminderRecord> all(Context context) {        ArrayList<ReminderRecord> result = new ArrayList<>();
         try {
             JSONArray array = new JSONArray(prefs(context).getString("records", "[]"));
             for (int i = 0; i < array.length(); i++) {

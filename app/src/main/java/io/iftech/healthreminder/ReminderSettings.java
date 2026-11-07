@@ -378,8 +378,7 @@ final class ReminderSettings {
         return result;
     }
 
-    static void saveRules(Context context, List<Rule> rules) {
-        List<Rule> previousRules = rules(context);
+    static void saveRules(Context context, List<Rule> rules) {        List<Rule> previousRules = rules(context);
         for (Rule previous : previousRules) {
             Rule updated = findRule(rules, previous.id);
             if (updated == null || !sameRule(previous, updated)) {
@@ -398,6 +397,67 @@ final class ReminderSettings {
     private static Rule findRule(List<Rule> rules, int id) {
         for (Rule rule : rules) if (rule.id == id) return rule;
         return null;
+    }
+
+    /** 按模块取事项。 */
+    static List<Rule> moduleRules(Context context, String module) {
+        ArrayList<Rule> result = new ArrayList<>();
+        for (Rule rule : rules(context)) {
+            if (rule.module.equals(module)) result.add(rule);
+        }
+        return result;
+    }
+
+    static Rule ruleById(Context context, int ruleId) {
+        return findRule(rules(context), ruleId);
+    }
+
+    /** 新增或替换一条事项（按 id 匹配），并重排闹钟。 */
+    static void upsertRule(Context context, Rule rule) {
+        List<Rule> all = new ArrayList<>(rules(context));
+        boolean replaced = false;
+        for (int i = 0; i < all.size(); i++) {
+            if (all.get(i).id == rule.id) {
+                all.set(i, rule);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) all.add(rule);
+        saveRules(context, all);
+    }
+
+    static void deleteRule(Context context, int ruleId) {
+        List<Rule> all = new ArrayList<>(rules(context));
+        for (int i = all.size() - 1; i >= 0; i--) {
+            if (all.get(i).id == ruleId) all.remove(i);
+        }
+        ReminderScheduler.cancelRule(context, ruleId);
+        saveRules(context, all);
+    }
+
+    static void clearModule(Context context, String module) {
+        List<Rule> all = new ArrayList<>(rules(context));
+        for (int i = all.size() - 1; i >= 0; i--) {
+            if (all.get(i).module.equals(module)) {
+                ReminderScheduler.cancelRule(context, all.get(i).id);
+                all.remove(i);
+            }
+        }
+        saveRules(context, all);
+    }
+
+    /** 任务完成后是否每日重置，默认不重置。 */
+    static boolean autoReset(Context context, int ruleId) {
+        return prefs(context).getStringSet("task_auto_reset", new HashSet<>())
+                .contains(String.valueOf(ruleId));
+    }
+
+    static void setAutoReset(Context context, int ruleId, boolean value) {
+        Set<String> ids = new HashSet<>(prefs(context).getStringSet("task_auto_reset", new HashSet<>()));
+        if (value) ids.add(String.valueOf(ruleId));
+        else ids.remove(String.valueOf(ruleId));
+        prefs(context).edit().putStringSet("task_auto_reset", ids).apply();
     }
 
     /** 只关心会影响排期的字段；颜色只是视觉设置，改动它不该重置下一次提醒。 */
