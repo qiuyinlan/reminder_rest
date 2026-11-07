@@ -728,7 +728,7 @@ public final class StatsActivity extends Activity {
                     CrashLog.save(this, error);
                 }
                 boolean inMonth = cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH);
-                int numberColor = inMonth ? (rangeKey == null ? INK : PERIOD_INK) : DISABLED;
+                int numberColor = inMonth ? INK : DISABLED;
                 TextView cell = text(String.valueOf(cellDate.get(Calendar.DAY_OF_MONTH)), 13,
                         numberColor, false);
                 cell.setGravity(Gravity.CENTER);
@@ -752,14 +752,17 @@ public final class StatsActivity extends Activity {
                     barBackground.setColor(PERIOD_FILL);
                     boolean roundLeft = !sameRange(rangeKey, safeCoveringStart(neighborKey(cellDate, -1)));
                     boolean roundRight = !sameRange(rangeKey, safeCoveringStart(neighborKey(cellDate, 1)));
-                    float radius = dp(13);
+                    float radius = dp(4);
                     barBackground.setCornerRadii(new float[]{
                             roundLeft ? radius : 0, roundLeft ? radius : 0,
                             roundRight ? radius : 0, roundRight ? radius : 0,
                             roundRight ? radius : 0, roundRight ? radius : 0,
                             roundLeft ? radius : 0, roundLeft ? radius : 0});
                         bar.setBackground(barBackground);
-                        wrapper.addView(bar, new FrameLayout.LayoutParams(-1, dp(26), Gravity.CENTER));
+                        FrameLayout.LayoutParams barParams =
+                                new FrameLayout.LayoutParams(-1, dp(7), Gravity.BOTTOM);
+                        barParams.bottomMargin = dp(4);
+                        wrapper.addView(bar, barParams);
                     } catch (Throwable error) {
                         CrashLog.save(this, error);
                     }
