@@ -167,6 +167,12 @@ final class ReminderSettings {
                     dailyTarget, remindAfterTarget, enabled, true, timePointsSeconds);
         }
 
+        Rule withTitle(String value) {
+            return new Rule(id, value == null ? "" : value.trim(), start, end, interval, intervalSeconds,
+                    dailyTarget, remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt);
+        }
+
         Rule withReminderMessage(String message) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon, overlayArtwork, color,

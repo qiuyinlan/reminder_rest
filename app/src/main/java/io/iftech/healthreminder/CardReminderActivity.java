@@ -2,6 +2,7 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -10,6 +11,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -108,6 +110,33 @@ public final class CardReminderActivity extends Activity {
             LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
             np.topMargin = dp(10);
             cardView.addView(note, np);
+        }
+
+        if (card.isTask()) {
+            final long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+            CheckBox done = new CheckBox(this);
+            done.setText("完成这项任务");
+            done.setTextSize(14);
+            done.setTextColor(UiPalette.INK);
+            done.setChecked(ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK,
+                    card.question, dayStart));
+            done.setButtonTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{UiPalette.ACCENT, UiPalette.DISABLED}));
+            LinearLayout.LayoutParams doneParams = new LinearLayout.LayoutParams(-1, -2);
+            doneParams.topMargin = dp(14);
+            cardView.addView(done, doneParams);
+            done.setOnCheckedChangeListener((button, checked) -> {
+                long now = System.currentTimeMillis();
+                long start = ReminderRecord.dayStart(now);
+                if (checked) {
+                    ReminderRecord.finish(this, "card-task-" + card.id + "-" + start, card.question,
+                            ReminderRecord.KIND_DONE, now, now, "卡片勾选", ReminderSettings.MODULE_TASK);
+                } else {
+                    ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK,
+                            card.question, start);
+                }
+            });
         }
 
         if (quiz) {

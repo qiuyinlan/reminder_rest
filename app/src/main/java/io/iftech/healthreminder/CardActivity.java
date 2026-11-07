@@ -102,7 +102,7 @@ public final class CardActivity extends Activity {
         addButton.setGravity(Gravity.CENTER);
         addButton.setPadding(dp(13), dp(9), dp(13), dp(9));
         addButton.setBackground(FormKit.round(this, UiPalette.SOFT, 20));
-        addButton.setOnClickListener(v -> createCard());
+        addButton.setOnClickListener(v -> CardEditor.create(this, null, this::reload));
         row.addView(addButton);
 
         TextView importButton = text("导入文件", 13, Color.WHITE, true);
@@ -118,62 +118,6 @@ public final class CardActivity extends Activity {
         row.addView(importButton, importParams);
         header.addView(row);
         return header;
-    }
-
-    // ------------------------------------------------------------ 新建
-
-    /** 手动新建一张卡片：正面必填，背面答案选填。 */
-    private void createCard() {
-        android.view.ContextThemeWrapper dialogContext =
-                new android.view.ContextThemeWrapper(this, R.style.ItemsDialogTheme);
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(18), dp(6), dp(18), dp(4));
-
-        form.addView(FormKit.editorLabel(this, "卡片集名称", false));
-        android.widget.EditText deckName = FormKit.textInput(this, "例如：我的卡片", "我的卡片");
-        form.addView(deckName, new LinearLayout.LayoutParams(-1, -2));
-
-        form.addView(FormKit.editorLabel(this, "正面内容", true));
-        android.widget.EditText front = FormKit.input(this,
-                android.text.InputType.TYPE_CLASS_TEXT
-                        | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                        | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        front.setHint("写问题、单词或想记住的一句话");
-        front.setMinLines(3);
-        front.setMaxLines(8);
-        form.addView(front, new LinearLayout.LayoutParams(-1, -2));
-
-        form.addView(FormKit.editorLabel(this, "背面答案（选填）", true));
-        android.widget.EditText back = FormKit.input(this,
-                android.text.InputType.TYPE_CLASS_TEXT
-                        | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                        | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        back.setHint("留空就是一张没有答案的卡片");
-        back.setMinLines(2);
-        back.setMaxLines(6);
-        form.addView(back, new LinearLayout.LayoutParams(-1, -2));
-
-        AlertDialog dialog = new AlertDialog.Builder(dialogContext)
-                .setTitle("新建卡片")
-                .setView(form)
-                .setNegativeButton("取消", null)
-                .setPositiveButton("保存", null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(v -> {
-                    String text = front.getText().toString().trim();
-                    if (text.isEmpty()) {
-                        front.setError("正面内容不能为空");
-                        return;
-                    }
-                    CardDeck.addManualCard(this, deckName.getText().toString(), text,
-                            back.getText().toString(), "");
-                    Toast.makeText(this, "已新建卡片", Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                    reload();
-                }));
-        FormKit.showStyled(this, dialog);
     }
 
     // ------------------------------------------------------------ 导入
@@ -257,7 +201,10 @@ public final class CardActivity extends Activity {
         texts.setOrientation(LinearLayout.VERTICAL);
         card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
         texts.addView(text(deck.title, 16, UiPalette.INK, true));
-        texts.addView(text(deck.size() + " 张 · " + (deck.isQuiz() ? "答题模式" : "阅读模式"),
+        int taskCount = 0;
+        for (CardDeck.Card card : deck.cards) if (card.isTask()) taskCount++;
+        texts.addView(text(deck.size() + " 张 · " + (deck.isQuiz() ? "答题模式" : "阅读模式")
+                + (taskCount > 0 ? " · " + taskCount + " 个任务" : ""),
                 12, UiPalette.MUTED, false));
 
         TextView plan = small("设提醒", UiPalette.ACCENT);
@@ -278,6 +225,9 @@ public final class CardActivity extends Activity {
                 })
                 .show());
         card.addView(delete);
+        card.setOnClickListener(v -> startActivity(new Intent(this, CardDeckActivity.class)
+                .putExtra(CardDeckActivity.EXTRA_DECK_ID, deck.id)));
+        card.setContentDescription("查看卡片集 " + deck.title);
         return card;
     }
 

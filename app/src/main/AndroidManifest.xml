@@ -34,6 +34,10 @@
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".CardDeckActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
             android:name=".CardReminderActivity"
             android:exported="false"
             android:showWhenLocked="true"

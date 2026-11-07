@@ -22,13 +22,22 @@ final class CardDeck {
         final String question;
         final String answer;
         final String note;
+        /** 关联的任务 id；-1 表示这张卡不是任务。 */
+        final int taskRuleId;
 
         Card(String id, String question, String answer, String note) {
+            this(id, question, answer, note, -1);
+        }
+
+        Card(String id, String question, String answer, String note, int taskRuleId) {
             this.id = id;
             this.question = question;
             this.answer = answer == null ? "" : answer;
             this.note = note == null ? "" : note;
+            this.taskRuleId = taskRuleId;
         }
+
+        boolean isTask() { return taskRuleId > 0; }
 
         JSONObject toJson() {
             JSONObject item = new JSONObject();
@@ -37,6 +46,7 @@ final class CardDeck {
                 item.put("question", question);
                 item.put("answer", answer);
                 item.put("note", note);
+                if (taskRuleId > 0) item.put("taskRuleId", taskRuleId);
             } catch (JSONException ignored) { }
             return item;
         }
@@ -88,7 +98,8 @@ final class CardDeck {
                         cards.add(new Card(card.optString("id", "c" + (j + 1)),
                                 card.optString("question", ""),
                                 card.optString("answer", ""),
-                                card.optString("note", "")));
+                                card.optString("note", ""),
+                                card.optInt("taskRuleId", -1)));
                     }
                 }
                 if (cards.isEmpty()) continue;
@@ -114,15 +125,17 @@ final class CardDeck {
     }
 
     /** 手动新建一张卡片；同名卡片集直接追加，没有就新建一个。 */
-    static void addManualCard(Context context, String deckTitle, String question, String answer, String note) {
+    static void addManualCard(Context context, String deckTitle, String question, String answer,
+                              String note, boolean createTask) {
         String title = deckTitle == null ? "" : deckTitle.trim();
         if (title.isEmpty()) title = "我的卡片";
         String front = question == null ? "" : question.trim();
         if (front.isEmpty()) return;
         String back = answer == null ? "" : answer.trim();
         String extra = note == null ? "" : note.trim();
+        int taskRuleId = createTask ? createTaskRule(context, front, back) : -1;
         List<CardDeck> decks = all(context);
-        Card card = new Card("c-" + System.currentTimeMillis(), front, back, extra);
+        Card card = new Card("c-" + System.currentTimeMillis(), front, back, extra, taskRuleId);
         int index = -1;
         for (int i = 0; i < decks.size(); i++) {
             if (decks.get(i).title.equals(title)) {
@@ -141,6 +154,76 @@ final class CardDeck {
             decks.add(new CardDeck("deck-" + System.currentTimeMillis(), title, MODE_CARD, cards));
         }
         save(context, decks);
+    }
+
+    /** 修改卡片内容；如果它关联了任务，任务标题同步修改。 */
+    static void updateCard(Context context, String deckId, String cardId,
+                           String question, String answer, String note) {
+        List<CardDeck> decks = all(context);
+        for (int index = 0; index < decks.size(); index++) {
+            CardDeck deck = decks.get(index);
+            if (!deck.id.equals(deckId)) continue;
+            List<Card> cards = new ArrayList<>();
+            boolean changed = false;
+            for (Card card : deck.cards) {
+                if (!card.id.equals(cardId)) {
+                    cards.add(card);
+                    continue;
+                }
+                String front = question == null ? "" : question.trim();
+                cards.add(new Card(card.id, front, answer == null ? "" : answer.trim(),
+                        note == null ? "" : note.trim(), card.taskRuleId));
+                if (card.taskRuleId > 0) {
+                    ReminderSettings.Rule rule = ReminderSettings.ruleById(context, card.taskRuleId);
+                    if (rule != null && !front.isEmpty() && !rule.title.equals(front)) {
+                        ReminderSettings.upsertRule(context, rule.withTitle(front));
+                    }
+                }
+                changed = true;
+            }
+            if (changed) {
+                decks.set(index, new CardDeck(deck.id, deck.title, deck.mode, cards));
+                save(context, decks);
+            }
+            return;
+        }
+    }
+
+    static void deleteCard(Context context, String deckId, String cardId) {
+        List<CardDeck> decks = all(context);
+        for (int index = 0; index < decks.size(); index++) {
+            CardDeck deck = decks.get(index);
+            if (!deck.id.equals(deckId)) continue;
+            List<Card> cards = new ArrayList<>();
+            boolean changed = false;
+            for (Card card : deck.cards) {
+                if (card.id.equals(cardId)) {
+                    if (card.taskRuleId > 0) ReminderSettings.deleteRule(context, card.taskRuleId);
+                    changed = true;
+                } else {
+                    cards.add(card);
+                }
+            }
+            if (changed) {
+                decks.set(index, new CardDeck(deck.id, deck.title, deck.mode, cards));
+                save(context, decks);
+            }
+            return;
+        }
+    }
+
+    /** 新建卡片时勾选「同时加进任务清单」才会调用。 */
+    private static int createTaskRule(Context context, String title, String note) {
+        int id = ReminderSettings.nextRuleId(context);
+        List<Integer> points = new ArrayList<>();
+        points.add(9 * 3600);
+        ReminderSettings.Rule rule = ReminderSettings.Rule
+                .withIntervalSeconds(id, title, 9 * 60, 9 * 60, 24 * 3600, 1, false, false)
+                .withSchedule(true, points, 0, 0L)
+                .withReminderMessage(note)
+                .withModule(ReminderSettings.MODULE_TASK);
+        ReminderSettings.upsertRule(context, rule);
+        return id;
     }
 
     static void delete(Context context, String deckId) {

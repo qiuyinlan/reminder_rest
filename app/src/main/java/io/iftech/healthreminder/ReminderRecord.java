@@ -117,6 +117,20 @@ final class ReminderRecord {
         return false;
     }
 
+    /** 取消某模块某天某个事项的完成状态（卡片勾选框取消时用）。 */
+    static void deleteCompletion(Context context, String module, String action, long dayStart) {
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        JSONArray records = new JSONArray();
+        for (ReminderRecord record : all(context)) {
+            boolean match = record.module.equals(module)
+                    && KIND_DONE.equals(record.kind)
+                    && record.action.equals(action)
+                    && record.endedAt >= dayStart && record.endedAt < dayEnd;
+            if (!match) records.put(record.toJson());
+        }
+        prefs(context).edit().putString("records", records.toString()).apply();
+    }
+
     /** 删除某模块某天的全部记录（用于「重置今日」）。 */
     static void deleteForDay(Context context, String module, long dayStart) {
         long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
