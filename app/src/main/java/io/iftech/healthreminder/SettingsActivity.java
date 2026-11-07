@@ -269,6 +269,31 @@ public final class SettingsActivity extends Activity {
         exportCard.addView(exportCopy, new LinearLayout.LayoutParams(0, -2, 1));
         exportCard.addView(text("›", 25, GREEN, false));
 
+        LinearLayout importCard = new LinearLayout(this);
+        importCard.setGravity(Gravity.CENTER_VERTICAL);
+        importCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+        importCard.setBackground(round(Color.WHITE, 17));
+        importCard.setElevation(dp(1));
+        importCard.setContentDescription("导入身体数据，从另一台设备的 CSV 恢复");
+        importCard.setOnClickListener(v -> startActivity(new Intent(this, BodyImportActivity.class)));
+        LinearLayout.LayoutParams importCardParams = new LinearLayout.LayoutParams(-1, -2);
+        importCardParams.topMargin = dp(9);
+        page.addView(importCard, importCardParams);
+        TextView importMark = text("入", 16, GREEN, true);
+        importMark.setGravity(Gravity.CENTER);
+        importMark.setBackground(round(MINT_PALE, 13));
+        LinearLayout.LayoutParams importMarkParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        importMarkParams.rightMargin = dp(13);
+        importCard.addView(importMark, importMarkParams);
+        LinearLayout importCopy = new LinearLayout(this);
+        importCopy.setOrientation(LinearLayout.VERTICAL);
+        importCopy.addView(text("导入身体数据", 16, INK, true));
+        TextView importDetail = text("从另一台设备导出的 CSV 恢复", 12, MUTED, false);
+        importDetail.setPadding(0, dp(5), 0, 0);
+        importCopy.addView(importDetail);
+        importCard.addView(importCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        importCard.addView(text("›", 25, GREEN, false));
+
         LinearLayout note = new LinearLayout(this);
         note.setOrientation(LinearLayout.VERTICAL);
         note.setPadding(dp(15), dp(13), dp(15), dp(13));

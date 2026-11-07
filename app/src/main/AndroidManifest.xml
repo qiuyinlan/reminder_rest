@@ -73,6 +73,7 @@
         <activity android:name=".WallpaperSettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".BodyExportActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".BodyImportActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".MembershipActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".ItemsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".CompanionLandingActivity" android:exported="false" android:screenOrientation="portrait" />

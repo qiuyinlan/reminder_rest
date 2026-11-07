@@ -161,6 +161,22 @@ final class PeriodLog {
         return true;
     }
 
+    /** 导入时直接写入一段记录（不做「自动收尾」等副作用）。 */
+    static void put(Context context, String startKey, String endKey) {
+        if (!isValidDay(startKey)) return;
+        String end = endKey == null ? "" : endKey;
+        if (!end.isEmpty() && (!isValidDay(end) || end.compareTo(startKey) < 0)) return;
+        prefs(context).edit().putString(KEY_PREFIX + startKey, end).apply();
+    }
+
+    static boolean isValidDay(String key) {
+        return parse(key) != null;
+    }
+
+    static void clear(Context context) {
+        prefs(context).edit().clear().apply();
+    }
+
     static void remove(Context context, Range range) {
         if (range == null) return;
         prefs(context).edit().remove(KEY_PREFIX + range.startKey).apply();

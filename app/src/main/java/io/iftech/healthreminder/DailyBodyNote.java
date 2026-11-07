@@ -25,10 +25,18 @@ final class DailyBodyNote {
     }
 
     static void save(Context context, Calendar day, String note) {
+        save(context, dayKey(day), note);
+    }
+
+    static void save(Context context, String dayKey, String note) {
         android.content.SharedPreferences.Editor editor = prefs(context).edit();
-        if (note.trim().isEmpty()) editor.remove(dayKey(day));
-        else editor.putString(dayKey(day), note);
+        if (note == null || note.trim().isEmpty()) editor.remove(dayKey);
+        else editor.putString(dayKey, note);
         editor.apply();
+    }
+
+    static void clear(Context context) {
+        prefs(context).edit().clear().apply();
     }
 
     /** 所有非空记录，按日期升序，供导出使用。 */
