@@ -1,6 +1,7 @@
 package io.iftech.healthreminder;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
@@ -19,6 +20,7 @@ import java.util.Calendar;
 @Config(sdk = 34)
 public class StatsSmokeTest {
     private void openAndLayout() {
+        CrashLog.clear(RuntimeEnvironment.getApplication());
         ActivityController<StatsActivity> controller = Robolectric.buildActivity(StatsActivity.class);
         controller.setup();
         assertNotNull(controller.get().getWindow().getDecorView());
@@ -26,6 +28,8 @@ public class StatsSmokeTest {
         root.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(2340, View.MeasureSpec.EXACTLY));
         root.layout(0, 0, 1080, 2340);
+        assertTrue("统计页内部报错：" + CrashLog.last(RuntimeEnvironment.getApplication()),
+                CrashLog.last(RuntimeEnvironment.getApplication()).isEmpty());
         controller.pause().stop().destroy();
     }
 

@@ -251,7 +251,8 @@ public final class CardActivity extends Activity {
         StringBuilder times = new StringBuilder();
         for (int seconds : rule.timePointsSeconds) {
             if (times.length() > 0) times.append("、");
-            times.append(String.format(Locale.getDefault(), "%02d:%02d", (seconds / 3600) % 24, (seconds / 60) % 60));
+            times.append(String.format(Locale.getDefault(), "%02d:%02d:%02d",
+                    (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60));
         }
         texts.addView(text("每天 · " + times + (rule.quiz ? " · 答题" : " · 阅读"), 12, UiPalette.MUTED, false));
 
@@ -357,11 +358,12 @@ public final class CardActivity extends Activity {
                     LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, dp(48));
                     rowParams.bottomMargin = dp(6);
                     row.setLayoutParams(rowParams);
-                    TextView value = text(String.format(Locale.getDefault(), "%02d:%02d",
-                            (seconds / 3600) % 24, (seconds / 60) % 60), 17, UiPalette.INK, true);
+                    TextView value = text(String.format(Locale.getDefault(), "%02d:%02d:%02d",
+                            (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60),
+                            17, UiPalette.INK, true);
                     row.addView(value, new LinearLayout.LayoutParams(0, -2, 1f));
                     row.setOnClickListener(v -> WheelPicker.time(CardActivity.this, "编辑提醒时间",
-                            "保存", seconds, false, picked -> {
+                            "保存", seconds, true, picked -> {
                                 points.set(index, picked);
                                 java.util.Collections.sort(points);
                                 run();
@@ -375,13 +377,14 @@ public final class CardActivity extends Activity {
                     });
                     row.addView(remove);
                     row.setContentDescription("编辑提醒时间，当前 " + String.format(Locale.getDefault(),
-                            "%02d:%02d", (seconds / 3600) % 24, (seconds / 60) % 60));
+                            "%02d:%02d:%02d", (seconds / 3600) % 24,
+                            (seconds / 60) % 60, seconds % 60));
                     timeList.addView(row);
                 }
                 Button add = FormKit.controlButton(CardActivity.this);
                 add.setText("＋ 添加时间点");
                 add.setOnClickListener(v -> WheelPicker.time(CardActivity.this, "添加提醒时间",
-                        "添加", 9 * 3600, false, picked -> {
+                        "添加", 9 * 3600, true, picked -> {
                             if (!points.contains(picked)) points.add(picked);
                             java.util.Collections.sort(points);
                             run();

@@ -185,7 +185,7 @@ public final class StatsActivity extends Activity {
 
     private java.util.List<ReminderRecord> records() {
         java.util.ArrayList<ReminderRecord> result = new java.util.ArrayList<>();
-        for (ReminderRecord record : records()) {
+        for (ReminderRecord record : ReminderRecord.all(this)) {
             if (record.isModule(moduleFilter)) result.add(record);
         }
         return result;
