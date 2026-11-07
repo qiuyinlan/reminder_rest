@@ -35,6 +35,10 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "code=$((PREV_CODE + 1))" >> "$GITHUB_OUTPUT"
+          case "$VERSION" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
           echo "Releasing $TAG (versionName=$VERSION, versionCode=$((PREV_CODE + 1)))"
 
       - name: Set up JDK 17
@@ -108,13 +112,20 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "release $TAG 已存在，覆盖上传 APK"
           else
-            gh release create "$TAG" \
-              --title "休息豆芽 ${{ steps.v.outputs.version }}" \
-              --notes-file "$RUNNER_TEMP/notes.md"
+            if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then
+              gh release create "$TAG" \
+                --title "休息豆芽 ${{ steps.v.outputs.version }}" \
+                --notes-file "$RUNNER_TEMP/notes.md" --prerelease
+            else
+              gh release create "$TAG" \
+                --title "休息豆芽 ${{ steps.v.outputs.version }}" \
+                --notes-file "$RUNNER_TEMP/notes.md"
+            fi
           fi
           gh release upload "$TAG" artifacts/rest-bean.apk --clobber
 
       - name: Update update-manifest.json
+        if: steps.v.outputs.prerelease != 'true'
         run: |
           python3 - <<'PY'
           import json, os, pathlib
@@ -138,6 +149,7 @@ jobs:
           NOTES_PATH: ${{ runner.temp }}/notes.md
 
       - name: Commit manifest and version bump
+        if: steps.v.outputs.prerelease != 'true'
         run: |
           git fetch origin main
           git checkout -B main origin/main
