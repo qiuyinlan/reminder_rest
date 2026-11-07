@@ -1,7 +1,7 @@
 {
-    "versionCode": 15,
-    "versionName": "0.3.0-beta5",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta5/rest-bean.apk",
-    "sha256": "2ab037ec603f7f06faa49a0bbea6ac81399b58bd1ce68bb6300311e4c50a944f",
-    "notes": "已设置的提醒时间可以直接点开修改，不用删掉重加。"
+    "versionCode": 16,
+    "versionName": "0.3.0-beta6",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta6/rest-bean.apk",
+    "sha256": "6b085543bfe68671adc8c933167cbe6b1470564528a3c39c6f3b0aa39171b498",
+    "notes": "修复统计页闪退（records() 无限递归），卡片提醒时间支持精确到秒。"
 }
