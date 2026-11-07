@@ -94,6 +94,14 @@ final class CrashLog {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST).apply();
     }
 
+    static void share(android.app.Activity activity, String text) {
+        android.content.Intent send = new android.content.Intent(android.content.Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(android.content.Intent.EXTRA_SUBJECT, "休息豆芽崩溃日志")
+                .putExtra(android.content.Intent.EXTRA_TEXT, text);
+        activity.startActivity(android.content.Intent.createChooser(send, "发送崩溃日志"));
+    }
+
     static void copy(Context context, String text) {
         ClipboardManager clipboard =
                 (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
