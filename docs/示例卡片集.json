@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "title": "示例卡片集 · 英语单词",
+  "mode": "quiz",
+  "cards": [
+    {
+      "id": "c1",
+      "question": "ephemeral 是什么意思？",
+      "answer": "短暂的、转瞬即逝的",
+      "note": "形容词，常修饰 fame / pleasure"
+    },
+    {
+      "id": "c2",
+      "question": "用 resilient 造一个句子",
+      "answer": "She stayed resilient through the whole year.",
+      "note": " resiliency / resilience 是名词形式"
+    },
+    {
+      "id": "c3",
+      "question": "ubiquitous 的同义词有哪些？",
+      "answer": "omnipresent, pervasive",
+      "note": "反义：rare, scarce"
+    }
+  ]
+}
