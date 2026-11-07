@@ -49,6 +49,42 @@ final class CrashLog {
                 .edit().putString(KEY_LAST, text).apply();
     }
 
+    private static boolean prompted;
+
+    /** 主界面启动时提示上次崩溃，方便用户直接把堆栈发出来。 */
+    static void promptIfAny(final android.app.Activity activity) {
+        if (prompted) return;
+        String text = last(activity);
+        if (text.isEmpty()) return;
+        prompted = true;
+
+        android.widget.TextView body = new android.widget.TextView(activity);
+        body.setText(text.length() > 6000 ? text.substring(0, 6000) + "\n…" : text);
+        body.setTextSize(11);
+        body.setTextColor(UiPalette.INK);
+        body.setTextIsSelectable(true);
+        body.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(10));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
+        scroll.addView(body);
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(activity);
+        frame.addView(scroll, new android.widget.FrameLayout.LayoutParams(-1, dp(activity, 320)));
+
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("上次运行崩溃了")
+                .setView(frame)
+                .setPositiveButton("复制日志", (dialog, which) -> {
+                    copy(activity, text);
+                    android.widget.Toast.makeText(activity, "已复制，发给开发者即可",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private static int dp(Context context, int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
     static String last(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getString(KEY_LAST, "");

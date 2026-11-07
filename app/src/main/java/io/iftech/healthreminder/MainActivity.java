@@ -83,6 +83,7 @@ public final class MainActivity extends Activity {
         } else {
             showWelcomeLetter();
         }
+        CrashLog.promptIfAny(this);
     }
 
     @Override

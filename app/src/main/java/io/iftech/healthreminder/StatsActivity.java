@@ -86,7 +86,42 @@ public final class StatsActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         month.set(Calendar.DAY_OF_MONTH, 1);
-        render();
+        try {
+            render();
+        } catch (Throwable error) {
+            CrashLog.save(this, error);
+            showStatsFallback(error);
+        }
+    }
+
+    /** 统计页兜底：即使某个模块出错，也不让整个 App 闪退。 */
+    private void showStatsFallback(Throwable error) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(22), dp(28), dp(22), dp(20));
+        root.setBackground(UiPalette.page());
+        root.addView(text("统计页加载失败", 20, INK, true));
+        TextView message = text(String.valueOf(error), 12, MUTED, false);
+        message.setTextIsSelectable(true);
+        message.setPadding(0, dp(10), 0, 0);
+        root.addView(message);
+        TextView copy = text("复制错误信息", 15, Color.WHITE, true);
+        copy.setGravity(Gravity.CENTER);
+        copy.setPadding(0, dp(12), 0, dp(12));
+        copy.setBackground(round(GREEN, 14));
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(-1, dp(46));
+        copyParams.topMargin = dp(18);
+        copy.setOnClickListener(v -> {
+            CrashLog.copy(this, String.valueOf(error));
+            Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show();
+        });
+        root.addView(copy, copyParams);
+        TextView back = text("返回", 14, MUTED, false);
+        back.setGravity(Gravity.CENTER);
+        back.setPadding(0, dp(12), 0, dp(12));
+        back.setOnClickListener(v -> finish());
+        root.addView(back, new LinearLayout.LayoutParams(-1, dp(46)));
+        setContentView(root);
     }
 
     private String helpText() {
@@ -143,6 +178,15 @@ public final class StatsActivity extends Activity {
     }
 
     private void render() {
+        try {
+            renderInternal();
+        } catch (Throwable error) {
+            CrashLog.save(this, error);
+            showStatsFallback(error);
+        }
+    }
+
+    private void renderInternal() {
         UiPalette.applyWindow(getWindow());
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -688,7 +732,8 @@ public final class StatsActivity extends Activity {
 
                 FrameLayout wrapper = new FrameLayout(this);
                 if (rangeKey != null && inMonth) {
-                    View bar = new View(this);
+                    try {
+                        View bar = new View(this);
                     GradientDrawable barBackground = new GradientDrawable();
                     barBackground.setColor(PERIOD_FILL);
                     boolean roundLeft = !sameRange(rangeKey, safeCoveringStart(neighborKey(cellDate, -1)));
@@ -699,8 +744,11 @@ public final class StatsActivity extends Activity {
                             roundRight ? radius : 0, roundRight ? radius : 0,
                             roundRight ? radius : 0, roundRight ? radius : 0,
                             roundLeft ? radius : 0, roundLeft ? radius : 0});
-                    bar.setBackground(barBackground);
-                    wrapper.addView(bar, new FrameLayout.LayoutParams(-1, dp(26), Gravity.CENTER));
+                        bar.setBackground(barBackground);
+                        wrapper.addView(bar, new FrameLayout.LayoutParams(-1, dp(26), Gravity.CENTER));
+                    } catch (Throwable error) {
+                        CrashLog.save(this, error);
+                    }
                 }
                 wrapper.addView(cell);
                 wrapper.setOnClickListener(v -> { selected = cellDate; render(); });
