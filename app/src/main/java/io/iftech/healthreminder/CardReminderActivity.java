@@ -32,6 +32,7 @@ public final class CardReminderActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        UiPalette.applyWindow(getWindow());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         ruleId = getIntent().getIntExtra("rule_id", -1);

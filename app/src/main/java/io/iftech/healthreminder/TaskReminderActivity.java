@@ -26,6 +26,7 @@ public final class TaskReminderActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        UiPalette.applyWindow(getWindow());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         action = getIntent().getStringExtra("action");

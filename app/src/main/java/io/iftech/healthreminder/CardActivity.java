@@ -10,6 +10,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -33,6 +34,7 @@ public final class CardActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        UiPalette.applyWindow(getWindow());
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(UiPalette.PAGE);
@@ -285,9 +287,13 @@ public final class CardActivity extends Activity {
                     int seconds = points.get(i);
                     LinearLayout row = new LinearLayout(CardActivity.this);
                     row.setGravity(Gravity.CENTER_VERTICAL);
-                    TextView value = text(String.format(Locale.getDefault(), "🕘 %02d:%02d",
-                            (seconds / 3600) % 24, (seconds / 60) % 60), 15, UiPalette.INK, false);
-                    value.setPadding(0, dp(10), 0, dp(10));
+                    row.setPadding(dp(12), 0, dp(8), 0);
+                    row.setBackground(FormKit.round(CardActivity.this, Color.WHITE, 10));
+                    LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, dp(48));
+                    rowParams.bottomMargin = dp(6);
+                    row.setLayoutParams(rowParams);
+                    TextView value = text(String.format(Locale.getDefault(), "%02d:%02d",
+                            (seconds / 3600) % 24, (seconds / 60) % 60), 17, UiPalette.INK, true);
                     value.setOnClickListener(v -> new TimePickerDialog(CardActivity.this, (view, hour, minute) -> {
                         points.set(index, hour * 3600 + minute * 60);
                         java.util.Collections.sort(points);
@@ -304,8 +310,8 @@ public final class CardActivity extends Activity {
                     row.addView(remove);
                     timeList.addView(row);
                 }
-                TextView add = text("＋ 添加时间", 13, UiPalette.ACCENT, true);
-                add.setPadding(0, dp(8), 0, dp(8));
+                Button add = FormKit.controlButton(CardActivity.this);
+                add.setText("＋ 添加时间点");
                 add.setOnClickListener(v -> new TimePickerDialog(CardActivity.this, (view, hour, minute) -> {
                     points.add(hour * 3600 + minute * 60);
                     java.util.Collections.sort(points);
@@ -335,7 +341,7 @@ public final class CardActivity extends Activity {
             dialog.dismiss();
             reload();
         }));
-        dialog.show();
+        FormKit.showStyled(this, dialog);
     }
 
     // ------------------------------------------------------------ 小工具
@@ -351,10 +357,7 @@ public final class CardActivity extends Activity {
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(14), dp(12), dp(12), dp(12));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.WHITE);
-        bg.setCornerRadius(dp(16));
-        card.setBackground(bg);
+        card.setBackground(FormKit.round(this, Color.WHITE, 16));
         card.setElevation(dp(1));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.bottomMargin = dp(10);

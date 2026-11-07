@@ -2,23 +2,23 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.TimePickerDialog;
-import android.app.DatePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -27,7 +27,7 @@ import java.util.Locale;
 
 /**
  * 任务清单：增删改、一键清空、重置今日，到点由 ReminderReceiver 弹霸屏页。
- * 全部复用 ReminderSettings.Rule 的调度能力，只是 module = task。
+ * 编辑弹窗的视觉语言和「添加事项」保持一致（FormKit）。
  */
 public final class TaskActivity extends Activity {
     private static final String MODE_DAILY = "daily";
@@ -41,9 +41,10 @@ public final class TaskActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        UiPalette.applyWindow(getWindow());
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(UiPalette.PAGE);
+        root.setBackground(UiPalette.page());
         setContentView(root);
 
         root.addView(buildHeader(), new LinearLayout.LayoutParams(-1, -2));
@@ -83,30 +84,29 @@ public final class TaskActivity extends Activity {
     private View buildHeader() {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(18), dp(20), dp(8));
+        header.setPadding(dp(20), dp(16), dp(20), dp(8));
 
         LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text("任务清单", 24, UiPalette.INK, true);
+        TextView title = text("任务清单", 25, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView cards = text("卡片", 14, UiPalette.ACCENT, true);
+        TextView cards = text("卡片", 13, UiPalette.ACCENT, true);
         cards.setGravity(Gravity.CENTER);
-        cards.setPadding(dp(12), dp(9), dp(12), dp(9));
+        cards.setPadding(dp(14), dp(8), dp(14), dp(8));
+        cards.setBackground(FormKit.round(this, UiPalette.SOFT, 12));
         cards.setOnClickListener(v -> startActivity(new Intent(this, CardActivity.class)));
         row.addView(cards);
 
-        TextView add = text("＋ 新任务", 14, Color.WHITE, true);
+        TextView add = text("＋ 新任务", 13, Color.WHITE, true);
         add.setGravity(Gravity.CENTER);
-        add.setPadding(dp(14), dp(9), dp(14), dp(9));
-        GradientDrawable addBg = new GradientDrawable();
-        addBg.setColor(UiPalette.ACCENT);
-        addBg.setCornerRadius(dp(20));
-        add.setBackground(addBg);
+        add.setPadding(dp(14), dp(8), dp(14), dp(8));
+        add.setBackground(FormKit.round(this, UiPalette.ACCENT, 12));
         add.setOnClickListener(v -> showEditor(null));
-        row.addView(add);
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
+        addParams.leftMargin = dp(8);
+        row.addView(add, addParams);
         header.addView(row);
 
         subtitle = text("", 13, UiPalette.MUTED, false);
@@ -119,21 +119,21 @@ public final class TaskActivity extends Activity {
     private View buildFooter() {
         LinearLayout footer = new LinearLayout(this);
         footer.setOrientation(LinearLayout.HORIZONTAL);
-        footer.setPadding(dp(16), dp(4), dp(16), dp(4));
+        footer.setPadding(dp(16), dp(6), dp(16), dp(4));
 
         TextView reset = text("重置今日", 13, UiPalette.MUTED, true);
         reset.setGravity(Gravity.CENTER);
         reset.setPadding(0, dp(10), 0, dp(10));
-        reset.setBackground(outline(UiPalette.hairline()));
+        reset.setBackground(FormKit.round(this, Color.WHITE, 12));
         reset.setOnClickListener(v -> confirmResetToday());
         LinearLayout.LayoutParams a = new LinearLayout.LayoutParams(0, -2, 1f);
         a.rightMargin = dp(6);
         footer.addView(reset, a);
 
-        TextView clear = text("清空全部任务", 13, 0xffc85a4c, true);
+        TextView clear = text("清空全部任务", 13, UiPalette.WARN, true);
         clear.setGravity(Gravity.CENTER);
         clear.setPadding(0, dp(10), 0, dp(10));
-        clear.setBackground(outline(0x33c85a4c));
+        clear.setBackground(FormKit.round(this, UiPalette.WARN_SOFT, 12));
         clear.setOnClickListener(v -> confirmClearAll());
         LinearLayout.LayoutParams b = new LinearLayout.LayoutParams(0, -2, 1f);
         b.leftMargin = dp(6);
@@ -170,11 +170,8 @@ public final class TaskActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(14), dp(12), dp(14));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.WHITE);
-        bg.setCornerRadius(dp(16));
-        card.setBackground(bg);
+        card.setPadding(dp(14), dp(14), dp(10), dp(14));
+        card.setBackground(FormKit.round(this, Color.WHITE, 18));
         card.setElevation(dp(1));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.bottomMargin = dp(10);
@@ -183,10 +180,7 @@ public final class TaskActivity extends Activity {
         TextView badge = text(doneToday ? "✓" : task.badgeText(), 16,
                 doneToday ? Color.WHITE : UiPalette.ACCENT, true);
         badge.setGravity(Gravity.CENTER);
-        GradientDrawable badgeBg = new GradientDrawable();
-        badgeBg.setColor(doneToday ? UiPalette.ACCENT : UiPalette.SOFT);
-        badgeBg.setCornerRadius(dp(12));
-        badge.setBackground(badgeBg);
+        badge.setBackground(FormKit.round(this, doneToday ? UiPalette.ACCENT : UiPalette.PALE, 12));
         card.addView(badge, new LinearLayout.LayoutParams(dp(40), dp(40)));
 
         LinearLayout texts = new LinearLayout(this);
@@ -195,9 +189,8 @@ public final class TaskActivity extends Activity {
         textParams.leftMargin = dp(12);
         card.addView(texts, textParams);
 
-        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 16,
-                doneToday ? UiPalette.MUTED : UiPalette.INK, true);
-        texts.addView(title);
+        texts.addView(text(task.title.isEmpty() ? "未命名任务" : task.title, 16,
+                doneToday ? UiPalette.MUTED : UiPalette.INK, true));
         TextView schedule = text(describe(task), 12, UiPalette.MUTED, false);
         LinearLayout.LayoutParams scheduleParams = new LinearLayout.LayoutParams(-1, -2);
         scheduleParams.topMargin = dp(3);
@@ -205,13 +198,18 @@ public final class TaskActivity extends Activity {
         if (!task.reminderMessage.isEmpty()) {
             TextView note = text(task.reminderMessage, 12, UiPalette.MUTED, false);
             note.setMaxLines(1);
-            note.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            note.setEllipsize(TextUtils.TruncateAt.END);
             texts.addView(note);
         }
 
         Switch toggle = new Switch(this);
         toggle.setChecked(task.enabled);
-        toggle.setPadding(0, 0, 0, 0);
+        toggle.setThumbTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{Color.WHITE, Color.WHITE}));
+        toggle.setTrackTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{UiPalette.ACCENT, UiPalette.DISABLED}));
         toggle.setOnCheckedChangeListener((v, checked) ->
                 ReminderSettings.upsertRule(this, task.withEnabled(checked)));
         card.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
@@ -240,8 +238,7 @@ public final class TaskActivity extends Activity {
             StringBuilder days = new StringBuilder();
             String[] names = {"一", "二", "三", "四", "五", "六", "日"};
             for (int i = 0; i < 7; i++) {
-                int bit = 1 << i;
-                if ((rule.daysMask & bit) != 0) days.append(names[i]);
+                if ((rule.daysMask & (1 << i)) != 0) days.append(names[i]);
             }
             return "每周 " + days + " · " + times;
         }
@@ -261,7 +258,7 @@ public final class TaskActivity extends Activity {
     // ---------------------------------------------------------------- 删除 / 清空
 
     private void confirmDelete(ReminderSettings.Rule rule) {
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("删除任务")
                 .setMessage("确定删除「" + rule.title + "」？")
                 .setNegativeButton("取消", null)
@@ -269,11 +266,12 @@ public final class TaskActivity extends Activity {
                     ReminderSettings.deleteRule(this, rule.id);
                     reload();
                 })
-                .show();
+                .create();
+        FormKit.showStyled(this, dialog);
     }
 
     private void confirmClearAll() {
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("清空全部任务")
                 .setMessage("会删除所有任务和它们的提醒，历史记录保留。确定吗？")
                 .setNegativeButton("取消", null)
@@ -281,11 +279,12 @@ public final class TaskActivity extends Activity {
                     ReminderSettings.clearModule(this, ReminderSettings.MODULE_TASK);
                     reload();
                 })
-                .show();
+                .create();
+        FormKit.showStyled(this, dialog);
     }
 
     private void confirmResetToday() {
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("重置今日")
                 .setMessage("把今天所有任务的完成状态清掉，重新开始打卡。")
                 .setNegativeButton("取消", null)
@@ -294,205 +293,359 @@ public final class TaskActivity extends Activity {
                             ReminderRecord.dayStart(System.currentTimeMillis()));
                     reload();
                 })
-                .show();
+                .create();
+        FormKit.showStyled(this, dialog);
     }
 
     // ---------------------------------------------------------------- 编辑
 
+    /** 当前编辑中的调度方式（可被分段选择器改写）。 */
+    private String draftMode;
+
     private void showEditor(ReminderSettings.Rule existing) {
         final boolean creating = existing == null;
         final int id = creating ? ReminderSettings.nextRuleId(this) : existing.id;
+        draftMode = creating ? MODE_DAILY : modeOf(existing);
 
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(20);
-        form.setPadding(pad, dp(8), pad, dp(8));
+        form.setPadding(dp(20), dp(6), dp(20), dp(6));
 
-        EditText titleInput = new EditText(this);
-        titleInput.setHint("任务名，例如「背 20 个单词」");
-        titleInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        if (!creating) titleInput.setText(existing.title);
-        form.addView(titleInput);
+        EditText name = FormKit.textInput(this, "例如：背 20 个单词", existing == null ? "" : existing.title);
+        name.setSingleLine(true);
+        form.addView(name);
 
-        EditText noteInput = new EditText(this);
-        noteInput.setHint("备注（可选，会显示在霸屏页上）");
-        noteInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        if (!creating) noteInput.setText(existing.reminderMessage);
-        form.addView(noteInput);
+        EditText note = FormKit.input(this, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        note.setHint("备注（选填，会显示在霸屏页上）");
+        note.setMinLines(2);
+        note.setMaxLines(3);
+        note.setText(existing == null ? "" : existing.reminderMessage);
+        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
+        noteParams.topMargin = dp(10);
+        form.addView(note, noteParams);
 
-        form.addView(sectionLabel("什么时候提醒"));
+        form.addView(FormKit.editorLabel(this, "提醒方式", true));
 
-        LinearLayout modeRow = new LinearLayout(this);
-        modeRow.setOrientation(LinearLayout.HORIZONTAL);
-        final String[] mode = {creating ? MODE_DAILY : modeOf(existing)};
-        final TextView[] chips = new TextView[4];
-        String[] labels = {"每天", "每周", "单次", "间隔"};
-        String[] values = {MODE_DAILY, MODE_WEEKLY, MODE_ONCE, MODE_INTERVAL};
-        for (int i = 0; i < labels.length; i++) {
-            final int index = i;
-            TextView chip = chip(labels[i], mode[0].equals(values[i]));
-            chip.setOnClickListener(v -> {
-                mode[0] = values[index];
-                for (int j = 0; j < chips.length; j++) styleChip(chips[j], values[j].equals(mode[0]));
-            });
-            chips[i] = chip;
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            if (i > 0) p.leftMargin = dp(6);
-            modeRow.addView(chip, p);
-        }
-        form.addView(modeRow);
-
-        // 时间点（每天 / 每周共用）
         final List<Integer> points = new ArrayList<>();
-        if (!creating && !existing.timePointsSeconds.isEmpty()) points.addAll(existing.timePointsSeconds);
+        if (existing != null && !existing.timePointsSeconds.isEmpty()) points.addAll(existing.timePointsSeconds);
         if (points.isEmpty()) points.add(9 * 3600);
 
-        final LinearLayout pointList = new LinearLayout(this);
-        pointList.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams pointListParams = new LinearLayout.LayoutParams(-1, -2);
-        pointListParams.topMargin = dp(8);
-        form.addView(pointList, pointListParams);
+        final int[] daysMask = {existing == null ? 0x7f : existing.daysMask};
+        final long[] onceAt = {existing == null || existing.onceAt <= 0L
+                ? tomorrowMorning() : existing.onceAt};
+        final int[] window = {existing == null ? 9 * 60 : existing.start,
+                existing == null ? 18 * 60 : existing.end};
+        final int[] intervalMinutes = {existing == null ? 60 : Math.max(1, existing.intervalSeconds / 60)};
 
-        final Runnable renderPoints = new Runnable() {
-            @Override public void run() {
-                pointList.removeAllViews();
-                for (int i = 0; i < points.size(); i++) {
-                    final int index = i;
-                    final int seconds = points.get(i);
-                    LinearLayout row = new LinearLayout(TaskActivity.this);
-                    row.setOrientation(LinearLayout.HORIZONTAL);
-                    row.setGravity(Gravity.CENTER_VERTICAL);
-                    TextView value = text("🕘 " + timeText(seconds), 15, UiPalette.INK, false);
-                    value.setPadding(0, dp(10), 0, dp(10));
-                    value.setOnClickListener(v -> pickTime(seconds, picked -> {
-                        points.set(index, picked);
-                        run();
-                    }));
-                    row.addView(value, new LinearLayout.LayoutParams(0, -2, 1f));
-                    TextView remove = text("移除", 12, UiPalette.MUTED, false);
-                    remove.setPadding(dp(8), dp(10), 0, dp(10));
-                    remove.setOnClickListener(v -> {
-                        if (points.size() <= 1) return;
-                        points.remove(index);
-                        run();
-                    });
-                    row.addView(remove);
-                    pointList.addView(row);
+        // 分段选择器
+        LinearLayout modes = FormKit.segmentGroup(this);
+        String[] labels = {"每天", "每周", "单次", "间隔"};
+        String[] values = {MODE_DAILY, MODE_WEEKLY, MODE_ONCE, MODE_INTERVAL};
+        final TextView[] modeOptions = new TextView[labels.length];
+        for (int i = 0; i < labels.length; i++) {
+            final String value = values[i];
+            final TextView option = FormKit.segmentOption(this, labels[i], value.equals(draftMode));
+            option.setOnClickListener(v -> {
+                draftMode = value;
+                for (int j = 0; j < modeOptions.length; j++) {
+                    FormKit.setSegmentSelected(modeOptions[j], values[j].equals(draftMode));
                 }
-                TextView addPoint = text("＋ 添加时间", 13, UiPalette.ACCENT, true);
-                addPoint.setPadding(0, dp(8), 0, dp(8));
-                addPoint.setOnClickListener(v -> pickTime(9 * 3600, picked -> {
-                    points.add(picked);
-                    java.util.Collections.sort(points);
-                    run();
-                }));
-                pointList.addView(addPoint);
-            }
-        };
-        renderPoints.run();
+                updateModeSections(this, form);
+            });
+            modeOptions[i] = option;
+            modes.addView(option, new LinearLayout.LayoutParams(0, dp(42), 1));
+        }
+        form.addView(modes);
 
-        // 每周：星期选择
-        final int[] daysMask = {creating ? 0x7f : existing.daysMask};
-        final LinearLayout weekRow = new LinearLayout(this);
-        weekRow.setOrientation(LinearLayout.HORIZONTAL);
+        // —— 每天 / 每周：时间点
+        LinearLayout pointsSection = new LinearLayout(this);
+        pointsSection.setOrientation(LinearLayout.VERTICAL);
+        pointsSection.addView(FormKit.editorLabel(this, "提醒时间", false));
+        LinearLayout pointRows = new LinearLayout(this);
+        pointRows.setOrientation(LinearLayout.VERTICAL);
+        pointsSection.addView(pointRows);
+        Button addPoint = FormKit.controlButton(this);
+        addPoint.setText("＋ 添加时间点");
+        addPoint.setOnClickListener(v -> WheelPicker.time(this, "提醒时间", "确定", 9 * 3600, false, picked -> {
+            points.add(picked);
+            java.util.Collections.sort(points);
+            renderPoints(pointRows, points);
+        }).show());
+        LinearLayout.LayoutParams addPointParams = new LinearLayout.LayoutParams(-1, -2);
+        addPointParams.topMargin = dp(6);
+        pointsSection.addView(addPoint, addPointParams);
+        form.addView(pointsSection);
+        renderPoints(pointRows, points);
+
+        // —— 每周：星期
+        LinearLayout weekSection = new LinearLayout(this);
+        weekSection.setOrientation(LinearLayout.VERTICAL);
+        weekSection.addView(FormKit.editorLabel(this, "哪几天", true));
+        LinearLayout weekRow = FormKit.segmentGroup(this);
         String[] dayNames = {"一", "二", "三", "四", "五", "六", "日"};
-        final TextView[] dayChips = new TextView[7];
         for (int i = 0; i < 7; i++) {
             final int bit = 1 << i;
-            TextView chip = chip(dayNames[i], (daysMask[0] & bit) != 0);
+            final TextView chip = FormKit.segmentOption(this, dayNames[i], (daysMask[0] & bit) != 0);
             chip.setOnClickListener(v -> {
                 daysMask[0] ^= bit;
-                styleChip(chip, (daysMask[0] & bit) != 0);
+                FormKit.setSegmentSelected(chip, (daysMask[0] & bit) != 0);
             });
-            dayChips[i] = chip;
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            if (i > 0) p.leftMargin = dp(4);
-            weekRow.addView(chip, p);
+            weekRow.addView(chip, new LinearLayout.LayoutParams(0, dp(40), 1));
         }
-        LinearLayout.LayoutParams weekParams = new LinearLayout.LayoutParams(-1, -2);
-        weekParams.topMargin = dp(8);
-        form.addView(weekRow, weekParams);
+        weekSection.addView(weekRow);
+        form.addView(weekSection);
 
-        // 单次：日期
-        final long[] onceAt = {creating ? System.currentTimeMillis() + 3600_000L : existing.onceAt};
-        final TextView onceDate = chip("选择日期", false);
-        onceDate.setOnClickListener(v -> {
-            Calendar cal = Calendar.getInstance();
-            cal.setTimeInMillis(onceAt[0]);
-            new DatePickerDialog(this, (view, year, month, day) -> {
-                Calendar picked = Calendar.getInstance();
-                picked.setTimeInMillis(onceAt[0]);
-                picked.set(year, month, day);
-                onceAt[0] = picked.getTimeInMillis();
-                onceDate.setText(String.format(Locale.getDefault(), "日期：%d月%d日", month + 1, day));
-            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
+        // —— 单次：日期 + 时间
+        LinearLayout onceSection = new LinearLayout(this);
+        onceSection.setOrientation(LinearLayout.VERTICAL);
+        onceSection.addView(FormKit.editorLabel(this, "什么时候", true));
+        LinearLayout onceRow = new LinearLayout(this);
+        Calendar onceCal = Calendar.getInstance();
+        onceCal.setTimeInMillis(onceAt[0]);
+        LinearLayout dateField = FormKit.timeField(this, "日期",
+                String.format(Locale.getDefault(), "%d月%d日", onceCal.get(Calendar.MONTH) + 1,
+                        onceCal.get(Calendar.DAY_OF_MONTH)));
+        dateField.setOnClickListener(v -> {
+            Calendar base = Calendar.getInstance();
+            base.setTimeInMillis(onceAt[0]);
+            WheelPicker.date(this, "选择日期", base, picked -> {
+                Calendar merged = Calendar.getInstance();
+                merged.setTimeInMillis(onceAt[0]);
+                merged.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH), picked.get(Calendar.DAY_OF_MONTH));
+                onceAt[0] = merged.getTimeInMillis();
+                FormKit.updateTimeField(dateField, String.format(Locale.getDefault(), "%d月%d日",
+                        picked.get(Calendar.MONTH) + 1, picked.get(Calendar.DAY_OF_MONTH)));
+            }).show();
         });
-        LinearLayout.LayoutParams onceParams = new LinearLayout.LayoutParams(-1, -2);
-        onceParams.topMargin = dp(8);
-        form.addView(onceDate, onceParams);
+        LinearLayout timeField = FormKit.timeField(this, "时间", timeText(onceAt[0] / 1000));
+        timeField.setOnClickListener(v -> WheelPicker.time(this, "时间", "确定",
+                (int) ((onceAt[0] / 1000) % 86400), false, picked -> {
+                    Calendar merged = Calendar.getInstance();
+                    merged.setTimeInMillis(onceAt[0]);
+                    merged.set(Calendar.HOUR_OF_DAY, picked / 3600);
+                    merged.set(Calendar.MINUTE, (picked % 3600) / 60);
+                    merged.set(Calendar.SECOND, 0);
+                    onceAt[0] = merged.getTimeInMillis();
+                    FormKit.updateTimeField(timeField, timeText(picked));
+                }).show());
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        dateParams.rightMargin = dp(6);
+        onceRow.addView(dateField, dateParams);
+        LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        timeParams.leftMargin = dp(6);
+        onceRow.addView(timeField, timeParams);
+        onceSection.addView(onceRow);
+        form.addView(onceSection);
 
-        // 间隔：开始 / 结束 / 分钟
-        final int[] window = {
-                creating ? 9 * 60 : existing.start,
-                creating ? 18 * 60 : existing.end};
-        final int[] intervalMinutes = {creating ? 60 : Math.max(1, existing.intervalSeconds / 60)};
-        LinearLayout intervalRow = new LinearLayout(this);
-        intervalRow.setOrientation(LinearLayout.VERTICAL);
-        final TextView windowText = text("", 14, UiPalette.INK, false);
-        windowText.setPadding(0, dp(8), 0, dp(4));
-        windowText.setOnClickListener(v -> new TimePickerDialog(this, (view, hour, minute) -> {
-            window[0] = hour * 60 + minute;
-            windowText.setText(String.format(Locale.getDefault(), "从 %s 开始", minuteText(window[0])));
-        }, window[0] / 60, window[0] % 60, true).show());
-        intervalRow.addView(windowText);
-        final TextView endText = text("", 14, UiPalette.INK, false);
-        endText.setPadding(0, dp(8), 0, dp(4));
-        endText.setOnClickListener(v -> new TimePickerDialog(this, (view, hour, minute) -> {
-            window[1] = hour * 60 + minute;
-            endText.setText(String.format(Locale.getDefault(), "到 %s 结束", minuteText(window[1])));
-        }, window[1] / 60, window[1] % 60, true).show());
-        intervalRow.addView(endText);
+        // —— 间隔：开始 / 结束 / 间隔
+        LinearLayout intervalSection = new LinearLayout(this);
+        intervalSection.setOrientation(LinearLayout.VERTICAL);
+        intervalSection.addView(FormKit.editorLabel(this, "提醒时段", true));
+        LinearLayout windowRow = new LinearLayout(this);
+        LinearLayout fromField = FormKit.timeField(this, "开始时间", minuteText(window[0]));
+        fromField.setOnClickListener(v -> WheelPicker.time(this, "开始时间", "确定",
+                window[0] * 60, false, picked -> {
+                    window[0] = picked / 60;
+                    FormKit.updateTimeField(fromField, minuteText(window[0]));
+                }).show());
+        LinearLayout toField = FormKit.timeField(this, "结束时间", minuteText(window[1]));
+        toField.setOnClickListener(v -> WheelPicker.time(this, "结束时间", "确定",
+                window[1] * 60, false, picked -> {
+                    window[1] = picked / 60;
+                    FormKit.updateTimeField(toField, minuteText(window[1]));
+                }).show());
+        LinearLayout.LayoutParams fromParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        fromParams.rightMargin = dp(6);
+        windowRow.addView(fromField, fromParams);
+        LinearLayout.LayoutParams toParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        toParams.leftMargin = dp(6);
+        windowRow.addView(toField, toParams);
+        intervalSection.addView(windowRow);
+
+        Button intervalButton = FormKit.controlButton(this);
+        intervalButton.setText("提醒间隔  " + intervalText(intervalMinutes[0]));
+        intervalButton.setOnClickListener(v -> chooseInterval(intervalMinutes, intervalButton));
         LinearLayout.LayoutParams intervalParams = new LinearLayout.LayoutParams(-1, -2);
-        intervalParams.topMargin = dp(4);
-        form.addView(intervalRow, intervalParams);
-        windowText.setText(String.format(Locale.getDefault(), "从 %s 开始", minuteText(window[0])));
-        endText.setText(String.format(Locale.getDefault(), "到 %s 结束", minuteText(window[1])));
+        intervalParams.topMargin = dp(8);
+        intervalSection.addView(intervalButton, intervalParams);
+        form.addView(intervalSection);
 
-        // 每日重置
+        // 设置块
+        LinearLayout settings = new LinearLayout(this);
+        settings.setOrientation(LinearLayout.VERTICAL);
+        settings.setPadding(dp(14), dp(10), dp(14), dp(10));
+        settings.setBackground(FormKit.round(this, UiPalette.PALE, 12));
         LinearLayout resetRow = new LinearLayout(this);
-        resetRow.setOrientation(LinearLayout.HORIZONTAL);
         resetRow.setGravity(Gravity.CENTER_VERTICAL);
-        resetRow.setPadding(0, dp(10), 0, 0);
-        TextView resetLabel = text("每天自动把完成状态重置", 14, UiPalette.INK, false);
-        resetRow.addView(resetLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        resetRow.addView(text("每天自动重置完成状态", 14, UiPalette.INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
         Switch resetSwitch = new Switch(this);
-        resetSwitch.setChecked(!creating && ReminderSettings.autoReset(this, existing.id));
+        resetSwitch.setThumbTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{Color.WHITE, Color.WHITE}));
+        resetSwitch.setTrackTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{UiPalette.ACCENT, UiPalette.DISABLED}));
+        resetSwitch.setChecked(existing != null && ReminderSettings.autoReset(this, existing.id));
         resetRow.addView(resetSwitch);
-        form.addView(resetRow);
+        settings.addView(resetRow);
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(-1, -2);
+        settingsParams.topMargin = dp(16);
+        form.addView(settings, settingsParams);
 
-        ScrollView formScroll = new ScrollView(this);
+        final int maxContentHeight = Math.min(dp(600), getResources().getDisplayMetrics().heightPixels - dp(240));
+        ScrollView formScroll = new ScrollView(this) {
+            @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                int available = Math.max(dp(320), maxContentHeight);
+                int size = MeasureSpec.getSize(heightMeasureSpec);
+                int constrained = size == 0 ? available : Math.min(size, available);
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(constrained, MeasureSpec.AT_MOST));
+            }
+        };
+        formScroll.setClipToPadding(false);
+        formScroll.setVerticalScrollBarEnabled(false);
         formScroll.addView(form);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(creating ? "新建任务" : "编辑任务")
+                .setTitle(creating ? "添加任务" : "编辑任务")
                 .setView(formScroll)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("保存", null)
                 .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String title = titleInput.getText().toString().trim();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String title = name.getText().toString().trim();
             if (title.isEmpty()) {
-                titleInput.setError("任务名不能为空");
+                Toast.makeText(this, "请输入任务名", Toast.LENGTH_SHORT).show();
                 return;
             }
-            ReminderSettings.Rule rule = buildRule(id, existing, title,
-                    noteInput.getText().toString().trim(), mode[0], points, daysMask[0], onceAt[0], window, intervalMinutes[0]);
+            ReminderSettings.Rule rule = buildRule(id, existing, title, note.getText().toString().trim(),
+                    draftMode, points, daysMask[0], onceAt[0], window, intervalMinutes[0]);
             ReminderSettings.upsertRule(this, rule);
             ReminderSettings.setAutoReset(this, id, resetSwitch.isChecked());
             dialog.dismiss();
             reload();
         }));
-        dialog.show();
+        FormKit.showStyled(this, dialog);
+        updateModeSections(this, form);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+    }
+
+    /** 按当前调度方式显隐各段。 */
+    private void updateModeSections(Context context, LinearLayout form) {
+        for (int i = 1; i < form.getChildCount(); i++) {
+            View child = form.getChildAt(i);
+            if (!(child instanceof LinearLayout)) continue;
+            LinearLayout section = (LinearLayout) child;
+            if (section.getChildCount() == 0) continue;
+            View first = section.getChildAt(0);
+            if (!(first instanceof TextView)) continue;
+            String label = ((TextView) first).getText().toString();
+            boolean visible;
+            if ("提醒时间".equals(label)) {
+                visible = MODE_DAILY.equals(draftMode) || MODE_WEEKLY.equals(draftMode);
+            } else if ("哪几天".equals(label)) {
+                visible = MODE_WEEKLY.equals(draftMode);
+            } else if ("什么时候".equals(label)) {
+                visible = MODE_ONCE.equals(draftMode);
+            } else if ("提醒时段".equals(label)) {
+                visible = MODE_INTERVAL.equals(draftMode);
+            } else {
+                continue;
+            }
+            section.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void renderPoints(LinearLayout container, final List<Integer> points) {
+        container.removeAllViews();
+        for (int i = 0; i < points.size(); i++) {
+            final int index = i;
+            final int seconds = points.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(12), 0, dp(8), 0);
+            row.setBackground(FormKit.round(this, Color.WHITE, 10));
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, dp(48));
+            rowParams.bottomMargin = dp(6);
+            row.setLayoutParams(rowParams);
+            row.addView(text(timeText(seconds), 17, UiPalette.INK, true),
+                    new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView remove = text("移除", 12, UiPalette.MUTED, false);
+            remove.setPadding(dp(10), dp(8), dp(6), dp(8));
+            remove.setOnClickListener(v -> {
+                if (points.size() <= 1) return;
+                points.remove(index);
+                renderPoints(container, points);
+            });
+            row.addView(remove);
+            row.setOnClickListener(v -> WheelPicker.time(this, "提醒时间", "确定", seconds, false, picked -> {
+                points.set(index, picked);
+                java.util.Collections.sort(points);
+                renderPoints(container, points);
+            }).show());
+            container.addView(row);
+        }
+    }
+
+    private void chooseInterval(final int[] minutes, final Button button) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(4), dp(16), dp(4));
+
+        LinearLayout quickRow = new LinearLayout(this);
+        quickRow.setPadding(0, dp(4), 0, dp(8));
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (final int option : new int[]{5, 10, 15, 30, 60}) {
+            TextView chip = text(option + " 分", 13, UiPalette.ACCENT, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(0, dp(9), 0, dp(9));
+            chip.setBackground(FormKit.round(this, UiPalette.SOFT, 10));
+            chip.setOnClickListener(v -> {
+                minutes[0] = option;
+                button.setText("提醒间隔  " + intervalText(minutes[0]));
+                if (holder[0] != null) holder[0].dismiss();
+            });
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (option != 5) chipParams.leftMargin = dp(6);
+            quickRow.addView(chip, chipParams);
+        }
+        content.addView(quickRow);
+
+        EditText input = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
+        input.setHint("自定义分钟数");
+        input.setText(String.valueOf(minutes[0]));
+        content.addView(input);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("提醒间隔")
+                .setView(content)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确定", (d, w) -> {
+                    try {
+                        minutes[0] = Math.max(1, Integer.parseInt(input.getText().toString().trim()));
+                        button.setText("提醒间隔  " + intervalText(minutes[0]));
+                    } catch (NumberFormatException ignored) { }
+                })
+                .create();
+        holder[0] = dialog;
+        FormKit.showStyled(this, dialog);
+    }
+
+    private static String intervalText(int minutes) {
+        if (minutes % 60 == 0 && minutes >= 60) return (minutes / 60) + " 小时";
+        return minutes + " 分钟";
+    }
+
+    private long tomorrowMorning() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 9);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
     }
 
     private ReminderSettings.Rule buildRule(int id, ReminderSettings.Rule existing, String title, String note,
@@ -516,7 +669,7 @@ public final class TaskActivity extends Activity {
         } else if (startMinute == endMinute) {
             endMinute = (startMinute + 1) % (24 * 60);
         }
-        if (!MODE_ONCE.equals(mode) && !MODE_WEEKLY.equals(mode)) daysMask = 0;
+        if (!MODE_WEEKLY.equals(mode)) daysMask = 0;
         if (!MODE_ONCE.equals(mode)) onceAt = 0L;
 
         ReminderSettings.Rule rule = ReminderSettings.Rule.withIntervalSeconds(id, title, startMinute, endMinute,
@@ -536,55 +689,13 @@ public final class TaskActivity extends Activity {
         return rule.specificTimeMode ? MODE_DAILY : MODE_INTERVAL;
     }
 
-    private interface TimeCallback { void onPicked(int secondsOfDay); }
-
-    private void pickTime(int current, TimeCallback callback) {
-        new TimePickerDialog(this, (view, hour, minute) -> callback.onPicked(hour * 3600 + minute * 60),
-                current / 3600, (current % 3600) / 60, true).show();
-    }
-
     // ---------------------------------------------------------------- 小工具
 
-    private TextView sectionLabel(String value) {
-        TextView label = text(value, 12, UiPalette.MUTED, true);
-        label.setPadding(0, dp(16), 0, dp(6));
-        return label;
-    }
-
-    private TextView chip(String value, boolean selected) {
-        TextView chip = text(value, 13, UiPalette.INK, true);
-        chip.setGravity(Gravity.CENTER);
-        chip.setPadding(0, dp(8), 0, dp(8));
-        styleChip(chip, selected);
-        return chip;
-    }
-
-    private void styleChip(TextView chip, boolean selected) {
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(selected ? UiPalette.ACCENT : UiPalette.SOFT);
-        bg.setCornerRadius(dp(10));
-        chip.setBackground(bg);
-        chip.setTextColor(selected ? Color.WHITE : UiPalette.INK);
-    }
-
-    private GradientDrawable outline(int color) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(Color.TRANSPARENT);
-        shape.setCornerRadius(dp(14));
-        shape.setStroke(dp(1), color);
-        return shape;
-    }
-
     private TextView text(String value, int size, int color, boolean bold) {
-        TextView view = new TextView(this);
-        view.setText(value);
-        view.setTextSize(size);
-        view.setTextColor(color);
-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        return view;
+        return FormKit.text(this, value, size, color, bold);
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
+    private int dp(float value) {
+        return FormKit.dp(this, value);
     }
 }
