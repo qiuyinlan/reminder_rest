@@ -1,7 +1,7 @@
 {
-    "versionCode": 16,
-    "versionName": "0.3.0-beta6",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta6/rest-bean.apk",
-    "sha256": "6b085543bfe68671adc8c933167cbe6b1470564528a3c39c6f3b0aa39171b498",
-    "notes": "修复统计页闪退（records() 无限递归），卡片提醒时间支持精确到秒。"
+    "versionCode": 17,
+    "versionName": "0.3.0-beta7",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta7/rest-bean.apk",
+    "sha256": "616ef753f7adf1a103f89962d91475c52bb428b05cf98906fb70871bf27f242e",
+    "notes": "新增「提醒诊断」，用来排查到点不霸屏的问题。"
 }
