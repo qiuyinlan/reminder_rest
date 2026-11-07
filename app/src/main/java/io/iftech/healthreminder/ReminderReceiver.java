@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.app.KeyguardManager;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -178,10 +179,15 @@ public final class ReminderReceiver extends BroadcastReceiver {
             NotificationManagerCompat.from(context).cancel(703);
             return;
         }
-        if (!screenOffAlarmEnabled && !covered && interactive && ReminderApplication.isInForeground()) {
+        // 屏幕亮着时也尽量把霸屏页拉起来：前台或拿到悬浮窗权限时，
+        // 系统允许从后台启动 Activity。任务 / 卡片提醒以前只发通知，
+        // 看起来就像「霸屏失效」。
+        if (!covered && interactive
+                && (ReminderApplication.isInForeground() || Settings.canDrawOverlays(context))) {
             try {
                 context.startActivity(open);
                 NotificationManagerCompat.from(context).cancel(703);
+                ReminderDebug.note(context, "直接启动霸屏页 rule=" + ruleId + " target=" + target.getSimpleName());
                 return;
             } catch (RuntimeException ignored) { }
         }
