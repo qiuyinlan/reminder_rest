@@ -284,6 +284,7 @@ final class ReminderScheduler {
     }
 
     private static void setAlarm(Context context, AlarmManager alarms, long time, PendingIntent pending) {
+        if (time <= 0L) return;
         if (ReminderSettings.screenOffAlarm(context)
                 && android.os.Build.VERSION.SDK_INT >= 21
                 && (android.os.Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms())) {
@@ -307,6 +308,12 @@ final class ReminderScheduler {
 
     private static long calculateNext(Context context, ReminderSettings.Rule rule) {
         long now = System.currentTimeMillis();
+        if (rule.isOnceSchedule()) {
+            return rule.onceAt > now ? rule.onceAt : 0L;
+        }
+        if (rule.isWeeklySchedule()) {
+            return nextWeekly(rule, now);
+        }
         if (!rule.remindAfterTarget && ReminderSettings.completedToday(context, rule.id) >= rule.dailyTarget) {
             if (rule.specificTimeMode && !rule.timePointsSeconds.isEmpty()) {
                 return ReminderScheduleMath.nextTime(rule.timePointsSeconds, now, true);
@@ -324,6 +331,30 @@ final class ReminderScheduler {
             return ReminderScheduleMath.nextTime(rule.timePointsSeconds, now, false);
         }
         return nextTime(rule, now);
+    }
+
+    /** 每周重复：在指定星期 + 指定时间点里找下一个触发时刻；找不到返回 0。 */
+    private static long nextWeekly(ReminderSettings.Rule rule, long nowMillis) {
+        List<Integer> points = rule.timePointsSeconds;
+        if (points.isEmpty()) return 0L;
+        Calendar base = Calendar.getInstance();
+        for (int dayOffset = 0; dayOffset <= 7; dayOffset++) {
+            base.setTimeInMillis(nowMillis);
+            base.add(Calendar.DAY_OF_YEAR, dayOffset);
+            if (!rule.matchesWeekday(base.get(Calendar.DAY_OF_WEEK))) continue;
+            int secondsNow = base.get(Calendar.HOUR_OF_DAY) * 3600
+                    + base.get(Calendar.MINUTE) * 60 + base.get(Calendar.SECOND);
+            for (int point : points) {
+                if (dayOffset == 0 && point <= secondsNow) continue;
+                Calendar target = (Calendar) base.clone();
+                target.set(Calendar.HOUR_OF_DAY, point / 3600);
+                target.set(Calendar.MINUTE, (point % 3600) / 60);
+                target.set(Calendar.SECOND, point % 60);
+                target.set(Calendar.MILLISECOND, 0);
+                return target.getTimeInMillis();
+            }
+        }
+        return 0L;
     }
 
     static void scheduleSnooze(Context context, int minutes, String action, int ruleId) {

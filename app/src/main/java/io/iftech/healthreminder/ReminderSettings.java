@@ -16,6 +16,9 @@ import java.util.TreeSet;
 
 final class ReminderSettings {
     static final String[] TYPES = {"喝水", "护眼", "走动", "放松颈椎"};
+    static final String MODULE_BODY = "body";
+    static final String MODULE_TASK = "task";
+    static final String MODULE_CARD = "card";
     static final String KEY_ENABLED = "enabled";
     private static final String PREFS = "reminder_settings";
     private static final String RULES_KEY = "reminder_rules_v2";
@@ -42,6 +45,16 @@ final class ReminderSettings {
         final boolean enabled;
         final boolean specificTimeMode;
         final List<Integer> timePointsSeconds;
+        /** 所属模块：body（身体）/ task（任务）/ card（卡片与答题）。 */
+        final String module;
+        /** 卡片模块引用的卡片集 id；其他模块为空串。 */
+        final String deckId;
+        /** 卡片模块是否答题模式（弹一题→输入→退出）。 */
+        final boolean quiz;
+        /** 每周重复的星期掩码（周一=1 … 周日=64）；0 表示每天。 */
+        final int daysMask;
+        /** 单次提醒的时间戳；0 表示不是单次。 */
+        final long onceAt;
 
         Rule(int id, String title, int start, int end, int interval, boolean enabled) {
             this(id, title, start, end, interval, 3, false, enabled);
@@ -85,6 +98,16 @@ final class ReminderSettings {
                      int dailyTarget, boolean remindAfterTarget, boolean enabled,
                      boolean specificTimeMode, List<Integer> timePointsSeconds,
                      String reminderMessage, String icon, String overlayArtwork, int color) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, specificTimeMode, timePointsSeconds, reminderMessage, icon,
+                    overlayArtwork, color, MODULE_BODY, "", false, 0, 0L);
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds,
+                     String reminderMessage, String icon, String overlayArtwork, int color,
+                     String module, String deckId, boolean quiz, int daysMask, long onceAt) {
             this.id = id;
             this.title = title;
             this.icon = icon == null ? "" : icon.trim();
@@ -107,6 +130,28 @@ final class ReminderSettings {
                 }
             }
             this.timePointsSeconds = java.util.Collections.unmodifiableList(new ArrayList<>(sortedTimes));
+            this.module = module == null || module.trim().isEmpty() ? MODULE_BODY : module.trim();
+            this.deckId = deckId == null ? "" : deckId.trim();
+            this.quiz = quiz;
+            this.daysMask = daysMask & 0x7f;
+            this.onceAt = Math.max(0L, onceAt);
+        }
+
+        boolean isBodyModule() { return MODULE_BODY.equals(module); }
+        boolean isTaskModule() { return MODULE_TASK.equals(module); }
+        boolean isCardModule() { return MODULE_CARD.equals(module); }
+
+        /** 单次提醒（指定日期时间，只响一次）。 */
+        boolean isOnceSchedule() { return onceAt > 0L; }
+
+        /** 每周重复（指定星期 + 时间点）。 */
+        boolean isWeeklySchedule() { return !isOnceSchedule() && daysMask != 0; }
+
+        /** 该星期几（Calendar.DAY_OF_WEEK 的 1..7）是否触发。 */
+        boolean matchesWeekday(int calendarDayOfWeek) {
+            if (daysMask == 0) return true;
+            int bit = calendarDayOfWeek == Calendar.SUNDAY ? 64 : (1 << (calendarDayOfWeek - Calendar.MONDAY));
+            return (daysMask & bit) != 0;
         }
 
         static Rule withIntervalSeconds(int id, String title, int start, int end, int intervalSeconds,
@@ -124,30 +169,50 @@ final class ReminderSettings {
 
         Rule withReminderMessage(String message) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon, overlayArtwork, color);
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon, overlayArtwork, color,
+                    module, deckId, quiz, daysMask, onceAt);
         }
 
         Rule withIcon(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
-                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value, overlayArtwork, color);
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value, overlayArtwork, color,
+                    module, deckId, quiz, daysMask, onceAt);
         }
 
         Rule withOverlayArtwork(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, value, color);
+                    reminderMessage, icon, value, color, module, deckId, quiz, daysMask, onceAt);
         }
 
         Rule withColor(int value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, value);
+                    reminderMessage, icon, overlayArtwork, value, module, deckId, quiz, daysMask, onceAt);
         }
 
         Rule withEnabled(boolean value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, value, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, color);
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt);
+        }
+
+        Rule withModule(String value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, color, value, deckId, quiz, daysMask, onceAt);
+        }
+
+        Rule withDeck(String value, boolean quizMode) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, color, module, value, quizMode, daysMask, onceAt);
+        }
+
+        Rule withSchedule(boolean specificTimes, List<Integer> points, int weekdays, long onceMillis) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimes, points,
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, weekdays, onceMillis);
         }
 
         /** 内置图片图标的存储值；没有设置图片图标时返回空串。 */
@@ -276,18 +341,19 @@ final class ReminderSettings {
                 Rule rule = Rule.withIntervalSeconds(item.getInt("id"), item.getString("title"), item.getInt("start"),
                         item.getInt("end"), intervalSeconds, item.optInt("dailyTarget", 3),
                         item.optBoolean("remindAfterTarget", false), item.optBoolean("enabled", true));
-                if ("times".equals(item.optString("scheduleMode", "interval"))) {
-                    ArrayList<Integer> times = new ArrayList<>();
-                    JSONArray points = item.optJSONArray("timePointsSeconds");
-                    if (points != null) {
-                        for (int j = 0; j < points.length(); j++) {
-                            int seconds = points.optInt(j, -1);
-                            if (seconds >= 0 && seconds < 24 * 60 * 60) times.add(seconds);
-                        }
+                boolean specificTimes = "times".equals(item.optString("scheduleMode", "interval"));
+                ArrayList<Integer> times = new ArrayList<>();
+                JSONArray points = item.optJSONArray("timePointsSeconds");
+                if (points != null) {
+                    for (int j = 0; j < points.length(); j++) {
+                        int seconds = points.optInt(j, -1);
+                        if (seconds >= 0 && seconds < 24 * 60 * 60) times.add(seconds);
                     }
-                    rule = Rule.withSpecificTimes(rule.id, rule.title, rule.start, rule.end, rule.intervalSeconds,
-                            times, rule.dailyTarget, rule.remindAfterTarget, rule.enabled);
                 }
+                rule = rule.withSchedule(specificTimes, times,
+                        item.optInt("daysMask", 0), item.optLong("onceAt", 0L));
+                rule = rule.withModule(item.optString("module", MODULE_BODY))
+                        .withDeck(item.optString("deckId", ""), item.optBoolean("quiz", false));
                 result.add(rule.withReminderMessage(item.optString("reminderMessage", ""))
                         .withIcon(item.optString("icon", ""))
                         .withColor(item.optInt("color", Rule.COLOR_AUTO))
@@ -343,7 +409,10 @@ final class ReminderSettings {
                 && first.intervalSeconds == second.intervalSeconds && first.dailyTarget == second.dailyTarget
                 && first.remindAfterTarget == second.remindAfterTarget && first.enabled == second.enabled
                 && first.specificTimeMode == second.specificTimeMode
-                && first.timePointsSeconds.equals(second.timePointsSeconds);
+                && first.timePointsSeconds.equals(second.timePointsSeconds)
+                && first.module.equals(second.module) && first.deckId.equals(second.deckId)
+                && first.quiz == second.quiz && first.daysMask == second.daysMask
+                && first.onceAt == second.onceAt;
     }
 
     private static void writeRules(Context context, String key, List<Rule> rules) {
@@ -368,6 +437,11 @@ final class ReminderSettings {
                 JSONArray timePoints = new JSONArray();
                 for (int seconds : rule.timePointsSeconds) timePoints.put(seconds);
                 item.put("timePointsSeconds", timePoints);
+                item.put("module", rule.module);
+                item.put("deckId", rule.deckId);
+                item.put("quiz", rule.quiz);
+                item.put("daysMask", rule.daysMask);
+                item.put("onceAt", rule.onceAt);
                 array.put(item);
             } catch (JSONException ignored) { }
         }

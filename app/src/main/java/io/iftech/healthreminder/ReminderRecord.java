@@ -21,15 +21,24 @@ final class ReminderRecord {
     final long startedAt;
     final long endedAt;
     final String reason;
+    /** 所属模块：body / task / card；旧记录没有这个字段时按 body 处理。 */
+    final String module;
 
     ReminderRecord(String id, String action, String kind, long startedAt, long endedAt, String reason) {
+        this(id, action, kind, startedAt, endedAt, reason, ReminderSettings.MODULE_BODY);
+    }
+
+    ReminderRecord(String id, String action, String kind, long startedAt, long endedAt, String reason, String module) {
         this.id = id;
         this.action = action;
         this.kind = kind;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
         this.reason = reason;
+        this.module = module == null || module.trim().isEmpty() ? ReminderSettings.MODULE_BODY : module.trim();
     }
+
+    boolean isModule(String value) { return module.equals(value); }
 
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences("health_records", Context.MODE_PRIVATE);
@@ -48,11 +57,15 @@ final class ReminderRecord {
     }
 
     static void finish(Context context, String id, String action, String kind, long startedAt, long endedAt, String reason) {
+        finish(context, id, action, kind, startedAt, endedAt, reason, ReminderSettings.MODULE_BODY);
+    }
+
+    static void finish(Context context, String id, String action, String kind, long startedAt, long endedAt, String reason, String module) {
         JSONArray records = new JSONArray();
         for (ReminderRecord record : all(context)) {
             if (!record.id.equals(id)) records.put(record.toJson());
         }
-        records.put(new ReminderRecord(id, action, kind, startedAt, endedAt, reason).toJson());
+        records.put(new ReminderRecord(id, action, kind, startedAt, endedAt, reason, module).toJson());
         android.content.SharedPreferences preferences = prefs(context);
         JSONObject active = pending(context);
         android.content.SharedPreferences.Editor editor = preferences.edit().putString("records", records.toString());
@@ -88,7 +101,8 @@ final class ReminderRecord {
             for (int i = 0; i < array.length(); i++) {
                 JSONObject item = array.getJSONObject(i);
                 result.add(new ReminderRecord(item.getString("id"), item.getString("action"), item.getString("kind"),
-                        item.getLong("startedAt"), item.getLong("endedAt"), item.optString("reason", "")));
+                        item.getLong("startedAt"), item.getLong("endedAt"), item.optString("reason", ""),
+                        item.optString("module", ReminderSettings.MODULE_BODY)));
             }
         } catch (JSONException ignored) { }
         return result;
@@ -103,6 +117,7 @@ final class ReminderRecord {
             item.put("startedAt", startedAt);
             item.put("endedAt", endedAt);
             item.put("reason", reason);
+            item.put("module", module);
         } catch (JSONException ignored) { }
         return item;
     }
