@@ -20,6 +20,7 @@ public final class ReminderApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
         UiPalette.load(this);
+        CrashLog.install(this);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(Activity activity, android.os.Bundle state) { }
             @Override public void onActivityStarted(Activity activity) { startedActivities++; }

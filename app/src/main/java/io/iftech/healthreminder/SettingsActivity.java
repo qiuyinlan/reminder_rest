@@ -295,6 +295,33 @@ public final class SettingsActivity extends Activity {
         importCard.addView(importCopy, new LinearLayout.LayoutParams(0, -2, 1));
         importCard.addView(text("›", 25, GREEN, false));
 
+        String crashLog = CrashLog.last(this);
+        if (!crashLog.isEmpty()) {
+            LinearLayout crashCard = new LinearLayout(this);
+            crashCard.setGravity(Gravity.CENTER_VERTICAL);
+            crashCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+            crashCard.setBackground(round(Color.WHITE, 17));
+            crashCard.setElevation(dp(1));
+            crashCard.setOnClickListener(v -> showCrashLog(CrashLog.last(this)));
+            LinearLayout.LayoutParams crashParams = new LinearLayout.LayoutParams(-1, -2);
+            crashParams.topMargin = dp(9);
+            page.addView(crashCard, crashParams);
+            TextView crashMark = text("!", 16, UiPalette.WARN, true);
+            crashMark.setGravity(Gravity.CENTER);
+            crashMark.setBackground(round(MINT_PALE, 13));
+            LinearLayout.LayoutParams crashMarkParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+            crashMarkParams.rightMargin = dp(13);
+            crashCard.addView(crashMark, crashMarkParams);
+            LinearLayout crashCopy = new LinearLayout(this);
+            crashCopy.setOrientation(LinearLayout.VERTICAL);
+            crashCopy.addView(text("上次崩溃日志", 16, INK, true));
+            TextView crashDetail = text("点开可以复制堆栈，方便排查闪退", 12, MUTED, false);
+            crashDetail.setPadding(0, dp(5), 0, 0);
+            crashCopy.addView(crashDetail);
+            crashCard.addView(crashCopy, new LinearLayout.LayoutParams(0, -2, 1));
+            crashCard.addView(text("›", 25, GREEN, false));
+        }
+
         LinearLayout note = new LinearLayout(this);
         note.setOrientation(LinearLayout.VERTICAL);
         note.setPadding(dp(15), dp(13), dp(15), dp(13));
@@ -307,6 +334,29 @@ public final class SettingsActivity extends Activity {
         TextView noteBody = text("如果提醒没有按时出现，可以在息屏设置中查看精确闹钟、通知和锁屏全屏提醒权限。", 12, MUTED, false);
         noteBody.setPadding(0, dp(5), 0, 0);
         note.addView(noteBody);
+    }
+
+    private void showCrashLog(String log) {
+        TextView body = text(log, 11, INK, false);
+        body.setTextIsSelectable(true);
+        body.setPadding(dp(14), dp(10), dp(14), dp(10));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(body);
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
+        frame.addView(scroll, new android.widget.FrameLayout.LayoutParams(-1, dp(360)));
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("上次崩溃日志")
+                .setView(frame)
+                .setPositiveButton("复制", (dialog, which) -> {
+                    CrashLog.copy(this, log);
+                    Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("清空", (dialog, which) -> {
+                    CrashLog.clear(this);
+                    recreate();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private void changeGender(String gender) {

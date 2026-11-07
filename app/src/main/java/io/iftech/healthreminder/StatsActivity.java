@@ -249,7 +249,11 @@ public final class StatsActivity extends Activity {
         }
         calendar.addView(weekRow);
         buildDays(calendar);
-        if (UserProfile.isFemale(this) || !PeriodLog.all(this).isEmpty()) addPeriodLegend(calendar);
+        try {
+            if (UserProfile.isFemale(this) || !PeriodLog.all(this).isEmpty()) addPeriodLegend(calendar);
+        } catch (Throwable error) {
+            CrashLog.save(this, error);
+        }
         content.addView(calendar);
 
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
@@ -271,7 +275,13 @@ public final class StatsActivity extends Activity {
         LinearLayout.LayoutParams bodyNoteParams = new LinearLayout.LayoutParams(-1, -2);
         bodyNoteParams.bottomMargin = dp(12);
         content.addView(bodyNote, bodyNoteParams);
-        if (ReminderSettings.MODULE_BODY.equals(moduleFilter)) addPeriodCard(content);
+        if (ReminderSettings.MODULE_BODY.equals(moduleFilter)) {
+            try {
+                addPeriodCard(content);
+            } catch (Throwable error) {
+                CrashLog.save(this, error);
+            }
+        }
         int[] totals = totalsForDay(selected);
         LinearLayout summary = new LinearLayout(this);
         summary.setGravity(Gravity.CENTER);
@@ -653,7 +663,12 @@ public final class StatsActivity extends Activity {
             for (int day = 0; day < 7; day++) {
                 Calendar cellDate = (Calendar) cursor.clone();
                 String dayKey = PeriodLog.dayKey(cellDate);
-                String rangeKey = PeriodLog.coveringStart(this, dayKey);
+                String rangeKey = null;
+                try {
+                    rangeKey = PeriodLog.coveringStart(this, dayKey);
+                } catch (Throwable error) {
+                    CrashLog.save(this, error);
+                }
                 boolean inMonth = cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH);
                 int numberColor = inMonth ? (rangeKey == null ? INK : PERIOD_INK) : DISABLED;
                 TextView cell = text(String.valueOf(cellDate.get(Calendar.DAY_OF_MONTH)), 13,
@@ -676,8 +691,8 @@ public final class StatsActivity extends Activity {
                     View bar = new View(this);
                     GradientDrawable barBackground = new GradientDrawable();
                     barBackground.setColor(PERIOD_FILL);
-                    boolean roundLeft = !sameRange(rangeKey, PeriodLog.coveringStart(this, neighborKey(cellDate, -1)));
-                    boolean roundRight = !sameRange(rangeKey, PeriodLog.coveringStart(this, neighborKey(cellDate, 1)));
+                    boolean roundLeft = !sameRange(rangeKey, safeCoveringStart(neighborKey(cellDate, -1)));
+                    boolean roundRight = !sameRange(rangeKey, safeCoveringStart(neighborKey(cellDate, 1)));
                     float radius = dp(13);
                     barBackground.setCornerRadii(new float[]{
                             roundLeft ? radius : 0, roundLeft ? radius : 0,
@@ -693,6 +708,15 @@ public final class StatsActivity extends Activity {
                 cursor.add(Calendar.DAY_OF_MONTH, 1);
             }
             calendar.addView(row);
+        }
+    }
+
+    private String safeCoveringStart(String dayKey) {
+        try {
+            return PeriodLog.coveringStart(this, dayKey);
+        } catch (Throwable error) {
+            CrashLog.save(this, error);
+            return null;
         }
     }
 
