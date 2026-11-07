@@ -31,7 +31,12 @@ jobs:
           TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
           if [ -z "$TAG" ]; then echo "no tag"; exit 1; fi
           VERSION="${TAG#v}"
-          PREV_CODE=$(python3 -c "import json;print(json.load(open('update-manifest.json'))['versionCode'])")
+          case "$VERSION" in
+            *-*) MANIFEST_FILE=beta-manifest.json ;;
+            *) MANIFEST_FILE=update-manifest.json ;;
+          esac
+          if [ ! -f "$MANIFEST_FILE" ]; then echo '{"versionCode":0}' > "$MANIFEST_FILE"; fi
+          PREV_CODE=$(python3 -c "import json;print(json.load(open('$MANIFEST_FILE'))['versionCode'])")
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "code=$((PREV_CODE + 1))" >> "$GITHUB_OUTPUT"
