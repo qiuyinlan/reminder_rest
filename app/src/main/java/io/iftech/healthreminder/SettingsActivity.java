@@ -238,6 +238,30 @@ public final class SettingsActivity extends Activity {
         arrow.setGravity(Gravity.CENTER);
         settingCard.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(40)));
 
+        LinearLayout diagnostics = new LinearLayout(this);
+        diagnostics.setGravity(Gravity.CENTER_VERTICAL);
+        diagnostics.setPadding(dp(15), dp(14), dp(14), dp(14));
+        diagnostics.setBackground(round(Color.WHITE, 17));
+        diagnostics.setElevation(dp(1));
+        diagnostics.setOnClickListener(v -> startActivity(new Intent(this, ReminderDiagnosticsActivity.class)));
+        LinearLayout.LayoutParams diagnosticsParams = new LinearLayout.LayoutParams(-1, -2);
+        diagnosticsParams.topMargin = dp(9);
+        page.addView(diagnostics, diagnosticsParams);
+        TextView diagMark = text("诊", 16, GREEN, true);
+        diagMark.setGravity(Gravity.CENTER);
+        diagMark.setBackground(round(MINT_PALE, 13));
+        LinearLayout.LayoutParams diagMarkParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        diagMarkParams.rightMargin = dp(13);
+        diagnostics.addView(diagMark, diagMarkParams);
+        LinearLayout diagCopy = new LinearLayout(this);
+        diagCopy.setOrientation(LinearLayout.VERTICAL);
+        diagCopy.addView(text("提醒诊断", 16, INK, true));
+        TextView diagDetail = text("看开关、权限和每一条的下一闹钟", 12, MUTED, false);
+        diagDetail.setPadding(0, dp(5), 0, 0);
+        diagCopy.addView(diagDetail);
+        diagnostics.addView(diagCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        diagnostics.addView(text("›", 25, GREEN, false));
+
         LinearLayout dataHeader = new LinearLayout(this);
         dataHeader.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams dataHeaderParams = new LinearLayout.LayoutParams(-1, -2);

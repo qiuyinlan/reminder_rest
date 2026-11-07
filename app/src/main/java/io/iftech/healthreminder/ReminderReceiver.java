@@ -1,6 +1,7 @@
 package io.iftech.healthreminder;
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -39,6 +40,11 @@ public final class ReminderReceiver extends BroadcastReceiver {
         KeyguardManager keyguard = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
         boolean keyguardLocked = keyguard != null && keyguard.isKeyguardLocked();
         boolean screenWasOff = ReminderScheduler.screenWasOffForAlarm(context);
+        ReminderDebug.note(context, "收到闹钟 rule=" + receivedRuleId + " snooze=" + snooze
+                + " enabled=" + ReminderSettings.enabled(context)
+                + " screenOffAlarm=" + ReminderSettings.screenOffAlarm(context)
+                + " interactive=" + (power == null || power.isInteractive())
+                + " keyguard=" + keyguardLocked);
         Log.i(TAG, "received snooze=" + snooze + " rule=" + receivedRuleId
                 + " enabled=" + ReminderSettings.enabled(context)
                 + " screenOffAlarm=" + ReminderSettings.screenOffAlarm(context)
@@ -163,6 +169,10 @@ public final class ReminderReceiver extends BroadcastReceiver {
         boolean covered = rule != null && !rule.isBodyModule()
                 ? false
                 : ReminderOverlayWindow.show(context, action, ruleId);
+        ReminderDebug.note(context, "post rule=" + ruleId + " target=" + target.getSimpleName()
+                + " alarmMode=" + alarmMode + " overlay=" + covered
+                + " notify=" + notificationsEnabled + " exact="
+                + (Build.VERSION.SDK_INT < 31 || ((AlarmManager) context.getSystemService(Context.ALARM_SERVICE)).canScheduleExactAlarms()));
         Log.i(TAG, "overlayCovered=" + covered);
         if (covered && !screenOffAlarmEnabled) {
             NotificationManagerCompat.from(context).cancel(703);
