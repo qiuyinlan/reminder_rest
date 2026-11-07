@@ -1,7 +1,7 @@
 {
-    "versionCode": 19,
-    "versionName": "0.3.0-beta9",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta9/rest-bean.apk",
-    "sha256": "da009aca7fc593012b12c1847d82ccd3964e2c9d62db2e97f3210c8bbaf8f191",
-    "notes": "卡片提醒支持「每 N 分钟」，顺序抽卡并按卡片集跨天续播。"
+    "versionCode": 20,
+    "versionName": "0.3.0-beta10",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta10/rest-bean.apk",
+    "sha256": "ea6c54d470870765b4ed33c629eba253666556955c75305c3bf9b8dae5b6ba99",
+    "notes": "经期日历改成日期下方的细线，不再用粉色块盖住日期。"
 }
