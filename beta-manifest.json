@@ -1,7 +1,7 @@
 {
-    "versionCode": 20,
-    "versionName": "0.3.0-beta10",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta10/rest-bean.apk",
-    "sha256": "ea6c54d470870765b4ed33c629eba253666556955c75305c3bf9b8dae5b6ba99",
-    "notes": "经期日历改成日期下方的细线，不再用粉色块盖住日期。"
+    "versionCode": 21,
+    "versionName": "0.3.0-beta11",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta11/rest-bean.apk",
+    "sha256": "c56e164c61ee2602238c353e3bf490908ea231049b90be7684120477f97818d2",
+    "notes": "经期标记逻辑修正：进行中不再出现绿色「来了」，未来日期不能标记。"
 }
