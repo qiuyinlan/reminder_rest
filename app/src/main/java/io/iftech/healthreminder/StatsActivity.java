@@ -849,36 +849,72 @@ public final class StatsActivity extends Activity {
         statusText.setPadding(0, dp(8), 0, 0);
         card.addView(statusText);
 
+        String todayKey = PeriodLog.todayKey();
+        String selectedKey = PeriodLog.dayKey(selected);
+        boolean future = selectedKey.compareTo(todayKey) > 0;
         String dayLabel = new SimpleDateFormat("M月d日", Locale.CHINA).format(selected.getTime());
+        String todayLabel = new SimpleDateFormat("M月d日", Locale.CHINA)
+                .format(Calendar.getInstance().getTime());
         LinearLayout actions = new LinearLayout(this);
         actions.setPadding(0, dp(11), 0, 0);
-        TextView start = text("来了 · " + dayLabel, 13, Color.WHITE, true);
+
+        TextView start;
+        if (active != null) {
+            start = text("经期进行中", 13, MUTED, true);
+            start.setBackground(round(MINT_PALE, 12));
+            start.setOnClickListener(v -> Toast.makeText(this,
+                    "上一段还没结束，先点「结束了」", Toast.LENGTH_SHORT).show());
+        } else if (future) {
+            start = text("来了 · 不能选未来", 13, MUTED, true);
+            start.setBackground(round(MINT_PALE, 12));
+            start.setOnClickListener(v -> Toast.makeText(this,
+                    "经期开始日不能选在今天之后", Toast.LENGTH_SHORT).show());
+        } else {
+            start = text("来了 · " + dayLabel, 13, Color.WHITE, true);
+            start.setBackground(round(GREEN, 12));
+            start.setOnClickListener(v -> {
+                if (!PeriodLog.startOn(this, selected)) {
+                    Toast.makeText(this, "经期开始日不能选在未来", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(this, "已标记 " + dayLabel + " 开始", Toast.LENGTH_SHORT).show();
+                render();
+            });
+        }
         start.setGravity(Gravity.CENTER);
         start.setPadding(0, dp(10), 0, dp(10));
-        start.setBackground(round(GREEN, 12));
-        start.setOnClickListener(v -> {
-            if (PeriodLog.active(this) != null) {
-                Toast.makeText(this, "上一段还在记录中，先点「结束了」", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            PeriodLog.startOn(this, selected);
-            Toast.makeText(this, "已标记 " + dayLabel + " 开始", Toast.LENGTH_SHORT).show();
-            render();
-        });
-        TextView end = text("结束了 · " + dayLabel, 13, INK, true);
+
+        TextView end;
+        boolean beforeStart = active != null && selectedKey.compareTo(active.startKey) < 0;
+        String endLabel = future && active != null ? todayLabel : dayLabel;
+        if (active == null) {
+            end = text("结束了", 13, DISABLED, true);
+            end.setBackground(round(MINT_PALE, 12));
+            end.setOnClickListener(v -> Toast.makeText(this,
+                    "现在没有进行中的经期记录", Toast.LENGTH_SHORT).show());
+        } else if (beforeStart) {
+            end = text("不能早于开始日", 13, MUTED, true);
+            end.setBackground(round(MINT_PALE, 12));
+            end.setOnClickListener(v -> Toast.makeText(this,
+                    "结束日不能早于 " + PeriodLog.monthDay(active.startKey), Toast.LENGTH_SHORT).show());
+        } else {
+            end = text("结束了 · " + endLabel, 13, INK, true);
+            end.setBackground(outline(Color.WHITE, BORDER, 12));
+            end.setOnClickListener(v -> {
+                Calendar endDay = future ? Calendar.getInstance() : selected;
+                if (!PeriodLog.endOn(this, endDay)) {
+                    Toast.makeText(this, "没有进行中的经期记录", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                PeriodLog.Range finished = PeriodLog.latest(this);
+                String days = finished == null ? "" : "（" + PeriodLog.days(this, finished) + " 天）";
+                Toast.makeText(this, "已标记 " + endLabel + " 结束" + days, Toast.LENGTH_SHORT).show();
+                render();
+            });
+        }
         end.setGravity(Gravity.CENTER);
         end.setPadding(0, dp(10), 0, dp(10));
-        end.setBackground(outline(Color.WHITE, BORDER, 12));
-        end.setOnClickListener(v -> {
-            if (!PeriodLog.endOn(this, selected)) {
-                Toast.makeText(this, "没有进行中的经期记录", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            PeriodLog.Range finished = PeriodLog.latest(this);
-            String days = finished == null ? "" : "（" + PeriodLog.days(this, finished) + " 天）";
-            Toast.makeText(this, "已标记 " + dayLabel + " 结束" + days, Toast.LENGTH_SHORT).show();
-            render();
-        });
+
         LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, -2, 1);
         actions.addView(start, actionParams);
         LinearLayout.LayoutParams endParams = new LinearLayout.LayoutParams(0, -2, 1);
@@ -886,7 +922,9 @@ public final class StatsActivity extends Activity {
         actions.addView(end, endParams);
         card.addView(actions);
 
-        TextView hint = text("在日历上选中日期再点按钮。粉色连线会把开始到结束串成一段。", 12, MUTED, false);
+        TextView hint = text(future && active == null
+                ? "开始日和结束日都不能选在未来；先回到今天或更早的日期再标记。"
+                : "在日历上选中日期再点按钮。粉色细线会把开始到结束串成一段。", 12, MUTED, false);
         hint.setLineSpacing(dp(3), 1f);
         hint.setPadding(0, dp(9), 0, 0);
         card.addView(hint);

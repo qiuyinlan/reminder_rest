@@ -129,9 +129,11 @@ final class PeriodLog {
      * 从某天开始记录。若上一段还没结束，会自动按「新开始的前一天」收尾
      * （最多算 10 天），这样忘记点结束时也不会留下跨月的粉色线。
      */
-    static void startOn(Context context, Calendar startDay) {
+    /** 开始一段经期；不允许把开始日期设在未来。 */
+    static boolean startOn(Context context, Calendar startDay) {
         Calendar start = atMidnight(startDay);
         String startKey = dayKey(start);
+        if (startKey.compareTo(todayKey()) > 0) return false;
         SharedPreferences.Editor editor = prefs(context).edit();
 
         Range previous = active(context);
@@ -148,6 +150,7 @@ final class PeriodLog {
 
         editor.putString(KEY_PREFIX + startKey, "");
         editor.apply();
+        return true;
     }
 
     /** 在指定日期结束经期；没有进行中的记录时返回 false。 */
@@ -156,6 +159,8 @@ final class PeriodLog {
         if (active == null) return false;
         Calendar end = atMidnight(endDay);
         Calendar start = parse(active.startKey);
+        Calendar today = Calendar.getInstance();
+        if (end.after(today)) end = today;
         if (start != null && end.before(start)) end = (Calendar) start.clone();
         prefs(context).edit().putString(KEY_PREFIX + active.startKey, dayKey(end)).apply();
         return true;
