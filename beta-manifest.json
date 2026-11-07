@@ -1,7 +1,7 @@
 {
-    "versionCode": 14,
-    "versionName": "0.3.0-beta4",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta4/rest-bean.apk",
-    "sha256": "c08c06ff24a72c8d12fcefa527b1351384fe18017eed6c24be8dc2e2ab1820b3",
-    "notes": "统计页崩溃兜底：即使统计页某个模块出错也不会闪退，并会保存崩溃日志。"
+    "versionCode": 15,
+    "versionName": "0.3.0-beta5",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta5/rest-bean.apk",
+    "sha256": "2ab037ec603f7f06faa49a0bbea6ac81399b58bd1ce68bb6300311e4c50a944f",
+    "notes": "已设置的提醒时间可以直接点开修改，不用删掉重加。"
 }
