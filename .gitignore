@@ -8,3 +8,6 @@ local.properties
 *.jks
 *.keystore
 *.p12
+
+# 测试通道签名密钥（公开，仅用于 beta 覆盖升级）
+!ci/beta-signing/*.jks

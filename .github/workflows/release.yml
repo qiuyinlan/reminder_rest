@@ -70,14 +70,31 @@ jobs:
             } >> "$GITHUB_ENV"
             echo "signed=true" >> "$GITHUB_OUTPUT"
             echo "签名密钥已加载"
+          elif [ -f ci/beta-signing/restbean-beta.jks ]; then
+            set -a
+            . ci/beta-signing/credentials.properties
+            set +a
+            {
+              echo "RELEASE_STORE_FILE=$PWD/ci/beta-signing/restbean-beta.jks"
+              echo "RELEASE_STORE_PASSWORD=$RELEASE_STORE_PASSWORD"
+              echo "RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS"
+              echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+            echo "使用测试通道签名密钥"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::没有配置签名密钥（RELEASE_KEYSTORE_BASE64），本次将使用 debug 签名，无法覆盖安装正式版"
+            echo "::warning::没有配置签名密钥，本次使用 debug 签名，无法覆盖安装"
           fi
 
       - name: Build release APK
         run: |
-          gradle :app:assembleRelease --no-daemon --stacktrace \
+          EXTRA=""
+          if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then
+            EXTRA="-PupdateManifestUrl=https://raw.githubusercontent.com/qiuyinlan/reminder_rest/main/beta-manifest.json"
+          fi
+          gradle :app:assembleRelease --no-daemon --stacktrace $EXTRA \
             -PversionName=${{ steps.v.outputs.version }} \
             -PversionCode=${{ steps.v.outputs.code }}
 
@@ -124,12 +141,16 @@ jobs:
           fi
           gh release upload "$TAG" artifacts/rest-bean.apk --clobber
 
-      - name: Update update-manifest.json
-        if: steps.v.outputs.prerelease != 'true'
+      - name: Update manifest
         run: |
+          if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then
+            echo "MANIFEST=beta-manifest.json" >> "$GITHUB_ENV"
+          else
+            echo "MANIFEST=update-manifest.json" >> "$GITHUB_ENV"
+          fi
           python3 - <<'PY'
           import json, os, pathlib
-          p = pathlib.Path('update-manifest.json')
+          p = pathlib.Path(os.environ['MANIFEST'])
           m = json.loads(p.read_text(encoding='utf-8'))
           m['versionCode'] = int(os.environ['NEW_CODE'])
           m['versionName'] = os.environ['NEW_VERSION']
@@ -137,7 +158,7 @@ jobs:
           m['sha256'] = os.environ['APK_SHA256']
           notes = pathlib.Path(os.environ['NOTES_PATH']).read_text(encoding='utf-8').strip().splitlines()
           m['notes'] = notes[0] if notes else ''
-          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'update-manifest.json'
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'manifest-out.json'
           out.write_text(json.dumps(m, ensure_ascii=False, indent=4) + "\n", encoding='utf-8')
           print(out.read_text(encoding='utf-8'))
           PY
@@ -149,11 +170,10 @@ jobs:
           NOTES_PATH: ${{ runner.temp }}/notes.md
 
       - name: Commit manifest and version bump
-        if: steps.v.outputs.prerelease != 'true'
         run: |
           git fetch origin main
           git checkout -B main origin/main
-          cp "$RUNNER_TEMP/update-manifest.json" update-manifest.json
+          cp "$RUNNER_TEMP/manifest-out.json" "$MANIFEST"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           python3 - <<'PY'
@@ -164,7 +184,7 @@ jobs:
           s = re.sub(r"\.orElse\('\d+'\)\.get\(\)\.toInteger\(\)", f".orElse('{os.environ['NEW_CODE']}').get().toInteger()", s, count=1)
           p.write_text(s, encoding='utf-8')
           PY
-          git add update-manifest.json app/build.gradle
+          if [ "$MANIFEST" = "update-manifest.json" ]; then git add update-manifest.json app/build.gradle; else git add "$MANIFEST"; fi
           git commit -m "chore(release): ${{ steps.v.outputs.tag }}" || echo "nothing to commit"
           git push origin main
         env:
