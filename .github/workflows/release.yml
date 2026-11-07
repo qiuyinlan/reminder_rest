@@ -143,11 +143,9 @@ jobs:
 
       - name: Update manifest
         run: |
-          if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then
-            echo "MANIFEST=beta-manifest.json" >> "$GITHUB_ENV"
-          else
-            echo "MANIFEST=update-manifest.json" >> "$GITHUB_ENV"
-          fi
+          if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then MANIFEST=beta-manifest.json; else MANIFEST=update-manifest.json; fi
+          export MANIFEST
+          echo "MANIFEST=$MANIFEST" >> "$GITHUB_ENV"
           python3 - <<'PY'
           import json, os, pathlib
           p = pathlib.Path(os.environ['MANIFEST'])
