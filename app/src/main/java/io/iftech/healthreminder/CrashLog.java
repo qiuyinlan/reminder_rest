@@ -63,7 +63,7 @@ final class CrashLog {
         body.setTextSize(11);
         body.setTextColor(UiPalette.INK);
         body.setTextIsSelectable(true);
-        body.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(10));
+        body.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
         android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
         scroll.addView(body);
         android.widget.FrameLayout frame = new android.widget.FrameLayout(activity);
