@@ -238,7 +238,14 @@ public final class CardActivity extends Activity {
         card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
 
         String deckTitle = rule.title;
-        for (CardDeck deck : decks) if (deck.id.equals(rule.deckId)) deckTitle = deck.title;
+        CardDeck target = null;
+        for (CardDeck candidate : decks) {
+            if (candidate.id.equals(rule.deckId)) {
+                target = candidate;
+                deckTitle = candidate.title;
+            }
+        }
+        final CardDeck deck = target;
         texts.addView(text(deckTitle, 15, UiPalette.INK, true));
 
         StringBuilder times = new StringBuilder();
@@ -253,7 +260,9 @@ public final class CardActivity extends Activity {
         toggle.setOnCheckedChangeListener((v, checked) ->
                 ReminderSettings.upsertRule(this, rule.withEnabled(checked)));
         card.addView(toggle);
-        card.setOnClickListener(v -> scheduleDeck(deck, rule));
+        card.setOnClickListener(v -> {
+            if (deck != null) scheduleDeck(deck, rule);
+        });
         card.setContentDescription("编辑提醒 " + deckTitle);
         card.setOnLongClickListener(v -> {
             new AlertDialog.Builder(this).setTitle("删除提醒")

@@ -1258,7 +1258,7 @@ public final class ItemsActivity extends Activity {
     }
 
     /** 点已有时间点直接改，不用删掉重新加。 */
-    private void editTimePoint(final ArrayList<Integer> timePoints, final int index,
+    private void editTimePoint(final List<Integer> timePoints, final int index,
                                final LinearLayout rows) {
         if (index < 0 || index >= timePoints.size()) return;
         final int current = timePoints.get(index);
