@@ -820,7 +820,8 @@ public final class StatsActivity extends Activity {
                 .setPositiveButton("删除", (dialog, which) -> {
                     PeriodLog.remove(this, range);
                     render();
-                }));
+                })
+                .create());
     }
 
     private void showTimeline() {
