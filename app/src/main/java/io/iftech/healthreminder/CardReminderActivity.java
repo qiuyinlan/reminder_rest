@@ -55,14 +55,14 @@ public final class CardReminderActivity extends Activity {
             finish();
             return;
         }
-        card = deck.cards.get(nextIndex(this, ruleId, deck.cards.size()));
+        card = deck.cards.get(nextIndex(this, deck.id, deck.cards.size()));
         buildPage();
     }
 
-    /** 每次弹下一张，循环播放。 */
-    static int nextIndex(Context context, int ruleId, int size) {
+    /** 每次弹下一张，按卡片集共享进度，跨天接着昨天的位置继续。 */
+    static int nextIndex(Context context, String deckId, int size) {
         if (size <= 0) return 0;
-        String key = "card_index_" + ruleId;
+        String key = "card_index_deck_" + deckId;
         android.content.SharedPreferences prefs = context.getSharedPreferences("card_progress", Context.MODE_PRIVATE);
         int index = prefs.getInt(key, 0) % size;
         prefs.edit().putInt(key, (index + 1) % size).apply();

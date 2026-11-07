@@ -248,13 +248,20 @@ public final class CardActivity extends Activity {
         final CardDeck deck = target;
         texts.addView(text(deckTitle, 15, UiPalette.INK, true));
 
-        StringBuilder times = new StringBuilder();
-        for (int seconds : rule.timePointsSeconds) {
-            if (times.length() > 0) times.append("、");
-            times.append(String.format(Locale.getDefault(), "%02d:%02d:%02d",
-                    (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60));
+        String scheduleText;
+        if (rule.specificTimeMode) {
+            StringBuilder times = new StringBuilder();
+            for (int seconds : rule.timePointsSeconds) {
+                if (times.length() > 0) times.append("、");
+                times.append(clockText(seconds));
+            }
+            scheduleText = "每天 · " + times;
+        } else {
+            scheduleText = "每天 " + minuteText(rule.start) + "-" + minuteText(rule.end)
+                    + " · 每 " + intervalText(rule.intervalSeconds);
         }
-        texts.addView(text("每天 · " + times + (rule.quiz ? " · 答题" : " · 阅读"), 12, UiPalette.MUTED, false));
+        texts.addView(text(scheduleText + (rule.quiz ? " · 答题" : " · 阅读"),
+                12, UiPalette.MUTED, false));
 
         Switch toggle = new Switch(this);
         toggle.setChecked(rule.enabled);
@@ -327,25 +334,45 @@ public final class CardActivity extends Activity {
         final List<Integer> points = new ArrayList<>();
         if (existing != null && !existing.timePointsSeconds.isEmpty()) {
             points.addAll(existing.timePointsSeconds);
-        } else {
-            points.add(9 * 3600);
         }
+        if (points.isEmpty()) points.add(9 * 3600);
+        final boolean[] intervalMode = {existing != null && !existing.specificTimeMode};
+        final int[] startMinute = {existing != null && existing.start > 0 ? existing.start : 9 * 60};
+        final int[] endMinute = {existing != null && existing.end > startMinute[0] ? existing.end : 21 * 60};
+        final int[] intervalSeconds = {existing != null && existing.intervalSeconds >= 60
+                ? existing.intervalSeconds : 45 * 60};
+
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(20), dp(8), dp(20), dp(8));
-        form.addView(text(deck.isQuiz() ? "到点每次弹一道题，你写一句回答。" : "到点展示一张卡片。",
-                13, UiPalette.MUTED, false));
-        TextView hint = text("点时间可以直接改，不用删掉重加。", 12, UiPalette.MUTED, false);
-        hint.setPadding(0, dp(4), 0, 0);
-        form.addView(hint);
+        TextView intro = text(deck.isQuiz() ? "到点每次弹一道题，你写一句回答。" : "到点展示一张卡片。",
+                13, UiPalette.MUTED, false);
+        intro.setLineSpacing(dp(3), 1f);
+        form.addView(intro);
 
-        LinearLayout timeList = new LinearLayout(this);
+        LinearLayout modeRow = FormKit.segmentGroup(this);
+        final TextView fixedChip = FormKit.segmentOption(this, "固定时间点", !intervalMode[0]);
+        final TextView intervalChip = FormKit.segmentOption(this, "每 N 分钟", intervalMode[0]);
+        modeRow.addView(fixedChip, new LinearLayout.LayoutParams(0, dp(38), 1));
+        modeRow.addView(intervalChip, new LinearLayout.LayoutParams(0, dp(38), 1));
+        LinearLayout.LayoutParams modeParams = new LinearLayout.LayoutParams(-1, -2);
+        modeParams.topMargin = dp(12);
+        form.addView(modeRow, modeParams);
+
+        // ---------------- 固定时间点
+        final LinearLayout fixedSection = new LinearLayout(this);
+        fixedSection.setOrientation(LinearLayout.VERTICAL);
+        TextView hint = text("点时间可以直接改，不用删掉重加。", 12, UiPalette.MUTED, false);
+        hint.setPadding(0, dp(8), 0, 0);
+        fixedSection.addView(hint);
+        final LinearLayout timeList = new LinearLayout(this);
         timeList.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(-1, -2);
         listParams.topMargin = dp(8);
-        form.addView(timeList, listParams);
+        fixedSection.addView(timeList, listParams);
+        form.addView(fixedSection, new LinearLayout.LayoutParams(-1, -2));
 
-        final Runnable render = new Runnable() {
+        final Runnable renderPoints = new Runnable() {
             @Override public void run() {
                 timeList.removeAllViews();
                 for (int i = 0; i < points.size(); i++) {
@@ -358,9 +385,7 @@ public final class CardActivity extends Activity {
                     LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, dp(48));
                     rowParams.bottomMargin = dp(6);
                     row.setLayoutParams(rowParams);
-                    TextView value = text(String.format(Locale.getDefault(), "%02d:%02d:%02d",
-                            (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60),
-                            17, UiPalette.INK, true);
+                    TextView value = text(clockText(seconds), 17, UiPalette.INK, true);
                     row.addView(value, new LinearLayout.LayoutParams(0, -2, 1f));
                     row.setOnClickListener(v -> WheelPicker.time(CardActivity.this, "编辑提醒时间",
                             "保存", seconds, true, picked -> {
@@ -376,9 +401,6 @@ public final class CardActivity extends Activity {
                         run();
                     });
                     row.addView(remove);
-                    row.setContentDescription("编辑提醒时间，当前 " + String.format(Locale.getDefault(),
-                            "%02d:%02d:%02d", (seconds / 3600) % 24,
-                            (seconds / 60) % 60, seconds % 60));
                     timeList.addView(row);
                 }
                 Button add = FormKit.controlButton(CardActivity.this);
@@ -392,7 +414,49 @@ public final class CardActivity extends Activity {
                 timeList.addView(add);
             }
         };
-        render.run();
+        renderPoints.run();
+
+        // ---------------- 每 N 分钟
+        final LinearLayout intervalSection = new LinearLayout(this);
+        intervalSection.setOrientation(LinearLayout.VERTICAL);
+        TextView intervalHint = text("在时间段内每隔 N 分钟弹一张，顺序抽卡会接着昨天继续。",
+                12, UiPalette.MUTED, false);
+        intervalHint.setLineSpacing(dp(3), 1f);
+        intervalHint.setPadding(0, dp(8), 0, 0);
+        intervalSection.addView(intervalHint);
+
+        final TextView startValue = text(minuteText(startMinute[0]) + "  ›", 16, UiPalette.INK, true);
+        final TextView endValue = text(minuteText(endMinute[0]) + "  ›", 16, UiPalette.INK, true);
+        final TextView intervalValue = text("每 " + intervalText(intervalSeconds[0]) + "  ›", 16,
+                UiPalette.INK, true);
+        startValue.setOnClickListener(v -> WheelPicker.time(this, "开始时间", "确定",
+                startMinute[0] * 60, false, picked -> {
+                    startMinute[0] = picked / 60;
+                    startValue.setText(minuteText(startMinute[0]) + "  ›");
+                }).show());
+        endValue.setOnClickListener(v -> WheelPicker.time(this, "结束时间", "确定",
+                endMinute[0] * 60, false, picked -> {
+                    endMinute[0] = picked / 60;
+                    endValue.setText(minuteText(endMinute[0]) + "  ›");
+                }).show());
+        intervalValue.setOnClickListener(v -> chooseInterval(intervalSeconds[0], picked -> {
+            intervalSeconds[0] = picked;
+            intervalValue.setText("每 " + intervalText(intervalSeconds[0]) + "  ›");
+        }));
+        intervalSection.addView(fieldRow("开始时间", startValue), topMargin(10));
+        intervalSection.addView(fieldRow("结束时间", endValue), topMargin(6));
+        intervalSection.addView(fieldRow("提醒间隔", intervalValue), topMargin(6));
+        form.addView(intervalSection, new LinearLayout.LayoutParams(-1, -2));
+
+        final Runnable updateModes = () -> {
+            fixedSection.setVisibility(intervalMode[0] ? android.view.View.GONE : android.view.View.VISIBLE);
+            intervalSection.setVisibility(intervalMode[0] ? android.view.View.VISIBLE : android.view.View.GONE);
+            FormKit.setSegmentSelected(fixedChip, !intervalMode[0]);
+            FormKit.setSegmentSelected(intervalChip, intervalMode[0]);
+        };
+        fixedChip.setOnClickListener(v -> { intervalMode[0] = false; updateModes.run(); });
+        intervalChip.setOnClickListener(v -> { intervalMode[0] = true; updateModes.run(); });
+        updateModes.run();
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle((existing == null ? "安排「" : "编辑「") + deck.title + "」")
@@ -401,20 +465,126 @@ public final class CardActivity extends Activity {
                 .setPositiveButton("保存", null)
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            int startMinute = points.get(0) / 60;
-            int endMinute = points.get(points.size() - 1) / 60;
-            ReminderSettings.Rule rule = existing == null
-                    ? ReminderSettings.Rule.withIntervalSeconds(ReminderSettings.nextRuleId(this),
-                            deck.title, startMinute, endMinute, 24 * 3600, 1, true, true)
-                    : existing.withEnabled(true);
-            rule = rule.withSchedule(true, new ArrayList<>(points), 0, 0L)
-                    .withModule(ReminderSettings.MODULE_CARD)
-                    .withDeck(deck.id, deck.isQuiz());
+            ReminderSettings.Rule rule;
+            if (intervalMode[0]) {
+                int start = startMinute[0];
+                int end = endMinute[0];
+                if (end <= start) end = Math.min(23 * 60 + 59, start + 60);
+                rule = ReminderSettings.Rule.withIntervalSeconds(
+                                existing == null ? ReminderSettings.nextRuleId(this) : existing.id,
+                                deck.title, start, end, Math.max(60, intervalSeconds[0]), 9999, true, true)
+                        .withModule(ReminderSettings.MODULE_CARD)
+                        .withDeck(deck.id, deck.isQuiz());
+            } else {
+                int start = points.get(0) / 60;
+                int end = points.get(points.size() - 1) / 60;
+                rule = existing == null
+                        ? ReminderSettings.Rule.withIntervalSeconds(ReminderSettings.nextRuleId(this),
+                        deck.title, start, end, 24 * 3600, 1, true, true)
+                        : existing.withEnabled(true);
+                rule = rule.withSchedule(true, new ArrayList<>(points), 0, 0L)
+                        .withModule(ReminderSettings.MODULE_CARD)
+                        .withDeck(deck.id, deck.isQuiz());
+            }
             ReminderSettings.upsertRule(this, rule);
             dialog.dismiss();
             reload();
         }));
         FormKit.showStyled(this, dialog);
+    }
+
+    private interface OnInterval { void onPicked(int seconds); }
+
+    private void chooseInterval(int currentSeconds, final OnInterval onPicked) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(6), dp(18), dp(4));
+        TextView hint = text("每隔多久弹一张卡片", 12, UiPalette.MUTED, false);
+        form.addView(hint);
+        LinearLayout quick = new LinearLayout(this);
+        quick.setOrientation(LinearLayout.HORIZONTAL);
+        quick.setPadding(0, dp(8), 0, dp(4));
+        final int[] minutes = {Math.max(1, currentSeconds / 60)};
+        final java.util.List<TextView> chips = new ArrayList<>();
+        final Runnable refreshChips = () -> {
+            for (TextView chip : chips) {
+                boolean active = Integer.parseInt(chip.getTag().toString()) == minutes[0];
+                chip.setTextColor(active ? Color.WHITE : UiPalette.ACCENT);
+                chip.setBackground(FormKit.round(this, active ? UiPalette.ACCENT : UiPalette.SOFT, 10));
+            }
+        };
+        final android.widget.EditText custom = FormKit.input(this,
+                android.text.InputType.TYPE_CLASS_NUMBER);
+        for (int option : new int[]{5, 10, 15, 30, 45, 60}) {
+            TextView chip = text(option + " 分", 13, UiPalette.ACCENT, true);
+            chip.setTag(String.valueOf(option));
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(0, dp(9), 0, dp(9));
+            chip.setOnClickListener(v -> {
+                minutes[0] = option;
+                custom.setText(String.valueOf(option));
+                refreshChips.run();
+            });
+            chips.add(chip);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
+            params.leftMargin = option == 5 ? 0 : dp(5);
+            quick.addView(chip, params);
+        }
+        form.addView(quick);
+        form.addView(FormKit.editorLabel(this, "自定义分钟数", true));
+        custom.setText(String.valueOf(minutes[0]));
+        form.addView(custom, new LinearLayout.LayoutParams(-1, -2));
+        refreshChips.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("提醒间隔")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int value = minutes[0];
+            try {
+                value = Integer.parseInt(custom.getText().toString().trim());
+            } catch (NumberFormatException ignored) { }
+            value = Math.max(1, Math.min(720, value));
+            onPicked.onPicked(value * 60);
+            dialog.dismiss();
+        }));
+        FormKit.showStyled(this, dialog);
+    }
+
+    private LinearLayout fieldRow(String label, TextView value) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), 0, dp(10), 0);
+        row.setBackground(FormKit.round(this, Color.WHITE, 10));
+        row.addView(text(label, 14, UiPalette.INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(value);
+        return row;
+    }
+
+    private LinearLayout.LayoutParams topMargin(int value) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(48));
+        params.topMargin = this.dp(value);
+        return params;
+    }
+
+    private static String clockText(int seconds) {
+        return String.format(Locale.getDefault(), "%02d:%02d:%02d",
+                (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60);
+    }
+
+    private static String minuteText(int minuteOfDay) {
+        return String.format(Locale.getDefault(), "%02d:%02d",
+                (minuteOfDay / 60) % 24, minuteOfDay % 60);
+    }
+
+    private static String intervalText(int seconds) {
+        int minutes = Math.max(1, seconds / 60);
+        return minutes < 60 ? minutes + " 分钟"
+                : (minutes % 60 == 0 ? minutes / 60 + " 小时"
+                : minutes / 60 + " 小时 " + minutes % 60 + " 分钟");
     }
 
     // ------------------------------------------------------------ 小工具
