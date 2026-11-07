@@ -14,6 +14,13 @@ def signingValue = { String name ->
             .get()
 }
 
+def appVersionName = providers.gradleProperty('versionName')
+        .orElse(providers.environmentVariable('APP_VERSION_NAME'))
+        .orElse('0.1.7').get()
+def appVersionCode = providers.gradleProperty('versionCode')
+        .orElse(providers.environmentVariable('APP_VERSION_CODE'))
+        .orElse('8').get().toInteger()
+
 android {
     namespace 'io.iftech.healthreminder'
     compileSdk 35
@@ -22,8 +29,8 @@ android {
         applicationId 'io.iftech.healthreminder'
         minSdk 26
         targetSdk 35
-        versionCode 8
-        versionName '0.1.7'
+        versionCode appVersionCode
+        versionName appVersionName
         buildConfigField 'String', 'MEMBERSHIP_API_BASE_URL', '"' + (providers.gradleProperty('membershipApiBaseUrl').orElse(providers.environmentVariable('MEMBERSHIP_API_BASE_URL').orElse('')).get().replace('\\', '\\\\').replace('"', '\\"')) + '"'
         buildConfigField 'String', 'UPDATE_MANIFEST_URL', '"' + (providers.gradleProperty('updateManifestUrl').orElse(providers.environmentVariable('UPDATE_MANIFEST_URL').orElse('https://raw.githubusercontent.com/qiuyinlan/reminder_rest/main/update-manifest.json')).get().replace('\\', '\\\\').replace('"', '\\"')) + '"'
     }

@@ -1,0 +1,170 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v0.1.8 (must already exist)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+
+      - name: Resolve version
+        id: v
+        run: |
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          if [ -z "$TAG" ]; then echo "no tag"; exit 1; fi
+          VERSION="${TAG#v}"
+          PREV_CODE=$(python3 -c "import json;print(json.load(open('update-manifest.json'))['versionCode'])")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$((PREV_CODE + 1))" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG (versionName=$VERSION, versionCode=$((PREV_CODE + 1)))"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Prepare signing
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "RELEASE_STORE_FILE=$RUNNER_TEMP/release.jks"
+              echo "RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
+              echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
+              echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "签名密钥已加载"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::没有配置签名密钥（RELEASE_KEYSTORE_BASE64），本次将使用 debug 签名，无法覆盖安装正式版"
+          fi
+
+      - name: Build release APK
+        run: |
+          gradle :app:assembleRelease --no-daemon --stacktrace \
+            -PversionName=${{ steps.v.outputs.version }} \
+            -PversionCode=${{ steps.v.outputs.code }}
+
+      - name: Prepare asset
+        id: asset
+        run: |
+          mkdir -p artifacts
+          SRC=$(find app/build/outputs/apk/release -name '*.apk' | grep -v unsigned | head -1)
+          if [ -z "$SRC" ]; then echo "release APK not found"; exit 1; fi
+          cp "$SRC" artifacts/rest-bean.apk
+          SHA=$(sha256sum artifacts/rest-bean.apk | cut -d' ' -f1)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          ls -lh artifacts
+          echo "sha256=$SHA"
+
+      - name: Prepare release notes
+        id: notes
+        run: |
+          NOTES_FILE=".release-notes/${{ steps.v.outputs.version }}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            cp "$NOTES_FILE" "$RUNNER_TEMP/notes.md"
+          else
+            echo "版本 ${{ steps.v.outputs.version }} 更新。" > "$RUNNER_TEMP/notes.md"
+          fi
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.v.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG 已存在，覆盖上传 APK"
+          else
+            gh release create "$TAG" \
+              --title "休息豆芽 ${{ steps.v.outputs.version }}" \
+              --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          gh release upload "$TAG" artifacts/rest-bean.apk --clobber
+
+      - name: Update update-manifest.json
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          p = pathlib.Path('update-manifest.json')
+          m = json.loads(p.read_text(encoding='utf-8'))
+          m['versionCode'] = int(os.environ['NEW_CODE'])
+          m['versionName'] = os.environ['NEW_VERSION']
+          m['apkUrl'] = f"https://github.com/qiuyinlan/reminder_rest/releases/download/{os.environ['NEW_TAG']}/rest-bean.apk"
+          m['sha256'] = os.environ['APK_SHA256']
+          notes = pathlib.Path(os.environ['NOTES_PATH']).read_text(encoding='utf-8').strip().splitlines()
+          m['notes'] = notes[0] if notes else ''
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'update-manifest.json'
+          out.write_text(json.dumps(m, ensure_ascii=False, indent=4) + "\n", encoding='utf-8')
+          print(out.read_text(encoding='utf-8'))
+          PY
+        env:
+          NEW_CODE: ${{ steps.v.outputs.code }}
+          NEW_VERSION: ${{ steps.v.outputs.version }}
+          NEW_TAG: ${{ steps.v.outputs.tag }}
+          APK_SHA256: ${{ steps.asset.outputs.sha }}
+          NOTES_PATH: ${{ runner.temp }}/notes.md
+
+      - name: Commit manifest and version bump
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          cp "$RUNNER_TEMP/update-manifest.json" update-manifest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          import os, re, pathlib
+          p = pathlib.Path('app/build.gradle')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r"\.orElse\('\d+\.\d+\.\d+'\)", f".orElse('{os.environ['NEW_VERSION']}')", s, count=1)
+          s = re.sub(r"\.orElse\('\d+'\)\.get\(\)\.toInteger\(\)", f".orElse('{os.environ['NEW_CODE']}').get().toInteger()", s, count=1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          git add update-manifest.json app/build.gradle
+          git commit -m "chore(release): ${{ steps.v.outputs.tag }}" || echo "nothing to commit"
+          git push origin main
+        env:
+          NEW_CODE: ${{ steps.v.outputs.code }}
+          NEW_VERSION: ${{ steps.v.outputs.version }}
+
+      - name: Summary
+        run: |
+          {
+            echo "## 休息豆芽 ${{ steps.v.outputs.version }}"
+            echo ""
+            echo "- APK: https://github.com/qiuyinlan/reminder_rest/releases/download/${{ steps.v.outputs.tag }}/rest-bean.apk"
+            echo "- sha256: \`${{ steps.asset.outputs.sha }}\`"
+            echo "- 签名: ${{ steps.sign.outputs.signed == 'true' && '正式签名' || 'debug 签名（未配置密钥）' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
