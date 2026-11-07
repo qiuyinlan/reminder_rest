@@ -1,7 +1,7 @@
 {
-    "versionCode": 12,
-    "versionName": "0.3.0-beta2",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta2/rest-bean.apk",
-    "sha256": "3a02d2333913a1e04acbf203e71b6a7b30f1083a661f9486db1b8632e94fdc63",
-    "notes": "卡片独立成底部导航 Tab，可手动新建卡片（背面答案选填）或导入 JSON 卡片集。"
+    "versionCode": 13,
+    "versionName": "0.3.0-beta3",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta3/rest-bean.apk",
+    "sha256": "155f4ba400c4eae4ef5202658e2332b9577d99895d334adf0385d3f31051e726",
+    "notes": "新建卡片不再预填名称；卡片可查看、编辑、删除，并支持勾选完成任务。"
 }
