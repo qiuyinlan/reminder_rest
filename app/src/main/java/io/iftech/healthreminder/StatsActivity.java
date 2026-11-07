@@ -101,8 +101,8 @@ public final class StatsActivity extends Activity {
         root.setPadding(dp(22), dp(28), dp(22), dp(20));
         root.setBackground(UiPalette.page());
         root.addView(text("统计页加载失败", 20, INK, true));
-        String log = CrashLog.last(this);
-        if (log.isEmpty()) log = android.util.Log.getStackTraceString(error);
+        String stored = CrashLog.last(this);
+        final String log = stored.isEmpty() ? android.util.Log.getStackTraceString(error) : stored;
         TextView message = text(log, 11, MUTED, false);
         message.setTextIsSelectable(true);
         message.setPadding(dp(10), dp(8), dp(10), dp(8));
