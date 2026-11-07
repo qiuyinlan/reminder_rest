@@ -1,7 +1,7 @@
 {
-    "versionCode": 13,
-    "versionName": "0.3.0-beta3",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta3/rest-bean.apk",
-    "sha256": "155f4ba400c4eae4ef5202658e2332b9577d99895d334adf0385d3f31051e726",
-    "notes": "新建卡片不再预填名称；卡片可查看、编辑、删除，并支持勾选完成任务。"
+    "versionCode": 14,
+    "versionName": "0.3.0-beta4",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta4/rest-bean.apk",
+    "sha256": "c08c06ff24a72c8d12fcefa527b1351384fe18017eed6c24be8dc2e2ab1820b3",
+    "notes": "统计页崩溃兜底：即使统计页某个模块出错也不会闪退，并会保存崩溃日志。"
 }
