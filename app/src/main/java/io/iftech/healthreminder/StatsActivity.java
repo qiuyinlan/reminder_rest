@@ -69,6 +69,8 @@ public final class StatsActivity extends Activity {
     private static final String FILTER_ALL = "all";
     private static final String FILTER_COMPANION = "companion_all";
     private String filter = FILTER_ALL;
+    /** 统计分区：body / task / card。 */
+    private String moduleFilter = ReminderSettings.MODULE_BODY;
     private LinearLayout content;
     private TextView monthLabel;
     private float touchX;
@@ -82,6 +84,59 @@ public final class StatsActivity extends Activity {
         super.onCreate(state);
         month.set(Calendar.DAY_OF_MONTH, 1);
         render();
+    }
+
+    private String helpText() {
+        if (ReminderSettings.MODULE_TASK.equals(moduleFilter)) return "任务完成情况与每日打卡";
+        if (ReminderSettings.MODULE_CARD.equals(moduleFilter)) return "卡片展示与答题记录";
+        return "看看自己每天照顾身体的时刻";
+    }
+
+    /** 卡片分区的答题概览。 */
+    private LinearLayout quizSummary() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(round(Color.WHITE, 18));
+        lift(card);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        card.setLayoutParams(params);
+
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        int today = QuizLog.countOn(this, dayStart);
+        java.util.List<QuizLog> all = QuizLog.all(this);
+        card.addView(text("今天答了 " + today + " 题 · 累计 " + all.size() + " 题", 15, INK, true));
+        int shown = 0;
+        for (QuizLog entry : all) {
+            if (shown >= 3) break;
+            TextView question = text("· " + entry.question, 12, MUTED, false);
+            question.setMaxLines(1);
+            question.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            question.setPadding(0, dp(6), 0, 0);
+            card.addView(question);
+            if (!entry.answer.isEmpty()) {
+                TextView answer = text("  " + entry.answer, 12, GREEN, false);
+                answer.setMaxLines(1);
+                answer.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                card.addView(answer);
+            }
+            shown++;
+        }
+        if (all.isEmpty()) {
+            TextView empty = text("还没有答题记录，去「任务 → 卡片」里安排一份卡片集。", 12, MUTED, false);
+            empty.setPadding(0, dp(6), 0, 0);
+            card.addView(empty);
+        }
+        return card;
+    }
+
+    private java.util.List<ReminderRecord> records() {
+        java.util.ArrayList<ReminderRecord> result = new java.util.ArrayList<>();
+        for (ReminderRecord record : records()) {
+            if (record.isModule(moduleFilter)) result.add(record);
+        }
+        return result;
     }
 
     private void render() {
@@ -107,8 +162,35 @@ public final class StatsActivity extends Activity {
         saveImage.setOnClickListener(v -> openSharePreview());
         titleRow.addView(saveImage, new LinearLayout.LayoutParams(dp(42), dp(42)));
         header.addView(titleRow);
-        TextView help = text("看看自己每天照顾身体的时刻", 13, MUTED, false);
-        help.setPadding(0, dp(3), 0, 0);
+
+        LinearLayout moduleRow = new LinearLayout(this);
+        moduleRow.setPadding(0, dp(8), 0, 0);
+        String[][] modules = {
+                {ReminderSettings.MODULE_BODY, "身体"},
+                {ReminderSettings.MODULE_TASK, "任务"},
+                {ReminderSettings.MODULE_CARD, "卡片"}};
+        for (int i = 0; i < modules.length; i++) {
+            final String value = modules[i][0];
+            TextView chip = text(modules[i][1], 13, moduleFilter.equals(value) ? Color.WHITE : INK, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(0, dp(7), 0, dp(7));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(moduleFilter.equals(value) ? GREEN : Color.WHITE);
+            bg.setCornerRadius(dp(12));
+            bg.setStroke(dp(1), BORDER);
+            chip.setBackground(bg);
+            chip.setOnClickListener(v -> {
+                moduleFilter = value;
+                render();
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (i > 0) params.leftMargin = dp(6);
+            moduleRow.addView(chip, params);
+        }
+        header.addView(moduleRow);
+
+        TextView help = text(helpText(), 13, MUTED, false);
+        help.setPadding(0, dp(6), 0, 0);
         header.addView(help);
         screen.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
@@ -119,6 +201,10 @@ public final class StatsActivity extends Activity {
         scroll.addView(content);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
+
+        if (ReminderSettings.MODULE_CARD.equals(moduleFilter)) {
+            content.addView(quizSummary(), 0, new LinearLayout.LayoutParams(-1, -2));
+        }
 
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
@@ -380,7 +466,7 @@ public final class StatsActivity extends Activity {
         int totalReminders = 0;
         int totalRecords = 0;
         int done = 0;
-        for (ReminderRecord record : ReminderRecord.all(this)) {
+        for (ReminderRecord record : records()) {
             if (!sameDay(record.startedAt, today)
                     || (!ReminderRecord.KIND_DONE.equals(record.kind)
                     && !ReminderRecord.KIND_MISSED.equals(record.kind))) continue;
@@ -588,7 +674,7 @@ public final class StatsActivity extends Activity {
 
     private void showTimeline() {
         List<ReminderRecord> records = new ArrayList<>();
-        for (ReminderRecord record : ReminderRecord.all(this)) {
+        for (ReminderRecord record : records()) {
             boolean visibleKind = ReminderRecord.KIND_DONE.equals(record.kind)
                     || ReminderRecord.KIND_MISSED.equals(record.kind)
                     || ReminderRecord.KIND_COMPANION.equals(record.kind)
@@ -989,7 +1075,7 @@ public final class StatsActivity extends Activity {
 
     private int[] totalsForDay(Calendar day) {
         int[] totals = new int[3];
-        for (ReminderRecord record : ReminderRecord.all(this)) {
+        for (ReminderRecord record : records()) {
             if (!sameDay(record.startedAt, day)) continue;
             int index = ReminderRecord.KIND_DONE.equals(record.kind) ? 0
                     : ReminderRecord.KIND_MISSED.equals(record.kind) ? 1
