@@ -92,6 +92,12 @@ public final class TaskActivity extends Activity {
         TextView title = text("任务清单", 24, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
+        TextView cards = text("卡片", 14, UiPalette.ACCENT, true);
+        cards.setGravity(Gravity.CENTER);
+        cards.setPadding(dp(12), dp(9), dp(12), dp(9));
+        cards.setOnClickListener(v -> startActivity(new Intent(this, CardActivity.class)));
+        row.addView(cards);
+
         TextView add = text("＋ 新任务", 14, Color.WHITE, true);
         add.setGravity(Gravity.CENTER);
         add.setPadding(dp(14), dp(9), dp(14), dp(9));

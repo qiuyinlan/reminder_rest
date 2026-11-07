@@ -151,7 +151,9 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 soundEnabled && !serviceRequestAccepted, vibrate && !serviceRequestAccepted, alarmSound);
         if (action == null) action = ReminderSettings.nextType(context);
         ReminderSettings.Rule rule = ReminderSettings.ruleById(context, ruleId);
-        Class<?> target = rule != null && rule.isTaskModule() ? TaskReminderActivity.class : ReminderActivity.class;
+        Class<?> target = ReminderActivity.class;
+        if (rule != null && rule.isTaskModule()) target = TaskReminderActivity.class;
+        else if (rule != null && rule.isCardModule()) target = CardReminderActivity.class;
         Intent open = new Intent(context, target).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 702, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
