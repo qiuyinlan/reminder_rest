@@ -207,8 +207,8 @@ public final class CardActivity extends Activity {
                 + (taskCount > 0 ? " · " + taskCount + " 个任务" : ""),
                 12, UiPalette.MUTED, false));
 
-        TextView plan = small("设提醒", UiPalette.ACCENT);
-        plan.setOnClickListener(v -> scheduleDeck(deck));
+        TextView plan = small(decksHasRule(deck) ? "编辑提醒" : "设提醒", UiPalette.ACCENT);
+        plan.setOnClickListener(v -> scheduleDeckForDeck(deck));
         card.addView(plan);
 
         TextView delete = small("删除", 0xffc85a4c);
@@ -253,6 +253,8 @@ public final class CardActivity extends Activity {
         toggle.setOnCheckedChangeListener((v, checked) ->
                 ReminderSettings.upsertRule(this, rule.withEnabled(checked)));
         card.addView(toggle);
+        card.setOnClickListener(v -> scheduleDeck(deck, rule));
+        card.setContentDescription("编辑提醒 " + deckTitle);
         card.setOnLongClickListener(v -> {
             new AlertDialog.Builder(this).setTitle("删除提醒")
                     .setMessage("删掉这条提醒？卡片集本身保留。")
@@ -293,13 +295,39 @@ public final class CardActivity extends Activity {
 
     // ------------------------------------------------------------ 设提醒
 
-    private void scheduleDeck(CardDeck deck) {
+    private boolean decksHasRule(CardDeck deck) {
+        for (ReminderSettings.Rule rule : ReminderSettings.moduleRules(this, ReminderSettings.MODULE_CARD)) {
+            if (deck.id.equals(rule.deckId)) return true;
+        }
+        return false;
+    }
+
+    private void scheduleDeckForDeck(CardDeck deck) {
+        ReminderSettings.Rule existing = null;
+        for (ReminderSettings.Rule rule : ReminderSettings.moduleRules(this, ReminderSettings.MODULE_CARD)) {
+            if (deck.id.equals(rule.deckId)) {
+                existing = rule;
+                break;
+            }
+        }
+        scheduleDeck(deck, existing);
+    }
+
+    private void scheduleDeck(CardDeck deck, ReminderSettings.Rule existing) {
         final List<Integer> points = new ArrayList<>();
-        points.add(9 * 3600);
+        if (existing != null && !existing.timePointsSeconds.isEmpty()) {
+            points.addAll(existing.timePointsSeconds);
+        } else {
+            points.add(9 * 3600);
+        }
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(20), dp(8), dp(20), dp(8));
-        form.addView(text(deck.isQuiz() ? "到点每次弹一道题，你写一句回答。" : "到点展示一张卡片。", 13, UiPalette.MUTED, false));
+        form.addView(text(deck.isQuiz() ? "到点每次弹一道题，你写一句回答。" : "到点展示一张卡片。",
+                13, UiPalette.MUTED, false));
+        TextView hint = text("点时间可以直接改，不用删掉重加。", 12, UiPalette.MUTED, false);
+        hint.setPadding(0, dp(4), 0, 0);
+        form.addView(hint);
 
         LinearLayout timeList = new LinearLayout(this);
         timeList.setOrientation(LinearLayout.VERTICAL);
@@ -322,12 +350,13 @@ public final class CardActivity extends Activity {
                     row.setLayoutParams(rowParams);
                     TextView value = text(String.format(Locale.getDefault(), "%02d:%02d",
                             (seconds / 3600) % 24, (seconds / 60) % 60), 17, UiPalette.INK, true);
-                    value.setOnClickListener(v -> new TimePickerDialog(CardActivity.this, (view, hour, minute) -> {
-                        points.set(index, hour * 3600 + minute * 60);
-                        java.util.Collections.sort(points);
-                        run();
-                    }, seconds / 3600, (seconds % 3600) / 60, true).show());
                     row.addView(value, new LinearLayout.LayoutParams(0, -2, 1f));
+                    row.setOnClickListener(v -> WheelPicker.time(CardActivity.this, "编辑提醒时间",
+                            "保存", seconds, false, picked -> {
+                                points.set(index, picked);
+                                java.util.Collections.sort(points);
+                                run();
+                            }).show());
                     TextView remove = text("移除", 12, UiPalette.MUTED, false);
                     remove.setPadding(dp(8), dp(10), 0, dp(10));
                     remove.setOnClickListener(v -> {
@@ -336,33 +365,37 @@ public final class CardActivity extends Activity {
                         run();
                     });
                     row.addView(remove);
+                    row.setContentDescription("编辑提醒时间，当前 " + String.format(Locale.getDefault(),
+                            "%02d:%02d", (seconds / 3600) % 24, (seconds / 60) % 60));
                     timeList.addView(row);
                 }
                 Button add = FormKit.controlButton(CardActivity.this);
                 add.setText("＋ 添加时间点");
-                add.setOnClickListener(v -> new TimePickerDialog(CardActivity.this, (view, hour, minute) -> {
-                    points.add(hour * 3600 + minute * 60);
-                    java.util.Collections.sort(points);
-                    run();
-                }, 9, 0, true).show());
+                add.setOnClickListener(v -> WheelPicker.time(CardActivity.this, "添加提醒时间",
+                        "添加", 9 * 3600, false, picked -> {
+                            if (!points.contains(picked)) points.add(picked);
+                            java.util.Collections.sort(points);
+                            run();
+                        }).show());
                 timeList.addView(add);
             }
         };
         render.run();
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("安排「" + deck.title + "」")
+                .setTitle((existing == null ? "安排「" : "编辑「") + deck.title + "」")
                 .setView(form)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("保存", null)
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            int id = ReminderSettings.nextRuleId(this);
             int startMinute = points.get(0) / 60;
             int endMinute = points.get(points.size() - 1) / 60;
-            ReminderSettings.Rule rule = ReminderSettings.Rule
-                    .withIntervalSeconds(id, deck.title, startMinute, endMinute, 24 * 3600, 1, true, true)
-                    .withSchedule(true, new ArrayList<>(points), 0, 0L)
+            ReminderSettings.Rule rule = existing == null
+                    ? ReminderSettings.Rule.withIntervalSeconds(ReminderSettings.nextRuleId(this),
+                            deck.title, startMinute, endMinute, 24 * 3600, 1, true, true)
+                    : existing.withEnabled(true);
+            rule = rule.withSchedule(true, new ArrayList<>(points), 0, 0L)
                     .withModule(ReminderSettings.MODULE_CARD)
                     .withDeck(deck.id, deck.isQuiz());
             ReminderSettings.upsertRule(this, rule);

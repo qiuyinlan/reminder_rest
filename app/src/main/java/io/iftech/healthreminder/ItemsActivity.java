@@ -1227,7 +1227,9 @@ public final class ItemsActivity extends Activity {
             rows.addView(empty);
             return;
         }
-        for (int point : timePoints) {
+        for (int index = 0; index < timePoints.size(); index++) {
+            final int position = index;
+            final int point = timePoints.get(index);
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(12), 0, dp(4), 0);
@@ -1249,8 +1251,26 @@ public final class ItemsActivity extends Activity {
             row.addView(remove, new LinearLayout.LayoutParams(-2, dp(46)));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.topMargin = dp(5);
+            row.setOnClickListener(v -> editTimePoint(timePoints, position, rows));
+            row.setContentDescription("编辑时间点 " + timePointText(point));
             rows.addView(row, params);
         }
+    }
+
+    /** 点已有时间点直接改，不用删掉重新加。 */
+    private void editTimePoint(final ArrayList<Integer> timePoints, final int index,
+                               final LinearLayout rows) {
+        if (index < 0 || index >= timePoints.size()) return;
+        final int current = timePoints.get(index);
+        WheelPicker.time(dialogContext(), "编辑提醒时间", "保存", current, true, picked -> {
+            if (picked != current && timePoints.contains(picked)) {
+                Toast.makeText(this, "这个时间点已存在", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            timePoints.set(index, picked);
+            Collections.sort(timePoints);
+            renderTimePoints(timePoints, rows);
+        }).show();
     }
 
     private String timePointText(int seconds) {
