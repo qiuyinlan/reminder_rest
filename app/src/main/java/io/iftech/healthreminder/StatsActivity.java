@@ -63,6 +63,9 @@ public final class StatsActivity extends Activity {
     private int WARN = UiPalette.WARN;
     private int BORDER = UiPalette.BORDER;
     private int DISABLED = UiPalette.DISABLED;
+    private int PERIOD_FILL = UiPalette.PERIOD_FILL;
+    private int PERIOD_INK = UiPalette.PERIOD_INK;
+    private int PERIOD_STRONG = UiPalette.PERIOD_STRONG;
     private static final int REQUEST_WRITE_IMAGE = 4128;
     private Calendar month = Calendar.getInstance();
     private Calendar selected = Calendar.getInstance();
@@ -246,6 +249,7 @@ public final class StatsActivity extends Activity {
         }
         calendar.addView(weekRow);
         buildDays(calendar);
+        if (UserProfile.isFemale(this) || !PeriodLog.all(this).isEmpty()) addPeriodLegend(calendar);
         content.addView(calendar);
 
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
@@ -267,6 +271,7 @@ public final class StatsActivity extends Activity {
         LinearLayout.LayoutParams bodyNoteParams = new LinearLayout.LayoutParams(-1, -2);
         bodyNoteParams.bottomMargin = dp(12);
         content.addView(bodyNote, bodyNoteParams);
+        if (ReminderSettings.MODULE_BODY.equals(moduleFilter)) addPeriodCard(content);
         int[] totals = totalsForDay(selected);
         LinearLayout summary = new LinearLayout(this);
         summary.setGravity(Gravity.CENTER);
@@ -647,22 +652,41 @@ public final class StatsActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             for (int day = 0; day < 7; day++) {
                 Calendar cellDate = (Calendar) cursor.clone();
+                String dayKey = PeriodLog.dayKey(cellDate);
+                String rangeKey = PeriodLog.coveringStart(this, dayKey);
+                boolean inMonth = cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH);
+                int numberColor = inMonth ? (rangeKey == null ? INK : PERIOD_INK) : DISABLED;
                 TextView cell = text(String.valueOf(cellDate.get(Calendar.DAY_OF_MONTH)), 13,
-                        cellDate.get(Calendar.MONTH) == month.get(Calendar.MONTH) ? INK : DISABLED, false);
+                        numberColor, false);
                 cell.setGravity(Gravity.CENTER);
                 boolean today = sameDay(cellDate, Calendar.getInstance());
                 boolean isSelected = sameDay(cellDate, selected);
                 if (today || isSelected) {
                     GradientDrawable marker = new GradientDrawable();
                     marker.setShape(GradientDrawable.OVAL);
-                    marker.setColor(isSelected ? MINT : Color.TRANSPARENT);
+                    marker.setColor(isSelected ? (rangeKey != null ? PERIOD_STRONG : MINT) : Color.TRANSPARENT);
                     if (!isSelected && today) marker.setStroke(dp(1), MINT);
                     cell.setBackground(marker);
                     if (isSelected) cell.setTextColor(Color.WHITE);
                 }
-                cell.setLayoutParams(new LinearLayout.LayoutParams(dp(34), dp(34)));
-                LinearLayout wrapper = new LinearLayout(this);
-                wrapper.setGravity(Gravity.CENTER);
+                cell.setLayoutParams(new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER));
+
+                FrameLayout wrapper = new FrameLayout(this);
+                if (rangeKey != null && inMonth) {
+                    View bar = new View(this);
+                    GradientDrawable barBackground = new GradientDrawable();
+                    barBackground.setColor(PERIOD_FILL);
+                    boolean roundLeft = !sameRange(rangeKey, PeriodLog.coveringStart(this, neighborKey(cellDate, -1)));
+                    boolean roundRight = !sameRange(rangeKey, PeriodLog.coveringStart(this, neighborKey(cellDate, 1)));
+                    float radius = dp(13);
+                    barBackground.setCornerRadii(new float[]{
+                            roundLeft ? radius : 0, roundLeft ? radius : 0,
+                            roundRight ? radius : 0, roundRight ? radius : 0,
+                            roundRight ? radius : 0, roundRight ? radius : 0,
+                            roundLeft ? radius : 0, roundLeft ? radius : 0});
+                    bar.setBackground(barBackground);
+                    wrapper.addView(bar, new FrameLayout.LayoutParams(-1, dp(26), Gravity.CENTER));
+                }
                 wrapper.addView(cell);
                 wrapper.setOnClickListener(v -> { selected = cellDate; render(); });
                 row.addView(wrapper, new LinearLayout.LayoutParams(0, dp(40), 1));
@@ -670,6 +694,133 @@ public final class StatsActivity extends Activity {
             }
             calendar.addView(row);
         }
+    }
+
+    private String neighborKey(Calendar day, int offset) {
+        Calendar value = (Calendar) day.clone();
+        value.add(Calendar.DAY_OF_MONTH, offset);
+        return PeriodLog.dayKey(value);
+    }
+
+    private boolean sameRange(String left, String right) {
+        return left != null && left.equals(right);
+    }
+
+    private void addPeriodLegend(LinearLayout calendar) {
+        LinearLayout legend = new LinearLayout(this);
+        legend.setGravity(Gravity.CENTER_VERTICAL);
+        legend.setPadding(dp(2), dp(8), 0, 0);
+        View swatch = new View(this);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(PERIOD_FILL);
+        background.setCornerRadius(dp(3));
+        swatch.setBackground(background);
+        legend.addView(swatch, new LinearLayout.LayoutParams(dp(18), dp(6)));
+        TextView label = text("经期", 11, MUTED, false);
+        label.setPadding(dp(6), 0, 0, 0);
+        legend.addView(label);
+        calendar.addView(legend);
+    }
+
+    /** 每日记录「身体」分区里的经期标记卡（选了女生或已有记录时展示）。 */
+    private void addPeriodCard(LinearLayout content) {
+        if (!UserProfile.isFemale(this) && PeriodLog.all(this).isEmpty()) return;
+        PeriodLog.Range active = PeriodLog.active(this);
+        PeriodLog.Range latest = PeriodLog.latest(this);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(round(Color.WHITE, 16));
+        lift(card);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.bottomMargin = dp(12);
+        content.addView(card, cardParams);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text("经期记录", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        TextView tag = text("女生", 11, PERIOD_INK, true);
+        tag.setPadding(dp(8), dp(4), dp(8), dp(4));
+        tag.setBackground(round(PERIOD_FILL, 10));
+        head.addView(tag);
+        card.addView(head);
+
+        String status;
+        if (active != null) {
+            status = "进行中 · " + PeriodLog.monthDay(active.startKey) + " 开始，第 "
+                    + PeriodLog.days(this, active) + " 天";
+        } else if (latest != null) {
+            status = "最近一次 · " + PeriodLog.monthDay(latest.startKey) + " - "
+                    + PeriodLog.monthDay(latest.endKey) + "（" + PeriodLog.days(this, latest) + " 天）";
+        } else {
+            status = "还没有记录。";
+        }
+        TextView statusText = text(status, 13, active != null ? PERIOD_INK : MUTED, active != null);
+        statusText.setPadding(0, dp(8), 0, 0);
+        card.addView(statusText);
+
+        String dayLabel = new SimpleDateFormat("M月d日", Locale.CHINA).format(selected.getTime());
+        LinearLayout actions = new LinearLayout(this);
+        actions.setPadding(0, dp(11), 0, 0);
+        TextView start = text("来了 · " + dayLabel, 13, Color.WHITE, true);
+        start.setGravity(Gravity.CENTER);
+        start.setPadding(0, dp(10), 0, dp(10));
+        start.setBackground(round(GREEN, 12));
+        start.setOnClickListener(v -> {
+            if (PeriodLog.active(this) != null) {
+                Toast.makeText(this, "上一段还在记录中，先点「结束了」", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            PeriodLog.startOn(this, selected);
+            Toast.makeText(this, "已标记 " + dayLabel + " 开始", Toast.LENGTH_SHORT).show();
+            render();
+        });
+        TextView end = text("结束了 · " + dayLabel, 13, INK, true);
+        end.setGravity(Gravity.CENTER);
+        end.setPadding(0, dp(10), 0, dp(10));
+        end.setBackground(outline(Color.WHITE, BORDER, 12));
+        end.setOnClickListener(v -> {
+            if (!PeriodLog.endOn(this, selected)) {
+                Toast.makeText(this, "没有进行中的经期记录", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            PeriodLog.Range finished = PeriodLog.latest(this);
+            String days = finished == null ? "" : "（" + PeriodLog.days(this, finished) + " 天）";
+            Toast.makeText(this, "已标记 " + dayLabel + " 结束" + days, Toast.LENGTH_SHORT).show();
+            render();
+        });
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, -2, 1);
+        actions.addView(start, actionParams);
+        LinearLayout.LayoutParams endParams = new LinearLayout.LayoutParams(0, -2, 1);
+        endParams.leftMargin = dp(8);
+        actions.addView(end, endParams);
+        card.addView(actions);
+
+        TextView hint = text("在日历上选中日期再点按钮。粉色连线会把开始到结束串成一段。", 12, MUTED, false);
+        hint.setLineSpacing(dp(3), 1f);
+        hint.setPadding(0, dp(9), 0, 0);
+        card.addView(hint);
+
+        if (latest != null) {
+            TextView delete = text("删除最近一次记录（" + PeriodLog.monthDay(latest.startKey) + "）",
+                    12, MUTED, false);
+            delete.setPadding(0, dp(10), 0, 0);
+            delete.setOnClickListener(v -> confirmDeletePeriod(latest));
+            card.addView(delete);
+        }
+    }
+
+    private void confirmDeletePeriod(PeriodLog.Range range) {
+        showStyledDialog(new AlertDialog.Builder(dialogContext())
+                .setTitle("删除这段经期记录？")
+                .setMessage(PeriodLog.monthDay(range.startKey) + " - "
+                        + (range.ongoing() ? "至今" : PeriodLog.monthDay(range.endKey)))
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (dialog, which) -> {
+                    PeriodLog.remove(this, range);
+                    render();
+                }));
     }
 
     private void showTimeline() {

@@ -275,6 +275,36 @@ public final class MainActivity extends Activity {
             @Override public void afterTextChanged(android.text.Editable s) { }
         });
         card.addView(note, full());
+        if (UserProfile.isFemale(this)) {
+            addDivider(card);
+            LinearLayout periodRow = row();
+            periodRow.setPadding(0, dp(10), 0, dp(4));
+            final PeriodLog.Range active = PeriodLog.active(this);
+            final boolean ongoing = active != null;
+            TextView status = label(ongoing
+                            ? "经期进行中 · 第 " + PeriodLog.days(this, active) + " 天"
+                            : "经期：未标记",
+                    12, ongoing ? UiPalette.PERIOD_INK : MUTED, true);
+            periodRow.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView action = label(ongoing ? "今天结束" : "今天来了", 12, UiPalette.PERIOD_INK, true);
+            action.setGravity(Gravity.CENTER);
+            action.setPadding(dp(12), dp(7), dp(12), dp(7));
+            action.setBackground(round(UiPalette.PERIOD_FILL, 12));
+            action.setContentDescription(ongoing ? "记录今天经期结束" : "记录今天经期开始");
+            action.setOnClickListener(v -> {
+                Calendar today = Calendar.getInstance();
+                if (ongoing) {
+                    PeriodLog.endOn(this, today);
+                    Toast.makeText(this, "已记录经期结束", Toast.LENGTH_SHORT).show();
+                } else {
+                    PeriodLog.startOn(this, today);
+                    Toast.makeText(this, "已记录经期开始", Toast.LENGTH_SHORT).show();
+                }
+                render();
+            });
+            periodRow.addView(action);
+            card.addView(periodRow, full());
+        }
         LinearLayout.LayoutParams params = full();
         params.topMargin = dp(14);
         body.addView(card, params);

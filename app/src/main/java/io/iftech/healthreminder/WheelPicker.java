@@ -31,6 +31,8 @@ final class WheelPicker {
 
     interface OnDate { void onPicked(Calendar value); }
 
+    interface OnMonth { void onPicked(Calendar value); }
+
     private WheelPicker() { }
 
     // ---------------------------------------------------------------- 滚轮本体
@@ -234,6 +236,67 @@ final class WheelPicker {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                 Calendar result = (Calendar) base.clone();
                 result.set(year.getValue(), month.getValue() - 1, day.getValue());
+                onPicked.onPicked(result);
+                dialog.dismiss();
+            });
+            styleDialog(context, dialog);
+        });
+        return dialog;
+    }
+
+    // ---------------------------------------------------------------- 选月份
+
+    /** 「年 / 月」滚轮弹窗，返回当月 1 号。 */
+    static AlertDialog month(Context context, String title, Calendar value, final OnMonth onPicked) {
+        final Calendar base = (Calendar) (value == null ? Calendar.getInstance() : value).clone();
+        final int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        final NumberPicker year = wheel(context, currentYear - 3, currentYear + 3,
+                base.get(Calendar.YEAR), false);
+        final NumberPicker month = wheel(context, 1, 12, base.get(Calendar.MONTH) + 1, true);
+        year.setFormatter(number -> number + " 年");
+        month.setFormatter(number -> number + " 月");
+
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(context, 6), dp(context, 10), dp(context, 6), dp(context, 10));
+        card.setBackground(round(context, UiPalette.PALE, 16));
+        addColumn(context, card, year, "年");
+        addColumn(context, card, month, "月");
+
+        final TextView preview = new TextView(context);
+        preview.setGravity(Gravity.CENTER);
+        preview.setTextSize(18);
+        preview.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        preview.setTextColor(UiPalette.INK);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1, -2);
+        previewParams.bottomMargin = dp(context, 10);
+        previewParams.topMargin = dp(context, 4);
+
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(context, 16), dp(context, 8), dp(context, 16), dp(context, 4));
+        content.addView(preview, previewParams);
+        content.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        final Runnable refresh = () -> preview.setText(String.format(Locale.CHINA,
+                "%d 年 %d 月", year.getValue(), month.getValue()));
+        NumberPicker.OnValueChangeListener changed = (picker, oldValue, newValue) -> refresh.run();
+        year.setOnValueChangedListener(changed);
+        month.setOnValueChangedListener(changed);
+        refresh.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(title)
+                .setView(content)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确定", null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                Calendar result = Calendar.getInstance();
+                result.clear();
+                result.set(year.getValue(), month.getValue() - 1, 1);
                 onPicked.onPicked(result);
                 dialog.dismiss();
             });

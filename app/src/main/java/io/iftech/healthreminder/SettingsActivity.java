@@ -105,6 +105,42 @@ public final class SettingsActivity extends Activity {
         update.addView(updateCopy, new LinearLayout.LayoutParams(0, -2, 1));
         update.addView(text("›", 23, GREEN, false));
 
+        LinearLayout profileHeader = new LinearLayout(this);
+        profileHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams profileHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        profileHeaderParams.topMargin = dp(26);
+        profileHeaderParams.bottomMargin = dp(10);
+        page.addView(profileHeader, profileHeaderParams);
+        profileHeader.addView(text("个人资料", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout profileCard = new LinearLayout(this);
+        profileCard.setOrientation(LinearLayout.VERTICAL);
+        profileCard.setPadding(dp(15), dp(15), dp(15), dp(15));
+        profileCard.setBackground(round(Color.WHITE, 17));
+        profileCard.setElevation(dp(1));
+        page.addView(profileCard, new LinearLayout.LayoutParams(-1, -2));
+        profileCard.addView(text("性别", 16, INK, true));
+        TextView genderDetail = text("选择「女生」后，每日记录会出现经期标记，日历用粉色连线显示。",
+                12, MUTED, false);
+        genderDetail.setLineSpacing(dp(3), 1f);
+        genderDetail.setPadding(0, dp(6), 0, 0);
+        profileCard.addView(genderDetail);
+
+        LinearLayout genderOptions = new LinearLayout(this);
+        genderOptions.setPadding(dp(4), dp(4), dp(4), dp(4));
+        genderOptions.setBackground(round(MINT_PALE, 13));
+        String gender = UserProfile.gender(this);
+        genderOptions.addView(choicePill("女生", UserProfile.FEMALE.equals(gender), () -> changeGender(UserProfile.FEMALE)),
+                new LinearLayout.LayoutParams(0, dp(40), 1));
+        genderOptions.addView(choicePill("男生", UserProfile.MALE.equals(gender), () -> changeGender(UserProfile.MALE)),
+                new LinearLayout.LayoutParams(0, dp(40), 1));
+        genderOptions.addView(choicePill("不指定", UserProfile.UNSET.equals(gender), () -> changeGender(UserProfile.UNSET)),
+                new LinearLayout.LayoutParams(0, dp(40), 1));
+        LinearLayout.LayoutParams genderOptionsParams = new LinearLayout.LayoutParams(-1, -2);
+        genderOptionsParams.topMargin = dp(12);
+        profileCard.addView(genderOptions, genderOptionsParams);
+
         LinearLayout intro = new LinearLayout(this);
         intro.setGravity(Gravity.CENTER_VERTICAL);
         intro.setPadding(dp(16), dp(16), dp(16), dp(16));
@@ -201,6 +237,38 @@ public final class SettingsActivity extends Activity {
         arrow.setGravity(Gravity.CENTER);
         settingCard.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(40)));
 
+        LinearLayout dataHeader = new LinearLayout(this);
+        dataHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams dataHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        dataHeaderParams.topMargin = dp(26);
+        dataHeaderParams.bottomMargin = dp(10);
+        page.addView(dataHeader, dataHeaderParams);
+        dataHeader.addView(text("数据", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout exportCard = new LinearLayout(this);
+        exportCard.setGravity(Gravity.CENTER_VERTICAL);
+        exportCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+        exportCard.setBackground(round(Color.WHITE, 17));
+        exportCard.setElevation(dp(1));
+        exportCard.setContentDescription("导出身体数据，按日期范围、月份或全部导出 CSV");
+        exportCard.setOnClickListener(v -> startActivity(new Intent(this, BodyExportActivity.class)));
+        page.addView(exportCard, new LinearLayout.LayoutParams(-1, -2));
+        TextView exportMark = text("出", 16, GREEN, true);
+        exportMark.setGravity(Gravity.CENTER);
+        exportMark.setBackground(round(MINT_PALE, 13));
+        LinearLayout.LayoutParams exportMarkParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        exportMarkParams.rightMargin = dp(13);
+        exportCard.addView(exportMark, exportMarkParams);
+        LinearLayout exportCopy = new LinearLayout(this);
+        exportCopy.setOrientation(LinearLayout.VERTICAL);
+        exportCopy.addView(text("导出身体数据", 16, INK, true));
+        TextView exportDetail = text("按日期范围、月份或全部导出 CSV", 12, MUTED, false);
+        exportDetail.setPadding(0, dp(5), 0, 0);
+        exportCopy.addView(exportDetail);
+        exportCard.addView(exportCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        exportCard.addView(text("›", 25, GREEN, false));
+
         LinearLayout note = new LinearLayout(this);
         note.setOrientation(LinearLayout.VERTICAL);
         note.setPadding(dp(15), dp(13), dp(15), dp(13));
@@ -213,6 +281,21 @@ public final class SettingsActivity extends Activity {
         TextView noteBody = text("如果提醒没有按时出现，可以在息屏设置中查看精确闹钟、通知和锁屏全屏提醒权限。", 12, MUTED, false);
         noteBody.setPadding(0, dp(5), 0, 0);
         note.addView(noteBody);
+    }
+
+    private void changeGender(String gender) {
+        if (gender.equals(UserProfile.gender(this))) return;
+        UserProfile.setGender(this, gender);
+        Toast.makeText(this, "已保存：" + UserProfile.label(this), Toast.LENGTH_SHORT).show();
+        recreate();
+    }
+
+    private TextView choicePill(String label, boolean selected, Runnable onPick) {
+        TextView view = text(label, 13, selected ? Color.WHITE : INK, selected);
+        view.setGravity(Gravity.CENTER);
+        view.setBackground(selected ? round(GREEN, 10) : round(Color.TRANSPARENT, 10));
+        view.setOnClickListener(v -> onPick.run());
+        return view;
     }
 
     private TextView themePill(String label, boolean selected) {

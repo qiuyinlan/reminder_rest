@@ -33,6 +33,10 @@ final class UiPalette {
     static int WARN_BORDER = 0xffeccba2;
     /** 陪伴类目色（统计页汇总、时间线）。 */
     static int COMPANION = 0xff8a5bab;
+    /** 经期在日历上的粉色连线与文字色。 */
+    static int PERIOD_FILL = 0xfff8d3e1;
+    static int PERIOD_INK = 0xffb04570;
+    static int PERIOD_STRONG = 0xffd8739b;
     /** 倒计时数字色（比主色更深/更亮，保证数字醒目）。 */
     static int COUNTDOWN_INK = 0xff125f45;
 
@@ -85,6 +89,9 @@ final class UiPalette {
             WARN_SOFT = 0xff402c24;
             WARN_BORDER = 0xffaa7152;
             COMPANION = 0xffd7a6eb;
+            PERIOD_FILL = 0xff4a2534;
+            PERIOD_INK = 0xfff7b6cd;
+            PERIOD_STRONG = 0xffc46a92;
             COUNTDOWN_INK = 0xff8cecc0;
             pageGradient = new int[]{PAGE_LIGHT, PAGE, 0xff02140f};
             headGradient = new int[]{0xff0b3e2a, 0xff12352c, 0xff072b1d};
@@ -110,6 +117,9 @@ final class UiPalette {
             WARN_SOFT = 0xfffff2e2;
             WARN_BORDER = 0xffeccba2;
             COMPANION = 0xff8a5bab;
+            PERIOD_FILL = 0xfff8d3e1;
+            PERIOD_INK = 0xffb04570;
+            PERIOD_STRONG = 0xffd8739b;
             COUNTDOWN_INK = 0xff125f45;
             pageGradient = new int[]{0xfff6fcf8, 0xffeef8f1, 0xffe7f6ed};
             headGradient = new int[]{0xffccefdd, 0xffe0f7ea, 0xfff7fdfb};
