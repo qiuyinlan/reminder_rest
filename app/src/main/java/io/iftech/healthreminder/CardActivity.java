@@ -202,7 +202,7 @@ public final class CardActivity extends Activity {
         card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
         texts.addView(text(deck.title, 16, UiPalette.INK, true));
         int taskCount = 0;
-        for (CardDeck.Card card : deck.cards) if (card.isTask()) taskCount++;
+        for (CardDeck.Card item : deck.cards) if (item.isTask()) taskCount++;
         texts.addView(text(deck.size() + " 张 · " + (deck.isQuiz() ? "答题模式" : "阅读模式")
                 + (taskCount > 0 ? " · " + taskCount + " 个任务" : ""),
                 12, UiPalette.MUTED, false));
