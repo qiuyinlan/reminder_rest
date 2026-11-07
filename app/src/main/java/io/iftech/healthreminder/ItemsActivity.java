@@ -1270,6 +1270,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.ITEMS,
                 () -> { finish(); overridePendingTransition(0, 0); },
                 () -> { startActivity(new Intent(this, TaskActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, CardActivity.class)); overridePendingTransition(0, 0); finish(); },
                 null,
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });

@@ -113,6 +113,36 @@ final class CardDeck {
         prefs(context).edit().putString(KEY, array.toString()).apply();
     }
 
+    /** 手动新建一张卡片；同名卡片集直接追加，没有就新建一个。 */
+    static void addManualCard(Context context, String deckTitle, String question, String answer, String note) {
+        String title = deckTitle == null ? "" : deckTitle.trim();
+        if (title.isEmpty()) title = "我的卡片";
+        String front = question == null ? "" : question.trim();
+        if (front.isEmpty()) return;
+        String back = answer == null ? "" : answer.trim();
+        String extra = note == null ? "" : note.trim();
+        List<CardDeck> decks = all(context);
+        Card card = new Card("c-" + System.currentTimeMillis(), front, back, extra);
+        int index = -1;
+        for (int i = 0; i < decks.size(); i++) {
+            if (decks.get(i).title.equals(title)) {
+                index = i;
+                break;
+            }
+        }
+        if (index >= 0) {
+            CardDeck deck = decks.get(index);
+            List<Card> cards = new ArrayList<>(deck.cards);
+            cards.add(card);
+            decks.set(index, new CardDeck(deck.id, deck.title, deck.mode, cards));
+        } else {
+            List<Card> cards = new ArrayList<>();
+            cards.add(card);
+            decks.add(new CardDeck("deck-" + System.currentTimeMillis(), title, MODE_CARD, cards));
+        }
+        save(context, decks);
+    }
+
     static void delete(Context context, String deckId) {
         List<CardDeck> decks = all(context);
         for (int i = decks.size() - 1; i >= 0; i--) {

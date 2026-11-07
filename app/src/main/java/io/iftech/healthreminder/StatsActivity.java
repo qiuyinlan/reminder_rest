@@ -1283,6 +1283,7 @@ public final class StatsActivity extends Activity {
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.STATS,
                 () -> { finish(); overridePendingTransition(0, 0); },
                 () -> { startActivity(new Intent(this, TaskActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, CardActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 null);

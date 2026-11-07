@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -118,11 +119,22 @@ public final class CardReminderActivity extends Activity {
             ap.topMargin = dp(16);
             cardView.addView(answerInput, ap);
         } else if (!card.answer.isEmpty()) {
-            TextView answer = text(card.answer, 14, UiPalette.MUTED, false);
+            // 阅读模式：答案在背面，点一下才翻出来。
+            final TextView answer = text(card.answer, 14, UiPalette.MUTED, false);
             answer.setLineSpacing(dp(3), 1f);
+            answer.setVisibility(View.GONE);
             LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(-1, -2);
             ap.topMargin = dp(14);
             cardView.addView(answer, ap);
+
+            final TextView peek = actionButton("翻面看答案", UiPalette.SOFT, UiPalette.ACCENT);
+            LinearLayout.LayoutParams peekParams = new LinearLayout.LayoutParams(-1, dp(44));
+            peekParams.topMargin = dp(14);
+            cardView.addView(peek, peekParams);
+            peek.setOnClickListener(v -> {
+                answer.setVisibility(View.VISIBLE);
+                peek.setVisibility(View.GONE);
+            });
         }
 
         TextView primary = actionButton(quiz ? "提交" : "看完了", UiPalette.ACCENT, Color.WHITE);

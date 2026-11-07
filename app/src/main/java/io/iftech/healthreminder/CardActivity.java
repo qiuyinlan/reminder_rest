@@ -67,6 +67,19 @@ public final class CardActivity extends Activity {
         answerList = new LinearLayout(this);
         answerList.setOrientation(LinearLayout.VERTICAL);
         body.addView(answerList);
+
+        LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.CARDS,
+                () -> { startActivity(new Intent(this, MainActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, TaskActivity.class)); overridePendingTransition(0, 0); finish(); },
+                null,
+                () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
+                () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(-1, dp(64));
+        navParams.leftMargin = dp(14);
+        navParams.rightMargin = dp(14);
+        navParams.bottomMargin = dp(10);
+        root.addView(nav, navParams);
     }
 
     @Override
@@ -85,17 +98,82 @@ public final class CardActivity extends Activity {
         TextView title = text("卡片", 24, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView importButton = text("＋ 导入 JSON", 14, Color.WHITE, true);
+        TextView addButton = text("＋ 新建", 14, UiPalette.ACCENT, true);
+        addButton.setGravity(Gravity.CENTER);
+        addButton.setPadding(dp(13), dp(9), dp(13), dp(9));
+        addButton.setBackground(FormKit.round(this, UiPalette.SOFT, 20));
+        addButton.setOnClickListener(v -> createCard());
+        row.addView(addButton);
+
+        TextView importButton = text("导入文件", 13, Color.WHITE, true);
         importButton.setGravity(Gravity.CENTER);
-        importButton.setPadding(dp(14), dp(9), dp(14), dp(9));
+        importButton.setPadding(dp(12), dp(9), dp(12), dp(9));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(UiPalette.ACCENT);
         bg.setCornerRadius(dp(20));
         importButton.setBackground(bg);
         importButton.setOnClickListener(v -> pickJson());
-        row.addView(importButton);
+        LinearLayout.LayoutParams importParams = new LinearLayout.LayoutParams(-2, -2);
+        importParams.leftMargin = dp(7);
+        row.addView(importButton, importParams);
         header.addView(row);
         return header;
+    }
+
+    // ------------------------------------------------------------ 新建
+
+    /** 手动新建一张卡片：正面必填，背面答案选填。 */
+    private void createCard() {
+        android.view.ContextThemeWrapper dialogContext =
+                new android.view.ContextThemeWrapper(this, R.style.ItemsDialogTheme);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(6), dp(18), dp(4));
+
+        form.addView(FormKit.editorLabel(this, "卡片集名称", false));
+        android.widget.EditText deckName = FormKit.textInput(this, "例如：我的卡片", "我的卡片");
+        form.addView(deckName, new LinearLayout.LayoutParams(-1, -2));
+
+        form.addView(FormKit.editorLabel(this, "正面内容", true));
+        android.widget.EditText front = FormKit.input(this,
+                android.text.InputType.TYPE_CLASS_TEXT
+                        | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                        | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        front.setHint("写问题、单词或想记住的一句话");
+        front.setMinLines(3);
+        front.setMaxLines(8);
+        form.addView(front, new LinearLayout.LayoutParams(-1, -2));
+
+        form.addView(FormKit.editorLabel(this, "背面答案（选填）", true));
+        android.widget.EditText back = FormKit.input(this,
+                android.text.InputType.TYPE_CLASS_TEXT
+                        | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                        | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        back.setHint("留空就是一张没有答案的卡片");
+        back.setMinLines(2);
+        back.setMaxLines(6);
+        form.addView(back, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext)
+                .setTitle("新建卡片")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String text = front.getText().toString().trim();
+                    if (text.isEmpty()) {
+                        front.setError("正面内容不能为空");
+                        return;
+                    }
+                    CardDeck.addManualCard(this, deckName.getText().toString(), text,
+                            back.getText().toString(), "");
+                    Toast.makeText(this, "已新建卡片", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    reload();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     // ------------------------------------------------------------ 导入

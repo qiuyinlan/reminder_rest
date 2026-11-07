@@ -63,6 +63,7 @@ public final class TaskActivity extends Activity {
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.TASKS,
                 () -> { startActivity(new Intent(this, MainActivity.class)); overridePendingTransition(0, 0); finish(); },
                 null,
+                () -> { startActivity(new Intent(this, CardActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, StatsActivity.class)); overridePendingTransition(0, 0); finish(); });
@@ -91,13 +92,6 @@ public final class TaskActivity extends Activity {
 
         TextView title = text("任务清单", 25, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        TextView cards = text("卡片", 13, UiPalette.ACCENT, true);
-        cards.setGravity(Gravity.CENTER);
-        cards.setPadding(dp(14), dp(8), dp(14), dp(8));
-        cards.setBackground(FormKit.round(this, UiPalette.SOFT, 12));
-        cards.setOnClickListener(v -> startActivity(new Intent(this, CardActivity.class)));
-        row.addView(cards);
 
         TextView add = text("＋ 新任务", 13, Color.WHITE, true);
         add.setGravity(Gravity.CENTER);

@@ -184,6 +184,7 @@ public final class CompanionLandingActivity extends Activity {
         return BottomNavigationBar.create(this, BottomNavigationBar.COMPANION,
                 () -> open(MainActivity.class),
                 () -> open(TaskActivity.class),
+                () -> open(CardActivity.class),
                 () -> open(ItemsActivity.class),
                 null,
                 () -> open(StatsActivity.class));

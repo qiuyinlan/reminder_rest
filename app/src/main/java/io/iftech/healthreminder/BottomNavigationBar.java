@@ -16,11 +16,12 @@ import android.widget.TextView;
 final class BottomNavigationBar {
     static final int HOME = 0;
     static final int TASKS = 1;
-    static final int ITEMS = 2;
-    static final int COMPANION = 3;
-    static final int STATS = 4;
+    static final int CARDS = 2;
+    static final int ITEMS = 3;
+    static final int COMPANION = 4;
+    static final int STATS = 5;
 
-    private static final String[] LABELS = {"首页", "任务", "事项", "陪伴", "统计"};
+    private static final String[] LABELS = {"首页", "任务", "卡片", "事项", "陪伴", "统计"};
 
     private BottomNavigationBar() { }
 
@@ -113,6 +114,7 @@ final class BottomNavigationBar {
             switch (type) {
                 case HOME: drawHome(canvas); break;
                 case TASKS: drawTask(canvas); break;
+                case CARDS: drawCards(canvas); break;
                 case ITEMS: drawItems(canvas); break;
                 case COMPANION: drawHeart(canvas); break;
                 default: drawStats(canvas); break;
@@ -139,6 +141,13 @@ final class BottomNavigationBar {
             canvas.drawLine(7.5f, 15, 10, 17.2f, paint);
             canvas.drawLine(10, 17.2f, 13.5f, 13, paint);
             canvas.drawLine(14.8f, 15.2f, 17.5f, 15.2f, paint);
+        }
+
+        private void drawCards(Canvas canvas) {
+            canvas.drawRoundRect(new RectF(3.5f, 6.5f, 16.5f, 20.5f), 2.2f, 2.2f, paint);
+            canvas.drawRoundRect(new RectF(7.5f, 3.5f, 20.5f, 17.5f), 2.2f, 2.2f, paint);
+            canvas.drawLine(11, 11, 17, 11, paint);
+            canvas.drawLine(11, 14.5f, 17, 14.5f, paint);
         }
 
         private void drawItems(Canvas canvas) {            for (int row = 0; row < 3; row++) {
