@@ -1,7 +1,7 @@
 {
-    "versionCode": 18,
-    "versionName": "0.3.0-beta8",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta8/rest-bean.apk",
-    "sha256": "e328417ff289027096be1b120e0f17bab3e4b100b60bcf8e951e3a720e2ccf77",
-    "notes": "修复任务/卡片提醒在屏幕亮着时只发通知、不霸屏的问题，并加入提醒诊断。"
+    "versionCode": 19,
+    "versionName": "0.3.0-beta9",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta9/rest-bean.apk",
+    "sha256": "da009aca7fc593012b12c1847d82ccd3964e2c9d62db2e97f3210c8bbaf8f191",
+    "notes": "卡片提醒支持「每 N 分钟」，顺序抽卡并按卡片集跨天续播。"
 }
