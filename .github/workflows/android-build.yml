@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,9 +44,30 @@ jobs:
           echo "Building $VERSION_NAME ($VERSION_CODE)"
 
       - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        id: build
+        continue-on-error: true
+        run: |
+          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Publish failure log
+        if: steps.build.outcome == 'failure'
+        run: |
+          tail -c 30000 /tmp/build.log > ci-failure.log
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git push -f origin HEAD:refs/heads/ci-log || true
+          git checkout -B ci-log
+          git add -f ci-failure.log
+          git commit -m "ci: build failure log for ${{ github.sha }}"
+          git push -f origin ci-log
+
+      - name: Fail if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Rename APK
+        if: steps.build.outcome == 'success'
         run: |
           mkdir -p artifacts
           SRC=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
@@ -57,6 +78,7 @@ jobs:
           sha256sum "$DEST"
 
       - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: HealthReminder-${{ steps.version.outputs.name }}-debug
