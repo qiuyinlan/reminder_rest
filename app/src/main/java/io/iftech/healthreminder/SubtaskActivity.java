@@ -26,7 +26,6 @@ public final class SubtaskActivity extends Activity {
 
     private int parentId = -1;
     private LinearLayout listContainer;
-    private TextView summary;
     private EditText input;
     private TextView parentTitle;
 
@@ -79,21 +78,22 @@ public final class SubtaskActivity extends Activity {
         parentTitle.setOnClickListener(v -> editTitle());
         row.addView(parentTitle, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView settings = FormKit.text(this, "提醒设置 ›", 12, UiPalette.ACCENT, true);
-        settings.setPadding(dp(8), dp(6), dp(2), dp(6));
-        settings.setOnClickListener(v -> {
-            startActivity(new Intent(this, TaskActivity.class)
-                    .putExtra(TaskActivity.EXTRA_EDIT_RULE_ID, parentId));
-            finish();
-        });
-        row.addView(settings);
+        TextView more = FormKit.text(this, "⋯", 18, UiPalette.MUTED, true);
+        more.setGravity(Gravity.CENTER);
+        more.setPadding(dp(12), dp(2), dp(4), dp(2));
+        more.setContentDescription("更多");
+        more.setOnClickListener(v -> FormKit.options(this, null,
+                new String[]{"改名字", "提醒设置"}, -1, which -> {
+                    if (which == 0) editTitle();
+                    else {
+                        startActivity(new Intent(this, TaskActivity.class)
+                                .putExtra(TaskActivity.EXTRA_EDIT_RULE_ID, parentId));
+                        finish();
+                    }
+                }));
+        row.addView(more);
         header.addView(row);
 
-        summary = FormKit.text(this, "", 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
-        summaryParams.topMargin = dp(6);
-        summaryParams.leftMargin = dp(2);
-        header.addView(summary, summaryParams);
         return header;
     }
 
@@ -162,15 +162,9 @@ public final class SubtaskActivity extends Activity {
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         List<ReminderSettings.Rule> items = Subtasks.of(this, parentId);
         int done = Subtasks.count(this, parentId, dayStart);
-        summary.setText(items.isEmpty() ? "还没有子任务，下面输入框加一个"
-                : String.format(Locale.getDefault(), "共 %d 个子任务 · 今天完成 %d 个", items.size(), done));
 
         listContainer.removeAllViews();
         if (items.isEmpty()) {
-            TextView empty = FormKit.text(this, "把这件事拆成几小步，做起来会轻一点。", 14, UiPalette.MUTED, false);
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(dp(20), dp(40), dp(20), dp(40));
-            listContainer.addView(empty, new LinearLayout.LayoutParams(-1, -2));
             return;
         }
         for (ReminderSettings.Rule item : items) {

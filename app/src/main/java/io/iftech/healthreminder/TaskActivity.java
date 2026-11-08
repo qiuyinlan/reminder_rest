@@ -36,7 +36,6 @@ public final class TaskActivity extends Activity {
     private static final String MODE_INTERVAL = "interval";
 
     private LinearLayout listContainer;
-    private TextView subtitle;
     private boolean completedExpanded;
     private boolean futureExpanded;
 
@@ -64,7 +63,6 @@ public final class TaskActivity extends Activity {
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        root.addView(buildFooter(), new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.TASKS,
                 () -> { startActivity(new Intent(this, MainActivity.class)); overridePendingTransition(0, 0); finish(); },
@@ -149,40 +147,25 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text("任务清单", 25, UiPalette.INK, true);
+        TextView title = text("任务", 25, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-        header.addView(row);
 
-        subtitle = text("", 13, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
-        subParams.topMargin = dp(6);
-        header.addView(subtitle, subParams);
+        TextView more = text("⋯", 20, UiPalette.MUTED, true);
+        more.setGravity(Gravity.CENTER);
+        more.setPadding(dp(12), dp(2), dp(4), dp(2));
+        more.setContentDescription("更多");
+        more.setOnClickListener(v -> showMoreMenu());
+        row.addView(more);
+        header.addView(row);
         return header;
     }
 
-    private View buildFooter() {
-        LinearLayout footer = new LinearLayout(this);
-        footer.setOrientation(LinearLayout.HORIZONTAL);
-        footer.setPadding(dp(16), dp(6), dp(16), dp(4));
-
-        TextView reset = text("重置今日", 13, UiPalette.MUTED, true);
-        reset.setGravity(Gravity.CENTER);
-        reset.setPadding(0, dp(10), 0, dp(10));
-        reset.setBackground(FormKit.round(this, Color.WHITE, 12));
-        reset.setOnClickListener(v -> confirmResetToday());
-        LinearLayout.LayoutParams a = new LinearLayout.LayoutParams(0, -2, 1f);
-        a.rightMargin = dp(6);
-        footer.addView(reset, a);
-
-        TextView clear = text("清空全部任务", 13, UiPalette.WARN, true);
-        clear.setGravity(Gravity.CENTER);
-        clear.setPadding(0, dp(10), 0, dp(10));
-        clear.setBackground(FormKit.round(this, UiPalette.WARN_SOFT, 12));
-        clear.setOnClickListener(v -> confirmClearAll());
-        LinearLayout.LayoutParams b = new LinearLayout.LayoutParams(0, -2, 1f);
-        b.leftMargin = dp(6);
-        footer.addView(clear, b);
-        return footer;
+    private void showMoreMenu() {
+        FormKit.options(this, null, new String[]{"总览提醒", "重置今日", "清空全部任务"}, 2, which -> {
+            if (which == 0) showOverviewEditor();
+            else if (which == 1) confirmResetToday();
+            else confirmClearAll();
+        });
     }
 
     // ---------------------------------------------------------------- 列表
@@ -199,18 +182,9 @@ public final class TaskActivity extends Activity {
                 pending.add(task);
             }
         }
-        subtitle.setText(tasks.isEmpty() ? "还没有任务，点右下角加号"
-                : String.format(Locale.getDefault(), "共 %d 个任务 · 今天完成 %d 个", tasks.size(), finished.size()));
-
         listContainer.removeAllViews();
         listContainer.addView(buildOverviewCard());
-        if (tasks.isEmpty()) {
-            TextView empty = text("先加一个试试，比如「背 20 个单词」。", 14, UiPalette.MUTED, false);
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(dp(20), dp(40), dp(20), dp(40));
-            listContainer.addView(empty, new LinearLayout.LayoutParams(-1, -2));
-            return;
-        }
+        if (tasks.isEmpty()) return;
         for (ReminderSettings.Rule task : pending) {
             listContainer.addView(buildRow(task, dayStart));
         }
@@ -221,12 +195,6 @@ public final class TaskActivity extends Activity {
         }
         if (!future.isEmpty()) {
             listContainer.addView(buildFutureSection(future));
-        }
-        if (pending.isEmpty()) {
-            TextView allDone = text("今天的都做完了 ✓", 14, UiPalette.MUTED, false);
-            allDone.setGravity(Gravity.CENTER);
-            allDone.setPadding(dp(20), dp(26), dp(20), dp(26));
-            listContainer.addView(allDone, new LinearLayout.LayoutParams(-1, -2));
         }
         if (!finished.isEmpty()) {
             listContainer.addView(buildCompletedSection(finished, dayStart));
@@ -248,9 +216,9 @@ public final class TaskActivity extends Activity {
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(4), dp(12), dp(4), dp(8));
-        header.addView(text("之后的任务 " + future.size() + " 个", 13, UiPalette.MUTED, true),
+        header.addView(text("之后 " + future.size(), 12, UiPalette.MUTED, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        header.addView(text(futureExpanded ? "收起 ⌃" : "展开 ⌄", 12, UiPalette.ACCENT, true));
+        header.addView(text(futureExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true));
         header.setOnClickListener(v -> {
             futureExpanded = !futureExpanded;
             reload();
@@ -306,9 +274,9 @@ public final class TaskActivity extends Activity {
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(4), dp(12), dp(4), dp(8));
-        TextView label = text("已完成 " + finished.size() + " 个", 13, UiPalette.MUTED, true);
+        TextView label = text("已完成 " + finished.size(), 12, UiPalette.MUTED, true);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView arrow = text(completedExpanded ? "收起 ⌃" : "展开 ⌄", 12, UiPalette.ACCENT, true);
+        TextView arrow = text(completedExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true);
         header.addView(arrow);
         header.setOnClickListener(v -> {
             completedExpanded = !completedExpanded;
@@ -336,18 +304,9 @@ public final class TaskActivity extends Activity {
         cardParams.bottomMargin = dp(12);
         card.setLayoutParams(cardParams);
 
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-        texts.addView(text("总览提醒", 16, UiPalette.INK, true));
-        String detail;
-        if (rule == null) {
-            detail = "还没开 · 开一页看完所有任务";
-        } else {
-            detail = (rule.enabled ? "" : "已关闭 · ")
-                    + "每 " + overviewIntervalText(rule) + " · " + clockText(rule.start) + "-" + clockText(rule.end);
-        }
-        texts.addView(text(detail, 12, UiPalette.MUTED, false));
+        String detail = rule == null ? "总览提醒" : "每 " + overviewIntervalText(rule);
+        card.addView(text(detail, 15, rule != null && rule.enabled ? UiPalette.INK : UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
 
         Switch toggle = new Switch(this);
         toggle.setChecked(rule != null && rule.enabled);

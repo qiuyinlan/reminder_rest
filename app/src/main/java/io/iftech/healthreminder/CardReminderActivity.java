@@ -112,7 +112,7 @@ public final class CardReminderActivity extends Activity {
         scrollParams.topMargin = dp(12);
         contentRoot.addView(scroll, scrollParams);
 
-        TextView counter = text(String.format(Locale.getDefault(), "第 %d/%d 张", index + 1, deck.cards.size()),
+        TextView counter = text(String.format(Locale.getDefault(), "%d/%d", index + 1, deck.cards.size()),
                 11, UiPalette.MUTED, false);
         cardView.addView(counter);
 
@@ -203,7 +203,7 @@ public final class CardReminderActivity extends Activity {
         bar.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
 
         List<CardDeck> decks = CardDeck.all(this);
-        TextView swap = text("切换卡片集 ›", 12, UiPalette.ACCENT, true);
+        TextView swap = text("切换", 12, UiPalette.ACCENT, true);
         swap.setPadding(dp(8), dp(6), dp(2), dp(6));
         bar.addView(swap);
         swap.setOnClickListener(v -> {
@@ -286,7 +286,7 @@ public final class CardReminderActivity extends Activity {
         secondary.addView(close, closeParams);
         close.setOnClickListener(v -> finishOnly());
 
-        TextView later = text("关闭并稍后提醒", 13, UiPalette.ACCENT, true);
+        TextView later = text("稍后", 13, UiPalette.ACCENT, true);
         later.setGravity(Gravity.CENTER);
         later.setPadding(0, dp(12), 0, dp(12));
         LinearLayout.LayoutParams laterParams = new LinearLayout.LayoutParams(0, -2, 1f);

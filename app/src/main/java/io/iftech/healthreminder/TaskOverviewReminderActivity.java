@@ -40,23 +40,9 @@ public final class TaskOverviewReminderActivity extends Activity {
         root.setBackgroundColor(UiPalette.PAGE);
         setContentView(root);
 
-        TextView overline = text("今天的清单", 13, UiPalette.MUTED, true);
-        overline.setGravity(Gravity.CENTER);
-        overline.setPadding(dp(14), dp(8), dp(14), dp(8));
-        overline.setBackground(round(UiPalette.SOFT, 12));
-        root.addView(overline);
-
-        TextView title = text("还有这些要做", 26, UiPalette.INK, true);
-        title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
-        titleParams.topMargin = dp(14);
-        root.addView(title, titleParams);
-
-        summary = text("", 13, UiPalette.MUTED, false);
-        summary.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
-        summaryParams.topMargin = dp(6);
-        root.addView(summary, summaryParams);
+        summary = text("", 12, UiPalette.MUTED, false);
+        summary.setGravity(Gravity.END);
+        root.addView(summary, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -66,13 +52,13 @@ public final class TaskOverviewReminderActivity extends Activity {
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        TextView close = actionButton("先这样，继续做事", UiPalette.ACCENT, Color.WHITE);
+        TextView close = actionButton("关闭", UiPalette.ACCENT, Color.WHITE);
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(-1, dp(50));
         closeParams.topMargin = dp(8);
         root.addView(close, closeParams);
         close.setOnClickListener(v -> dismissPage());
 
-        TextView snooze = actionButton("10 分钟后再提醒我", UiPalette.SOFT, UiPalette.INK);
+        TextView snooze = actionButton("稍后", UiPalette.SOFT, UiPalette.INK);
         LinearLayout.LayoutParams snoozeParams = new LinearLayout.LayoutParams(-1, dp(46));
         snoozeParams.topMargin = dp(10);
         root.addView(snooze, snoozeParams);
@@ -105,8 +91,8 @@ public final class TaskOverviewReminderActivity extends Activity {
         for (ReminderSettings.Rule task : shown) {
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) doneCount++;
         }
-        summary.setText(shown.isEmpty() ? "清单是空的"
-                : String.format(Locale.getDefault(), "共 %d 个任务 · 已完成 %d 个", shown.size(), doneCount));
+        summary.setText(shown.isEmpty() ? ""
+                : String.format(Locale.getDefault(), "%d/%d", doneCount, shown.size()));
         if (shown.isEmpty()) {
             TextView empty = text("任务清单里还没有任务。\n回任务页加几个，到点我再来喊你。", 14, UiPalette.MUTED, false);
             empty.setGravity(Gravity.CENTER);
