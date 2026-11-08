@@ -2,6 +2,6 @@
     "versionCode": 26,
     "versionName": "0.3.0-beta16",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta16/rest-bean.apk",
-    "sha256": "0c579b0f9da68f20e1b4a2afb5693a34f690bd25375a2b5d206403f0277bb5a4",
-    "notes": "版本 0.3.0-beta16 更新。"
+    "sha256": "032b46e889d697a8ba8e99caf6e13bb1b5c78c721fe2cca4b24bfa6796f711cf",
+    "notes": "界面收一下 + 输入框看不见数字的问题。"
 }
