@@ -87,7 +87,7 @@ public final class TaskOverviewReminderActivity extends Activity {
     /** 今天所有任务都勾完了吗（或压根没任务）；闹钟到点时用它决定要不要再弹。 */
     static boolean allTasksDone(android.content.Context context) {
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
-        for (ReminderSettings.Rule task : ReminderSettings.moduleRules(context, ReminderSettings.MODULE_TASK)) {
+        for (ReminderSettings.Rule task : Tasks.today(context)) {
             if (!task.enabled) continue;
             if (!ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK, task.title, dayStart)) return false;
         }
@@ -96,7 +96,7 @@ public final class TaskOverviewReminderActivity extends Activity {
 
     private void renderTasks() {
         listContainer.removeAllViews();
-        List<ReminderSettings.Rule> tasks = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_TASK);
+        List<ReminderSettings.Rule> tasks = Tasks.today(this);
         List<ReminderSettings.Rule> shown = new ArrayList<>();
         for (ReminderSettings.Rule task : tasks) {
             if (task.enabled) shown.add(task);

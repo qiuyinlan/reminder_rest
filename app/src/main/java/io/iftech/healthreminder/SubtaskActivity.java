@@ -2,6 +2,7 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -14,6 +15,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.List;
 import java.util.Locale;
@@ -74,7 +76,17 @@ public final class SubtaskActivity extends Activity {
         row.addView(back);
 
         parentTitle = FormKit.text(this, "", 22, UiPalette.INK, true);
+        parentTitle.setOnClickListener(v -> editTitle());
         row.addView(parentTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView settings = FormKit.text(this, "提醒设置 ›", 12, UiPalette.ACCENT, true);
+        settings.setPadding(dp(8), dp(6), dp(2), dp(6));
+        settings.setOnClickListener(v -> {
+            startActivity(new Intent(this, TaskActivity.class)
+                    .putExtra(TaskActivity.EXTRA_EDIT_RULE_ID, parentId));
+            finish();
+        });
+        row.addView(settings);
         header.addView(row);
 
         summary = FormKit.text(this, "", 12, UiPalette.MUTED, false);
@@ -105,6 +117,34 @@ public final class SubtaskActivity extends Activity {
         addParams.leftMargin = dp(8);
         bar.addView(add, addParams);
         return bar;
+    }
+
+    /** 点标题改名字：任务名改了，完成记录按新名字算。 */
+    private void editTitle() {
+        ReminderSettings.Rule parent = ReminderSettings.ruleById(this, parentId);
+        if (parent == null) return;
+        final EditText input = FormKit.textInput(this, "任务名字", parent.title);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改名字")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String title = input.getText().toString().trim();
+            if (title.isEmpty()) {
+                Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            ReminderSettings.upsertRule(this, parent.withTitle(title));
+            dialog.dismiss();
+            render();
+        }));
+        FormKit.showStyled(this, dialog);
     }
 
     private void addSubtask() {
