@@ -52,6 +52,44 @@ final class FormKit {
         return fab;
     }
 
+    /** 弹出选项列表：统一卡片风格，禁止再用原生 setItems 弹窗。 */
+    interface OnOptionPicked { void onPicked(int index); }
+
+    static void options(Context context, String title, String[] labels, int destructiveIndex,
+                        final OnOptionPicked onPicked) {
+        LinearLayout list = new LinearLayout(context);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(context, 6), dp(context, 4), dp(context, 6), dp(context, 4));
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (int i = 0; i < labels.length; i++) {
+            TextView row = text(context, labels[i], 15,
+                    i == destructiveIndex ? UiPalette.WARN : UiPalette.INK, false);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(context, 14), dp(context, 13), dp(context, 14), dp(context, 13));
+            row.setMinHeight(dp(context, 48));
+            android.util.TypedValue ripple = new android.util.TypedValue();
+            context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, ripple, true);
+            row.setBackgroundResource(ripple.resourceId);
+            final int index = i;
+            row.setOnClickListener(v -> {
+                if (holder[0] != null) holder[0].dismiss();
+                onPicked.onPicked(index);
+            });
+            list.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        }
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(list);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        if (title != null && !title.isEmpty()) builder.setTitle(title);
+        AlertDialog dialog = builder.setView(scroll).setNegativeButton("取消", null).create();
+        holder[0] = dialog;
+        scroll.setLayoutParams(new LinearLayout.LayoutParams(-1,
+                labels.length > 8 ? dp(context, 360) : -2));
+        showStyled(context, dialog);
+    }
+
     static GradientDrawable round(Context context, int color, int radius) {        GradientDrawable shape = new GradientDrawable();
         shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(context, radius));

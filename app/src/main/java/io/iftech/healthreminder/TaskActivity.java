@@ -453,14 +453,12 @@ public final class TaskActivity extends Activity {
     }
 
     private void showTaskMenu(ReminderSettings.Rule task) {
-        new AlertDialog.Builder(this)
-                .setTitle(task.title.isEmpty() ? "未命名任务" : task.title)
-                .setItems(new String[]{"编辑提醒设置", "看子任务", "删除任务"}, (d, which) -> {
+        FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
+                new String[]{"编辑提醒设置", "看子任务", "删除任务"}, 2, which -> {
                     if (which == 0) showEditor(task);
                     else if (which == 1) openSubtasks(task);
                     else confirmDelete(task);
-                })
-                .show();
+                });
     }
 
     private String describe(ReminderSettings.Rule rule) {
