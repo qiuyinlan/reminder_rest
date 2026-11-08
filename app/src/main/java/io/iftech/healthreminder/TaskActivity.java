@@ -37,6 +37,7 @@ public final class TaskActivity extends Activity {
 
     private LinearLayout listContainer;
     private TextView subtitle;
+    private boolean completedExpanded;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -179,25 +180,73 @@ public final class TaskActivity extends Activity {
 
     private void reload() {
         List<ReminderSettings.Rule> tasks = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_TASK);
-        listContainer.removeAllViews();
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
-        int done = 0;
+        List<ReminderSettings.Rule> pending = new ArrayList<>();
+        List<ReminderSettings.Rule> finished = new ArrayList<>();
         for (ReminderSettings.Rule task : tasks) {
-            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) done++;
+            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
+                finished.add(task);
+            } else {
+                pending.add(task);
+            }
         }
         subtitle.setText(tasks.isEmpty() ? "还没有任务，点右下角加号"
-                : String.format(Locale.getDefault(), "共 %d 个任务 · 今天完成 %d 个", tasks.size(), done));
+                : String.format(Locale.getDefault(), "共 %d 个任务 · 今天完成 %d 个", tasks.size(), finished.size()));
+
+        listContainer.removeAllViews();
         listContainer.addView(buildOverviewCard());
         if (tasks.isEmpty()) {
-            TextView empty = text("任务到点会全屏弹出来提醒你。\n先加一个试试，比如「背 20 个单词」。", 14, UiPalette.MUTED, false);
+            TextView empty = text("先加一个试试，比如「背 20 个单词」。", 14, UiPalette.MUTED, false);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(20), dp(40), dp(20), dp(40));
             listContainer.addView(empty, new LinearLayout.LayoutParams(-1, -2));
             return;
         }
-        for (ReminderSettings.Rule task : tasks) {
+        for (ReminderSettings.Rule task : pending) {
             listContainer.addView(buildRow(task, dayStart));
         }
+        if (pending.isEmpty()) {
+            TextView allDone = text("今天的都做完了 ✓", 14, UiPalette.MUTED, false);
+            allDone.setGravity(Gravity.CENTER);
+            allDone.setPadding(dp(20), dp(26), dp(20), dp(26));
+            listContainer.addView(allDone, new LinearLayout.LayoutParams(-1, -2));
+        }
+        if (!finished.isEmpty()) {
+            listContainer.addView(buildCompletedSection(finished, dayStart));
+        }
+    }
+
+    /** 已完成：一条细线下方的折叠区，默认收起。 */
+    private View buildCompletedSection(List<ReminderSettings.Rule> finished, long dayStart) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+
+        View hairline = new View(this);
+        hairline.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams hairlineParams = new LinearLayout.LayoutParams(-1, dp(1));
+        hairlineParams.topMargin = dp(10);
+        section.addView(hairline, hairlineParams);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(4), dp(12), dp(4), dp(8));
+        TextView label = text("已完成 " + finished.size() + " 个", 13, UiPalette.MUTED, true);
+        header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView arrow = text(completedExpanded ? "收起 ⌃" : "展开 ⌄", 12, UiPalette.ACCENT, true);
+        header.addView(arrow);
+        header.setOnClickListener(v -> {
+            completedExpanded = !completedExpanded;
+            reload();
+        });
+        section.addView(header);
+
+        if (completedExpanded) {
+            for (ReminderSettings.Rule task : finished) {
+                section.addView(buildRow(task, dayStart));
+            }
+        }
+        return section;
     }
 
     /** 顶部「总览提醒」：每 N 分钟弹一页，列出全部任务。 */
@@ -390,61 +439,54 @@ public final class TaskActivity extends Activity {
     }
 
     private View buildRow(ReminderSettings.Rule task, long dayStart) {
-        boolean doneToday = ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(16), dp(13), dp(12), dp(13));
-        card.setBackground(FormKit.round(this, Color.WHITE, 16));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(8);
-        card.setLayoutParams(params);
+        boolean done = ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(48));
+        row.setPadding(dp(6), dp(10), dp(6), dp(10));
 
-        TextView badge = text(doneToday ? "✓" : task.badgeText(), 16,
-                doneToday ? Color.WHITE : UiPalette.ACCENT, true);
-        badge.setGravity(Gravity.CENTER);
-        badge.setBackground(FormKit.round(this, doneToday ? UiPalette.ACCENT : UiPalette.PALE, 12));
-        card.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        GradientDrawable boxShape = new GradientDrawable();
+        boxShape.setCornerRadius(dp(6));
+        boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) boxShape.setStroke(dp(1), UiPalette.BORDER);
+        TextView box = text(done ? "✓" : "", 12, Color.WHITE, true);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(boxShape);
+        box.setContentDescription(done ? "取消完成" : "标记完成");
+        LinearLayout.LayoutParams boxParams = new LinearLayout.LayoutParams(dp(22), dp(22));
+        boxParams.leftMargin = dp(6);
+        row.addView(box, boxParams);
+        box.setOnClickListener(v -> toggleDone(task, done, dayStart));
 
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        textParams.leftMargin = dp(12);
-        card.addView(texts, textParams);
+        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 16,
+                done ? UiPalette.MUTED : UiPalette.INK, false);
+        title.setMaxLines(1);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        if (done) title.setPaintFlags(title.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleParams.leftMargin = dp(12);
+        row.addView(title, titleParams);
 
-        int subtaskCount = Subtasks.of(this, task.id).size();
-        String titleText = task.title.isEmpty() ? "未命名任务" : task.title;
-        if (subtaskCount > 0) titleText = titleText + "  ·  " + subtaskCount + " 个子任务";
-        texts.addView(text(titleText, 16, doneToday ? UiPalette.MUTED : UiPalette.INK, true));
-        TextView schedule = text(describe(task), 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams scheduleParams = new LinearLayout.LayoutParams(-1, -2);
-        scheduleParams.topMargin = dp(3);
-        texts.addView(schedule, scheduleParams);
-        if (!task.reminderMessage.isEmpty()) {
-            TextView note = text(task.reminderMessage, 12, UiPalette.MUTED, false);
-            note.setMaxLines(1);
-            note.setEllipsize(TextUtils.TruncateAt.END);
-            texts.addView(note);
-        }
-
-        Switch toggle = new Switch(this);
-        toggle.setChecked(task.enabled);
-        toggle.setThumbTintList(new android.content.res.ColorStateList(
-                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{Color.WHITE, Color.WHITE}));
-        toggle.setTrackTintList(new android.content.res.ColorStateList(
-                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{UiPalette.ACCENT, UiPalette.DISABLED}));
-        toggle.setOnCheckedChangeListener((v, checked) ->
-                ReminderSettings.upsertRule(this, task.withEnabled(checked)));
-        card.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
-
-        card.setOnClickListener(v -> openSubtasks(task));
-        card.setOnLongClickListener(v -> {
+        row.setOnClickListener(v -> openSubtasks(task));
+        row.setOnLongClickListener(v -> {
             showTaskMenu(task);
             return true;
         });
-        return card;
+        return row;
+    }
+
+    private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart) {
+        if (done) {
+            ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
+            ReminderSettings.unmarkCompleted(this, task.id);
+        } else {
+            long now = System.currentTimeMillis();
+            ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
+                    ReminderRecord.KIND_DONE, now, now, "任务清单勾选", ReminderSettings.MODULE_TASK);
+            ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
+        }
+        reload();
     }
 
     private void openSubtasks(ReminderSettings.Rule task) {
@@ -453,11 +495,15 @@ public final class TaskActivity extends Activity {
     }
 
     private void showTaskMenu(ReminderSettings.Rule task) {
+        String toggleLabel = task.enabled ? "关闭单独提醒" : "开启单独提醒";
         FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                new String[]{"编辑提醒设置", "看子任务", "删除任务"}, 2, which -> {
+                new String[]{"编辑提醒设置", "看子任务", toggleLabel, "删除任务"}, 3, which -> {
                     if (which == 0) showEditor(task);
                     else if (which == 1) openSubtasks(task);
-                    else confirmDelete(task);
+                    else if (which == 2) {
+                        ReminderSettings.upsertRule(this, task.withEnabled(!task.enabled));
+                        reload();
+                    } else confirmDelete(task);
                 });
     }
 

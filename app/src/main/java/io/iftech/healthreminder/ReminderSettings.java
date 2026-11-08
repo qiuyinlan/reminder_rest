@@ -569,6 +569,13 @@ final class ReminderSettings {
         return prefs(context).getInt(key, 0);
     }
 
+    /** 取消一次完成计数（勾错了要能撤）。 */
+    static void unmarkCompleted(Context context, int ruleId) {
+        String key = "done_" + new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date()) + "_" + ruleId;
+        int count = Math.max(0, prefs(context).getInt(key, 0) - 1);
+        prefs(context).edit().putInt(key, count).apply();
+    }
+
     static boolean markCompleted(Context context, int ruleId, int target) {
         String key = "done_" + new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date()) + "_" + ruleId;
         int count = prefs(context).getInt(key, 0) + 1;
