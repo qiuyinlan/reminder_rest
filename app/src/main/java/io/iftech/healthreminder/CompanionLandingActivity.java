@@ -119,7 +119,7 @@ public final class CompanionLandingActivity extends Activity {
         prompt.setGravity(Gravity.CENTER);
         prompt.setPadding(0, dp(16), 0, dp(8));
         content.addView(prompt);
-        detail = text("可选择喜欢的环境音，随时结束。", 13, MUTED, false);
+        detail = text("", 13, MUTED, false);
         detail.setGravity(Gravity.CENTER);
         content.addView(detail);
 

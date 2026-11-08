@@ -41,6 +41,7 @@ public final class SettingsActivity extends Activity {
         page.setPadding(dp(20), dp(10), dp(20), dp(30));
         scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
         setContentView(scroll);
+        scroll.post(() -> FormKit.hideEmptyText(scroll));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -55,7 +56,7 @@ public final class SettingsActivity extends Activity {
         header.addView(title);
         page.addView(header);
 
-        TextView subtitle = text("让提醒方式更贴合你的日常", 13, MUTED, false);
+        TextView subtitle = text("", 13, MUTED, false);
         subtitle.setPadding(dp(54), dp(5), 0, 0);
         page.addView(subtitle);
 
@@ -76,7 +77,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout memberCopy = new LinearLayout(this);
         memberCopy.setOrientation(LinearLayout.VERTICAL);
         memberCopy.addView(text("会员与账号", 15, INK, true));
-        TextView memberDetail = text("邮箱登录 · 兑换会员码", 12, MUTED, false);
+        TextView memberDetail = text("", 12, MUTED, false);
         memberDetail.setPadding(0, dp(4), 0, 0);
         memberCopy.addView(memberDetail);
         membership.addView(memberCopy, new LinearLayout.LayoutParams(0, -2, 1));
@@ -122,7 +123,7 @@ public final class SettingsActivity extends Activity {
         profileCard.setElevation(dp(1));
         page.addView(profileCard, new LinearLayout.LayoutParams(-1, -2));
         profileCard.addView(text("性别", 16, INK, true));
-        TextView genderDetail = text("选择「女生」后，每日记录会出现经期标记，日历用粉色连线显示。",
+        TextView genderDetail = text("",
                 12, MUTED, false);
         genderDetail.setLineSpacing(dp(3), 1f);
         genderDetail.setPadding(0, dp(6), 0, 0);
@@ -161,7 +162,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout introCopy = new LinearLayout(this);
         introCopy.setOrientation(LinearLayout.VERTICAL);
         introCopy.addView(text("息屏时也能准时提醒", 16, INK, true));
-        TextView introDetail = text("管理息屏计时、闹钟声音、振动和锁屏权限。", 12, MUTED, false);
+        TextView introDetail = text("", 12, MUTED, false);
         introDetail.setPadding(0, dp(5), 0, 0);
         introCopy.addView(introDetail);
         intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
@@ -192,7 +193,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams themeOptionsParams = new LinearLayout.LayoutParams(-1, -2);
         themeOptionsParams.topMargin = dp(10);
         appearanceCard.addView(themeOptions, themeOptionsParams);
-        TextView themeNote = text("切换后会重新打开首页，已选主题会保留。", 12, MUTED, false);
+        TextView themeNote = text("", 12, MUTED, false);
         themeNote.setPadding(0, dp(9), 0, 0);
         appearanceCard.addView(themeNote);
 
@@ -228,7 +229,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout settingCopy = new LinearLayout(this);
         settingCopy.setOrientation(LinearLayout.VERTICAL);
         settingCopy.addView(text("息屏提醒", 16, INK, true));
-        TextView settingDetail = text("计时方式、闹钟铃声、振动与权限检查", 12, MUTED, false);
+        TextView settingDetail = text("", 12, MUTED, false);
         settingDetail.setMaxLines(2);
         settingDetail.setPadding(0, dp(5), 0, 0);
         settingCopy.addView(settingDetail);
@@ -256,7 +257,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout diagCopy = new LinearLayout(this);
         diagCopy.setOrientation(LinearLayout.VERTICAL);
         diagCopy.addView(text("提醒诊断", 16, INK, true));
-        TextView diagDetail = text("看开关、权限和每一条的下一闹钟", 12, MUTED, false);
+        TextView diagDetail = text("", 12, MUTED, false);
         diagDetail.setPadding(0, dp(5), 0, 0);
         diagCopy.addView(diagDetail);
         diagnostics.addView(diagCopy, new LinearLayout.LayoutParams(0, -2, 1));
@@ -288,7 +289,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout exportCopy = new LinearLayout(this);
         exportCopy.setOrientation(LinearLayout.VERTICAL);
         exportCopy.addView(text("导出身体数据", 16, INK, true));
-        TextView exportDetail = text("按日期范围、月份或全部导出 CSV", 12, MUTED, false);
+        TextView exportDetail = text("", 12, MUTED, false);
         exportDetail.setPadding(0, dp(5), 0, 0);
         exportCopy.addView(exportDetail);
         exportCard.addView(exportCopy, new LinearLayout.LayoutParams(0, -2, 1));
@@ -339,7 +340,7 @@ public final class SettingsActivity extends Activity {
             LinearLayout crashCopy = new LinearLayout(this);
             crashCopy.setOrientation(LinearLayout.VERTICAL);
             crashCopy.addView(text("上次崩溃日志", 16, INK, true));
-            TextView crashDetail = text("点开可以复制堆栈，方便排查闪退", 12, MUTED, false);
+            TextView crashDetail = text("", 12, MUTED, false);
             crashDetail.setPadding(0, dp(5), 0, 0);
             crashCopy.addView(crashDetail);
             crashCard.addView(crashCopy, new LinearLayout.LayoutParams(0, -2, 1));
@@ -355,7 +356,7 @@ public final class SettingsActivity extends Activity {
         noteParams.topMargin = dp(13);
         page.addView(note, noteParams);
         note.addView(text("息屏提醒小贴士", 13, INK, true));
-        TextView noteBody = text("如果提醒没有按时出现，可以在息屏设置中查看精确闹钟、通知和锁屏全屏提醒权限。", 12, MUTED, false);
+        TextView noteBody = text("", 12, MUTED, false);
         noteBody.setPadding(0, dp(5), 0, 0);
         note.addView(noteBody);
     }

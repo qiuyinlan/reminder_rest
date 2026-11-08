@@ -86,6 +86,7 @@ public final class ItemsActivity extends Activity {
         frame.addView(addFabPro, proBadge);
         addFabPro.setVisibility(View.GONE);
         setContentView(frame);
+        frame.post(() -> FormKit.hideEmptyText(frame));
         renderItems();
         if (state == null) {
             if (getIntent().getBooleanExtra("new_item", false)) {
@@ -137,7 +138,7 @@ public final class ItemsActivity extends Activity {
         summary.setElevation(dp(1));
         LinearLayout summaryTop = new LinearLayout(this);
         summaryTop.setGravity(Gravity.CENTER_VERTICAL);
-        TextView summaryTitle = text("今天的完成进度", 14, INK, true);
+        TextView summaryTitle = text("", 14, INK, true);
         summaryTop.addView(summaryTitle, new LinearLayout.LayoutParams(0, -2, 1));
         TextView date = text(new SimpleDateFormat("M月d日  EEEE", Locale.CHINA)
                 .format(Calendar.getInstance().getTime()), 12, MUTED, false);
@@ -224,7 +225,7 @@ public final class ItemsActivity extends Activity {
             card.setOnLongClickListener(v -> { showItemHistory(rule); return true; });
         }
         if (rules.isEmpty()) {
-            TextView empty = text("还没有提醒事项", 15, MUTED, true);
+            TextView empty = text("", 15, MUTED, true);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
             empty.setBackground(surface(UiPalette.headGradient(), 16, UiPalette.BORDER));
@@ -567,7 +568,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout timePointSection = new LinearLayout(this);
         timePointSection.setOrientation(LinearLayout.VERTICAL);
         timePointSection.addView(editorLabel("每天的提醒时间", true));
-        TextView timePointHint = text("每个时间点每天提醒一次", 12, MUTED, false);
+        TextView timePointHint = text("", 12, MUTED, false);
         timePointHint.setPadding(0, 0, 0, dp(3));
         timePointSection.addView(timePointHint);
         LinearLayout timePointRows = new LinearLayout(this);
@@ -617,7 +618,7 @@ public final class ItemsActivity extends Activity {
         });
         targetRow.addView(targetButton);
         settings.addView(targetRow);
-        TextView goalLabel = text("达标后是否继续提醒", 13, MUTED, true);
+        TextView goalLabel = text("达标后继续", 13, MUTED, true);
         goalLabel.setPadding(0, dp(6), 0, dp(2));
         settings.addView(goalLabel);
         LinearLayout goalOptions = new LinearLayout(this);
@@ -746,7 +747,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout titleGroup = new LinearLayout(this);
         titleGroup.setOrientation(LinearLayout.VERTICAL);
         titleGroup.addView(text(rule.title, 19, INK, true));
-        TextView subtitle = text("今天每一次照顾自己，都值得记下来", 12, MUTED, false);
+        TextView subtitle = text("", 12, MUTED, false);
         subtitle.setPadding(0, dp(3), 0, 0);
         titleGroup.addView(subtitle);
         header.addView(titleGroup, new LinearLayout.LayoutParams(0, -2, 1));
@@ -1222,7 +1223,7 @@ public final class ItemsActivity extends Activity {
     private void renderTimePoints(List<Integer> timePoints, LinearLayout rows) {
         rows.removeAllViews();
         if (timePoints.isEmpty()) {
-            TextView empty = text("尚未添加时间点", 13, MUTED, false);
+            TextView empty = text("", 13, MUTED, false);
             empty.setPadding(dp(4), dp(8), 0, dp(8));
             rows.addView(empty);
             return;
