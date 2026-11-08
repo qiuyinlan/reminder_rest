@@ -15,6 +15,7 @@ import java.util.Locale;
 final class CrashLog {
     private static final String PREFS = "crash_log";
     private static final String KEY_LAST = "last";
+    private static final String KEY_PROMPTED = "prompted";
     private static final int MAX_CHARS = 20000;
 
     private CrashLog() { }
@@ -46,7 +47,7 @@ final class CrashLog {
         String text = buffer.toString();
         if (text.length() > MAX_CHARS) text = text.substring(0, MAX_CHARS) + "\n…";
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putString(KEY_LAST, text).apply();
+                .edit().putString(KEY_LAST, text).remove(KEY_PROMPTED).apply();
     }
 
     private static boolean prompted;
@@ -56,10 +57,29 @@ final class CrashLog {
         if (prompted) return;
         String text = last(activity);
         if (text.isEmpty()) return;
+        // 同一份日志只弹一次：旧版本留下的崩溃翻来覆去地弹，
+        // 会让人以为现在还在闪退。日志本体保留在设置里可查。
+        android.content.SharedPreferences prefs =
+                activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_PROMPTED, false)) return;
         prompted = true;
+        prefs.edit().putBoolean(KEY_PROMPTED, true).apply();
+
+        String rawVersion = BuildConfig.VERSION_NAME;
+        int versionStart = text.indexOf("版本：");
+        int versionEnd = versionStart < 0 ? -1 : text.indexOf('\n', versionStart);
+        if (versionStart >= 0 && versionEnd > versionStart) {
+            rawVersion = text.substring(versionStart + 3, versionEnd).trim();
+        }
+        boolean stale = !rawVersion.startsWith(BuildConfig.VERSION_NAME)
+                && !BuildConfig.VERSION_NAME.startsWith(rawVersion.split(" ")[0]);
+        String bodyText = (stale
+                ? "※ 这条日志来自旧版本 " + rawVersion + "，当前是 " + BuildConfig.VERSION_NAME
+                + "，可能已经修好了。先升级到最新版再看。\n\n" : "")
+                + (text.length() > 6000 ? text.substring(0, 6000) + "\n…" : text);
 
         android.widget.TextView body = new android.widget.TextView(activity);
-        body.setText(text.length() > 6000 ? text.substring(0, 6000) + "\n…" : text);
+        body.setText(bodyText);
         body.setTextSize(11);
         body.setTextColor(UiPalette.INK);
         body.setTextIsSelectable(true);
@@ -70,7 +90,7 @@ final class CrashLog {
         frame.addView(scroll, new android.widget.FrameLayout.LayoutParams(-1, dp(activity, 320)));
 
         new android.app.AlertDialog.Builder(activity)
-                .setTitle("上次运行崩溃了")
+                .setTitle("上次运行崩溃了（" + rawVersion + "）")
                 .setView(frame)
                 .setPositiveButton("复制日志", (dialog, which) -> {
                     copy(activity, text);
