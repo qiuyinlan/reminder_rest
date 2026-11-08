@@ -1,7 +1,7 @@
 {
-    "versionCode": 29,
-    "versionName": "0.3.0-beta19",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta19/rest-bean.apk",
-    "sha256": "7ad3b9bd6e31d9a8cff1f87d8bcc121f9cc7577f53cd891a75d5d6847f268b07",
-    "notes": "卡片 / 任务提醒恢复霸屏页。"
+    "versionCode": 30,
+    "versionName": "0.3.0-beta20",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta20/rest-bean.apk",
+    "sha256": "a03867a3c1e4e906a645d04f1c888c3fb54c0359e86b711d1d1c6b8828fbc981",
+    "notes": "任务可以设成「之后的任务」，任务名能直接改。"
 }
