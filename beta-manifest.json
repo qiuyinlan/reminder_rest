@@ -1,7 +1,7 @@
 {
-    "versionCode": 22,
-    "versionName": "0.3.0-beta12",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta12/rest-bean.apk",
-    "sha256": "879021faa35546d6cb2630b51deecdade0e0e773727ec5632c0f116f169f7436",
-    "notes": "修复卡片提醒到点不弹的问题。"
+    "versionCode": 23,
+    "versionName": "0.3.0-beta13",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta13/rest-bean.apk",
+    "sha256": "6e7ce72324bf4e02ad235b7d4fc8ee54d19ebc83b4a1e69e60bab88248f5cbdc",
+    "notes": "任务页新增「总览提醒」。"
 }
