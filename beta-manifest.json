@@ -1,7 +1,7 @@
 {
-    "versionCode": 31,
-    "versionName": "0.3.0-beta21",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta21/rest-bean.apk",
-    "sha256": "4d4a96c90d981a1a652a49554a187656d782bd893b37f7c7dc906a66c291ddd6",
-    "notes": "卡片霸屏页重做：能翻页、能换卡片集、能稍后提醒。"
+    "versionCode": 32,
+    "versionName": "0.3.0-beta22",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta22/rest-bean.apk",
+    "sha256": "5abd6eddfcaa20911471ea2295be594e2f8789261a97163e0ae84867e148a8df",
+    "notes": "全面减字。"
 }
