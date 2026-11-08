@@ -45,7 +45,7 @@ public final class SubtaskActivity extends Activity {
         scroll.setFillViewport(true);
         listContainer = new LinearLayout(this);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        listContainer.setPadding(dp(16), dp(4), dp(16), dp(16));
+        listContainer.setPadding(dp(16), dp(4), dp(16), dp(12));
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -95,17 +95,13 @@ public final class SubtaskActivity extends Activity {
         input.setHint("加一个子任务");
         input.setTextSize(15);
         input.setSingleLine(true);
-        input.setBackground(FormKit.round(this, Color.WHITE, 14));
-        input.setPadding(dp(14), dp(12), dp(14), dp(12));
-        bar.addView(input, new LinearLayout.LayoutParams(0, -2, 1f));
+        bar.addView(input, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView add = FormKit.text(this, "添加", 15, Color.WHITE, true);
         add.setGravity(Gravity.CENTER);
-        add.setPadding(dp(16), dp(12), dp(16), dp(12));
-        GradientDrawable bg = FormKit.round(this, UiPalette.ACCENT, 14);
-        add.setBackground(bg);
+        add.setBackground(FormKit.round(this, UiPalette.ACCENT, 12));
         add.setOnClickListener(v -> addSubtask());
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(72), dp(48));
         addParams.leftMargin = dp(8);
         bar.addView(add, addParams);
         return bar;
