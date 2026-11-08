@@ -173,9 +173,8 @@ public final class ReminderReceiver extends BroadcastReceiver {
         Intent dismissed = new Intent(context, ReminderReceiver.class).setAction(ACTION_STOP_ALARM_VIBRATION);
         PendingIntent delete = PendingIntent.getBroadcast(context, 704, dismissed,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        boolean covered = rule != null && !rule.isBodyModule()
-                ? false
-                : ReminderOverlayWindow.show(context, action, ruleId);
+        // 所有模块都用同一套悬浮霸屏页：以前只给身体模块，任务和卡片就只剩一条通知。
+        boolean covered = ReminderOverlayWindow.show(context, action, ruleId);
         ReminderDebug.note(context, "post rule=" + ruleId + " target=" + target.getSimpleName()
                 + " alarmMode=" + alarmMode + " overlay=" + covered
                 + " notify=" + notificationsEnabled + " exact="
