@@ -97,6 +97,11 @@ public final class ReminderReceiver extends BroadcastReceiver {
             Log.i(TAG, "screen-off alarm session started rule=" + rule.id);
         }
         scheduleNextSafely(context, rule.id);
+        if (rule.isTaskAllModule() && TaskOverviewReminderActivity.allTasksDone(context)) {
+            // 今日任务都做完了，不再弹总览页，下一个闹钟照常排。
+            ReminderDebug.note(context, "总览提醒跳过：今日任务已全部完成 rule=" + rule.id);
+            return;
+        }
         postSafely(context, rule.title, rule.id);
     }
 
@@ -159,7 +164,8 @@ public final class ReminderReceiver extends BroadcastReceiver {
         if (action == null) action = ReminderSettings.nextType(context);
         ReminderSettings.Rule rule = ReminderSettings.ruleById(context, ruleId);
         Class<?> target = ReminderActivity.class;
-        if (rule != null && rule.isTaskModule()) target = TaskReminderActivity.class;
+        if (rule != null && rule.isTaskAllModule()) target = TaskOverviewReminderActivity.class;
+        else if (rule != null && rule.isTaskModule()) target = TaskReminderActivity.class;
         else if (rule != null && rule.isCardModule()) target = CardReminderActivity.class;
         Intent open = new Intent(context, target).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);

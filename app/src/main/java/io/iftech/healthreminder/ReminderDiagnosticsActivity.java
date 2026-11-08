@@ -123,8 +123,8 @@ public final class ReminderDiagnosticsActivity extends Activity {
         if (rules.isEmpty()) return "没有任何规则。";
         StringBuilder text = new StringBuilder();
         for (ReminderSettings.Rule rule : rules) {
-            String module = rule.isBodyModule() ? "身体" : rule.isTaskModule() ? "任务"
-                    : rule.isCardModule() ? "卡片" : "其他";
+            String module = rule.isBodyModule() ? "身体" : rule.isTaskAllModule() ? "任务总览"
+                    : rule.isTaskModule() ? "任务" : rule.isCardModule() ? "卡片" : "其他";
             long next = ReminderScheduler.scheduledAt(this, rule.id);
             text.append(module).append(" · ").append(rule.title)
                     .append(rule.enabled ? "" : "（已关闭）").append("\n");

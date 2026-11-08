@@ -54,6 +54,12 @@
             android:turnScreenOn="true"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".TaskOverviewReminderActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:screenOrientation="portrait" />
+        <activity
             android:name=".ReminderActivity"
             android:exported="false"
             android:showWhenLocked="true"

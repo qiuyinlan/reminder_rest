@@ -147,6 +147,7 @@ public final class TaskActivity extends Activity {
         }
         subtitle.setText(tasks.isEmpty() ? "还没有任务，点右上角加一个"
                 : String.format(Locale.getDefault(), "共 %d 个任务 · 今天完成 %d 个", tasks.size(), done));
+        listContainer.addView(buildOverviewCard());
         if (tasks.isEmpty()) {
             TextView empty = text("任务到点会全屏弹出来提醒你。\n先加一个试试，比如「背 20 个单词」。", 14, UiPalette.MUTED, false);
             empty.setGravity(Gravity.CENTER);
@@ -157,6 +158,193 @@ public final class TaskActivity extends Activity {
         for (ReminderSettings.Rule task : tasks) {
             listContainer.addView(buildRow(task, dayStart));
         }
+    }
+
+    /** 顶部「总览提醒」：每 N 分钟弹一页，列出全部任务。 */
+    private View buildOverviewCard() {
+        ReminderSettings.Rule rule = overviewRule();
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(FormKit.round(this, Color.WHITE, 16));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.bottomMargin = dp(12);
+        card.setLayoutParams(cardParams);
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
+        texts.addView(text("总览提醒", 16, UiPalette.INK, true));
+        String detail;
+        if (rule == null) {
+            detail = "还没开 · 开一页看完所有任务";
+        } else {
+            detail = (rule.enabled ? "" : "已关闭 · ")
+                    + "每 " + overviewIntervalText(rule) + " · " + clockText(rule.start) + "-" + clockText(rule.end);
+        }
+        texts.addView(text(detail, 12, UiPalette.MUTED, false));
+
+        Switch toggle = new Switch(this);
+        toggle.setChecked(rule != null && rule.enabled);
+        toggle.setOnCheckedChangeListener((button, checked) -> setOverviewEnabled(checked));
+        card.addView(toggle);
+
+        card.setOnClickListener(v -> showOverviewEditor());
+        return card;
+    }
+
+    private ReminderSettings.Rule overviewRule() {
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(this)) {
+            if (rule.isTaskAllModule()) return rule;
+        }
+        return null;
+    }
+
+    private void setOverviewEnabled(boolean enabled) {
+        ReminderSettings.Rule existing = overviewRule();
+        ReminderSettings.Rule rule;
+        if (existing == null) {
+            if (!enabled) return;
+            rule = ReminderSettings.Rule.withIntervalSeconds(ReminderSettings.nextRuleId(this),
+                    "任务总览", 9 * 60, 21 * 60, 30 * 60, 9999, true, true)
+                    .withModule(ReminderSettings.MODULE_TASK_ALL);
+        } else {
+            rule = existing.withEnabled(enabled);
+        }
+        ReminderSettings.upsertRule(this, rule);
+        reload();
+    }
+
+    private void showOverviewEditor() {
+        ReminderSettings.Rule existing = overviewRule();
+        final int[] window = {existing == null ? 9 * 60 : existing.start,
+                existing == null ? 21 * 60 : existing.end};
+        final int[] minutes = {existing == null ? 30 : Math.max(1, existing.intervalSeconds / 60)};
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(6), dp(18), dp(4));
+        form.addView(text("每隔几分钟弹一次，列出一整页任务", 12, UiPalette.MUTED, false));
+
+        Button windowButton = new Button(this);
+        windowButton.setAllCaps(false);
+        windowButton.setText(clockText(window[0]) + " - " + clockText(window[1]) + "  ‹起止时间›");
+        LinearLayout.LayoutParams windowParams = new LinearLayout.LayoutParams(-1, -2);
+        windowParams.topMargin = dp(6);
+        form.addView(windowButton, windowParams);
+        windowButton.setOnClickListener(v -> pickMinutes(window[0], pickedStart ->
+                pickMinutes(window[1], pickedEnd -> {
+                    window[0] = pickedStart;
+                    window[1] = pickedEnd;
+                    windowButton.setText(clockText(window[0]) + " - " + clockText(window[1]) + "  ‹起止时间›");
+                })));
+
+        LinearLayout chips = new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        chips.setPadding(0, dp(10), 0, dp(2));
+        form.addView(chips);
+        final int[] presets = {15, 30, 45, 60};
+        final List<TextView> chipViews = new ArrayList<>();
+        final Runnable refreshChips = () -> {
+            for (int i = 0; i < chipViews.size(); i++) {
+                boolean selected = minutes[0] == presets[i];
+                TextView chip = chipViews.get(i);
+                chip.setTextColor(selected ? Color.WHITE : UiPalette.INK);
+                chip.setBackground(FormKit.round(this, selected ? UiPalette.ACCENT : UiPalette.SOFT, 12));
+            }
+        };
+        for (int preset : presets) {
+            TextView chip = text(preset + " 分", 13, UiPalette.INK, false);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(12), dp(8), dp(12), dp(8));
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            chipParams.rightMargin = dp(6);
+            chips.addView(chip, chipParams);
+            chipViews.add(chip);
+            chip.setOnClickListener(v -> {
+                minutes[0] = preset;
+                refreshChips.run();
+            });
+        }
+        refreshChips.run();
+
+        LinearLayout custom = new LinearLayout(this);
+        custom.setOrientation(LinearLayout.HORIZONTAL);
+        custom.setGravity(Gravity.CENTER_VERTICAL);
+        custom.setPadding(0, dp(10), 0, 0);
+        form.addView(custom);
+        custom.addView(text("自定义（分钟）", 13, UiPalette.MUTED, false));
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.valueOf(minutes[0]));
+        input.setTextSize(14);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        inputParams.leftMargin = dp(12);
+        custom.addView(input, inputParams);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("总览提醒")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int picked = minutes[0];
+            try {
+                int typed = Integer.parseInt(input.getText().toString().trim());
+                if (typed > 0 && typed != minutes[0]) picked = typed;
+            } catch (NumberFormatException ignored) { }
+            int start = window[0];
+            int end = window[1];
+            if (end <= start) end = Math.min(23 * 60 + 59, start + 60);
+            int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
+            ReminderSettings.Rule rule = ReminderSettings.Rule.withIntervalSeconds(id, "任务总览",
+                    start, end, Math.max(60, picked * 60), 9999, true, true)
+                    .withModule(ReminderSettings.MODULE_TASK_ALL);
+            ReminderSettings.upsertRule(this, rule);
+            dialog.dismiss();
+            reload();
+            warnIfCannotPop();
+        }));
+        FormKit.showStyled(this, dialog);
+    }
+
+    private void warnIfCannotPop() {
+        if (android.os.Build.VERSION.SDK_INT < 23
+                || android.provider.Settings.canDrawOverlays(this)) return;
+        new AlertDialog.Builder(this)
+                .setTitle("还差一个权限")
+                .setMessage("总览页到点要直接弹到屏幕上，需要允许「显示在其他应用上层」。")
+                .setNegativeButton("稍后", null)
+                .setPositiveButton("去开启", (d, w) -> {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:" + getPackageName())));
+                    } catch (Exception error) {
+                        Toast.makeText(this, "无法打开悬浮窗设置", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
+    }
+
+    private interface OnMinutePicked { void onPicked(int minuteOfDay); }
+
+    private void pickMinutes(int current, final OnMinutePicked onPicked) {
+        new android.app.TimePickerDialog(this, (view, hour, minute) -> onPicked.onPicked(hour * 60 + minute),
+                current / 60, current % 60, true).show();
+    }
+
+    private String clockText(int minuteOfDay) {
+        return String.format(Locale.getDefault(), "%02d:%02d", (minuteOfDay / 60) % 24, minuteOfDay % 60);
+    }
+
+    private String overviewIntervalText(ReminderSettings.Rule rule) {
+        int minutes = Math.max(1, rule.intervalSeconds / 60);
+        if (minutes < 60) return minutes + " 分钟";
+        int hours = minutes / 60;
+        int rest = minutes % 60;
+        return rest == 0 ? hours + " 小时" : hours + " 小时 " + rest + " 分钟";
     }
 
     private View buildRow(ReminderSettings.Rule task, long dayStart) {
