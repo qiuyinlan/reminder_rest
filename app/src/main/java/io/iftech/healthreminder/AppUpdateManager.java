@@ -69,34 +69,72 @@ final class AppUpdateManager {
         return new UpdateInfo(versionCode, versionName, apkUrl, sha256, notes);
     }
 
+    /** 清单地址：官方 raw 在国内常被墙，依次试镜像。 */
+    private static String[] manifestUrls() {
+        String primary = BuildConfig.UPDATE_MANIFEST_URL;
+        String file = primary.contains("beta-manifest") ? "beta-manifest.json" : "update-manifest.json";
+        String jsdelivr = "https://cdn.jsdelivr.net/gh/qiuyinlan/reminder_rest@main/" + file;
+        return new String[]{
+                primary,
+                "https://ghfast.top/" + primary,
+                jsdelivr
+        };
+    }
+
     static void check(Activity activity, boolean manual) {
-        String manifestUrl = BuildConfig.UPDATE_MANIFEST_URL;
-        if (!isHttps(manifestUrl)) {
-            if (manual) toast(activity, "尚未配置更新清单地址");
+        String primary = BuildConfig.UPDATE_MANIFEST_URL;
+        if (!isHttps(primary)) {
+            if (manual) showResult(activity, "尚未配置更新地址", false);
             return;
         }
         long now = System.currentTimeMillis();
         android.content.SharedPreferences prefs = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
         if (!manual && now - prefs.getLong(LAST_CHECK, 0) < CHECK_INTERVAL_MS) return;
-        if (manual) toast(activity, "正在检查更新，请稍候…");
+        if (manual) toast(activity, "正在检查更新…");
         prefs.edit().putLong(LAST_CHECK, now).apply();
         new Thread(() -> {
             UpdateInfo update = null;
-            String failure = null;
-            try {
-                update = parseManifest(requestText(manifestUrl));
-                if (update.versionCode <= BuildConfig.VERSION_CODE) update = null;
-            } catch (IOException | JSONException | IllegalStateException e) {
-                failure = "检查更新失败，请检查网络后重试";
+            String failure = "检查更新失败，请检查网络后重试";
+            for (String url : manifestUrls()) {
+                if (!isHttps(url)) continue;
+                try {
+                    UpdateInfo parsed = parseManifest(requestText(url));
+                    update = parsed.versionCode > BuildConfig.VERSION_CODE ? parsed : null;
+                    failure = null;
+                    break;
+                } catch (IOException | JSONException | IllegalStateException e) {
+                    failure = "检查更新失败，请检查网络后重试";
+                }
             }
             UpdateInfo found = update;
             String error = failure;
             activity.runOnUiThread(() -> {
                 if (activity.isFinishing() || activity.isDestroyed()) return;
                 if (found != null) showAvailable(activity, found);
-                else if (manual) toast(activity, error == null ? "当前已是最新版本" : error);
+                else if (manual) showResult(activity, error, error == null);
             });
         }, "app-update-check").start();
+    }
+
+    /** 手动检查的结果页：一定给看得见的反馈，不再只闪一条 toast。 */
+    private static void showResult(Activity activity, String message, boolean upToDate) {
+        String body = "当前 " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")";
+        if (!upToDate && message != null && !message.isEmpty()) body += "\n\n" + message;
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle(upToDate ? "已是最新版本" : "没查到新版本")
+                .setMessage(body)
+                .setNegativeButton("好", null)
+                .setPositiveButton("打开下载页", (d, w) -> {
+                    try {
+                        activity.startActivity(new android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://github.com/qiuyinlan/reminder_rest/releases")));
+                    } catch (RuntimeException error) {
+                        toast(activity, "打不开浏览器");
+                    }
+                })
+                .create();
+        FormKit.showStyled(activity, dialog);
     }
 
     static void resumePendingInstall(Activity activity) {
@@ -111,12 +149,13 @@ final class AppUpdateManager {
     private static void showAvailable(Activity activity, UpdateInfo update) {
         String message = "版本 " + update.versionName + " (" + update.versionCode + ")";
         if (!update.notes.isEmpty()) message += "\n\n" + update.notes;
-        new AlertDialog.Builder(activity)
+        AlertDialog dialog = new AlertDialog.Builder(activity)
                 .setTitle("发现新版本")
                 .setMessage(message)
                 .setNegativeButton("稍后", null)
-                .setPositiveButton("下载更新", (dialog, which) -> download(activity, update))
-                .show();
+                .setPositiveButton("下载更新", (d, which) -> download(activity, update))
+                .create();
+        FormKit.showStyled(activity, dialog);
     }
 
     private static void download(Activity activity, UpdateInfo update) {

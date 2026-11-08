@@ -99,8 +99,8 @@ public final class SettingsActivity extends Activity {
         LinearLayout updateCopy = new LinearLayout(this);
         updateCopy.setOrientation(LinearLayout.VERTICAL);
         updateCopy.addView(text("检查应用更新", 15, INK, true));
-        TextView updateDetail = text(BuildConfig.UPDATE_MANIFEST_URL.isEmpty()
-                ? "启动自动检查（需配置更新地址）" : "启动自动检查已开启", 12, MUTED, false);
+        TextView updateDetail = text("当前 " + BuildConfig.VERSION_NAME
+                + " (" + BuildConfig.VERSION_CODE + ")", 12, MUTED, false);
         updateDetail.setPadding(0, dp(4), 0, 0);
         updateCopy.addView(updateDetail);
         update.addView(updateCopy, new LinearLayout.LayoutParams(0, -2, 1));
