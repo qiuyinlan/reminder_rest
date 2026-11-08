@@ -38,6 +38,7 @@ public final class TaskActivity extends Activity {
     private LinearLayout listContainer;
     private TextView subtitle;
     private boolean completedExpanded;
+    private boolean futureExpanded;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -128,7 +129,15 @@ public final class TaskActivity extends Activity {
     protected void onResume() {
         super.onResume();
         reload();
+        int editId = getIntent().getIntExtra(EXTRA_EDIT_RULE_ID, -1);
+        if (editId >= 0) {
+            getIntent().removeExtra(EXTRA_EDIT_RULE_ID);
+            ReminderSettings.Rule rule = ReminderSettings.ruleById(this, editId);
+            if (rule != null) listContainer.post(() -> showEditor(rule));
+        }
     }
+
+    static final String EXTRA_EDIT_RULE_ID = "edit_rule_id";
 
     // ---------------------------------------------------------------- 顶部
 
@@ -179,7 +188,7 @@ public final class TaskActivity extends Activity {
     // ---------------------------------------------------------------- 列表
 
     private void reload() {
-        List<ReminderSettings.Rule> tasks = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_TASK);
+        List<ReminderSettings.Rule> tasks = Tasks.today(this);
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         List<ReminderSettings.Rule> pending = new ArrayList<>();
         List<ReminderSettings.Rule> finished = new ArrayList<>();
@@ -205,6 +214,14 @@ public final class TaskActivity extends Activity {
         for (ReminderSettings.Rule task : pending) {
             listContainer.addView(buildRow(task, dayStart));
         }
+        List<ReminderSettings.Rule> future = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (ReminderSettings.Rule task : Tasks.all(this)) {
+            if (!Tasks.isForToday(task, now)) future.add(task);
+        }
+        if (!future.isEmpty()) {
+            listContainer.addView(buildFutureSection(future));
+        }
         if (pending.isEmpty()) {
             TextView allDone = text("今天的都做完了 ✓", 14, UiPalette.MUTED, false);
             allDone.setGravity(Gravity.CENTER);
@@ -214,6 +231,64 @@ public final class TaskActivity extends Activity {
         if (!finished.isEmpty()) {
             listContainer.addView(buildCompletedSection(finished, dayStart));
         }
+    }
+
+    /** 之后的任务：设成未来日期的任务收在这里，默认收起。 */
+    private View buildFutureSection(List<ReminderSettings.Rule> future) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+
+        View hairline = new View(this);
+        hairline.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams hairlineParams = new LinearLayout.LayoutParams(-1, dp(1));
+        hairlineParams.topMargin = dp(10);
+        section.addView(hairline, hairlineParams);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(4), dp(12), dp(4), dp(8));
+        header.addView(text("之后的任务 " + future.size() + " 个", 13, UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        header.addView(text(futureExpanded ? "收起 ⌃" : "展开 ⌄", 12, UiPalette.ACCENT, true));
+        header.setOnClickListener(v -> {
+            futureExpanded = !futureExpanded;
+            reload();
+        });
+        section.addView(header);
+
+        if (futureExpanded) {
+            for (ReminderSettings.Rule task : future) {
+                section.addView(buildFutureRow(task));
+            }
+        }
+        return section;
+    }
+
+    private View buildFutureRow(ReminderSettings.Rule task) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(44));
+        row.setPadding(dp(6), dp(10), dp(6), dp(10));
+
+        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 15, UiPalette.INK, false);
+        title.setMaxLines(1);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(task.onceAt);
+        row.addView(text(String.format(Locale.getDefault(), "%d月%d日",
+                cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH)),
+                12, UiPalette.MUTED, false));
+
+        row.setOnClickListener(v -> openSubtasks(task));
+        row.setOnLongClickListener(v -> {
+            showTaskMenu(task);
+            return true;
+        });
+        return row;
     }
 
     /** 已完成：一条细线下方的折叠区，默认收起。 */
@@ -388,7 +463,7 @@ public final class TaskActivity extends Activity {
             }
             int start = window[0];
             int end = window[1];
-            if (end <= start) end = Math.min(23 * 60 + 59, start + 60);
+            if (end == start) end = (start + 60) % (24 * 60);
             int id = existing == null ? ReminderSettings.nextRuleId(this) : existing.id;
             ReminderSettings.Rule rule = ReminderSettings.Rule.withIntervalSeconds(id, "任务总览",
                     start, end, Math.max(60, picked * 60), 9999, true, true)
@@ -396,6 +471,8 @@ public final class TaskActivity extends Activity {
             ReminderSettings.upsertRule(this, rule);
             dialog.dismiss();
             reload();
+            Toast.makeText(this, "已保存 " + clockText(start) + "-" + clockText(end)
+                    + " · 每 " + picked + " 分钟", Toast.LENGTH_SHORT).show();
             warnIfCannotPop();
         }));
         FormKit.showStyled(this, dialog);
