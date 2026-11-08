@@ -1,7 +1,7 @@
 {
-    "versionCode": 27,
-    "versionName": "0.3.0-beta17",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta17/rest-bean.apk",
-    "sha256": "bdca8a5f37be865051a3de07d7d64fd311d78956bfbc2dd9c6684e20bb287f95",
-    "notes": "长按菜单和选项弹窗统一成 App 自己的风格。"
+    "versionCode": 28,
+    "versionName": "0.3.0-beta18",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta18/rest-bean.apk",
+    "sha256": "68511c1640c72f0d9d3d28f65f278830067cabf513827e4edfc5ce4fb0a22fa6",
+    "notes": "任务页改成最简形态。"
 }
