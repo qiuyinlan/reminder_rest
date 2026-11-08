@@ -90,6 +90,22 @@ final class FormKit {
         showStyled(context, dialog);
     }
 
+    /** 空文字的纯标签收起，避免留一片空白（输入框、按钮不动）。 */
+    static void hideEmptyText(android.view.View root) {
+        if (root instanceof TextView && !(root instanceof EditText)
+                && !(root instanceof android.widget.Button) && !(root instanceof android.widget.Switch)) {
+            TextView view = (TextView) root;
+            if (view.getText() == null || view.getText().toString().trim().isEmpty()) {
+                view.setVisibility(android.view.View.GONE);
+            }
+            return;
+        }
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) hideEmptyText(group.getChildAt(i));
+        }
+    }
+
     static GradientDrawable round(Context context, int color, int radius) {        GradientDrawable shape = new GradientDrawable();
         shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(context, radius));

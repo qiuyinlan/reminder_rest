@@ -136,11 +136,6 @@ public final class MainActivity extends Activity {
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         top.addView(settingsButton);
         body.addView(top);
-        TextView intro = label("给眼睛和身体留一点放松时间。", 13, MUTED, false);
-        intro.setLetterSpacing(0.03f);
-        LinearLayout.LayoutParams introParams = full();
-        introParams.bottomMargin = dp(20);
-        body.addView(intro, introParams);
 
         List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
         addTodayStatusCard(rules);
@@ -250,9 +245,6 @@ public final class MainActivity extends Activity {
         LinearLayout card = columnCard();
         TextView title = label("今天身体怎么样？", 17, INK, true);
         card.addView(title);
-        TextView hint = label("自动保存在本机，可在统计里按日期查看", 12, MUTED, false);
-        hint.setPadding(0, dp(6), 0, dp(10));
-        card.addView(hint);
         EditText note = new EditText(this);
         note.setTextSize(15);
         note.setTextColor(INK);
@@ -466,12 +458,6 @@ public final class MainActivity extends Activity {
         progressParams.topMargin = dp(14);
         card.addView(progress, progressParams);
 
-        TextView delivery = label("提醒通过系统通知送达", 10, MUTED, false);
-        delivery.setLetterSpacing(0.08f);
-        LinearLayout.LayoutParams deliveryParams = full();
-        deliveryParams.topMargin = dp(10);
-        card.addView(delivery, deliveryParams);
-
         LinearLayout.LayoutParams cardParams = full();
         cardParams.bottomMargin = dp(14);
         body.addView(card, cardParams);
@@ -537,9 +523,6 @@ public final class MainActivity extends Activity {
         boolean notification = notificationPermissionReady();
         AlertDialog guide = new AlertDialog.Builder(this).setTitle("完成系统配置")
                 .setView(list).setNeutralButton("重新检查", null).setPositiveButton("完成", null).create();
-        TextView explanation = label("允许悬浮窗后，屏幕亮且未锁定时会覆盖当前应用；锁屏时由系统通知提醒。", 12, MUTED, false);
-        explanation.setPadding(0, 0, 0, dp(8));
-        list.addView(explanation, 0);
         addPermissionRow(list, guide, "通知权限", notification, () -> {
             boolean runtimeGranted = Build.VERSION.SDK_INT < 33
                     || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -559,11 +542,8 @@ public final class MainActivity extends Activity {
         addPermissionRow(list, guide, "悬浮窗（其他 App 上显示提醒）", Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this), this::openOverlaySettings);
         addPermissionRow(list, guide, "限制 App 选择", !ReminderSettings.blockPackages(this).isEmpty(), () -> startActivity(new Intent(this, AppPickerActivity.class).putExtra("mode", "block")));
         addPermissionRow(list, guide, "后台运行（忽略电池优化）", isIgnoringBatteryOptimizations(), this::openBatteryOptimizationSettings);
-        addActionRow(list, guide, "自启动管理", "打开 Vivo 自启动设置", this::openAutoStartSettings);
-        addActionRow(list, guide, "保活壁纸", isWellnessWallpaperSet() ? "已设为壁纸 · 选择或更换壁纸" : "软件提供的壁纸或相册图片，设为动态壁纸", this::openKeepAliveWallpaper);
-        TextView vendorGuide = label("Vivo 还需在系统设置中允许自启动和后台运行，并在最近任务卡片下拉锁定；这些选项需手动开启。", 12, MUTED, false);
-        vendorGuide.setPadding(0, dp(10), 0, dp(8));
-        list.addView(vendorGuide);
+        addActionRow(list, guide, "自启动管理", "", this::openAutoStartSettings);
+        addActionRow(list, guide, "保活壁纸", isWellnessWallpaperSet() ? "已设为壁纸" : "", this::openKeepAliveWallpaper);
         TextView testOverlay = label("测试覆盖提醒", 15, INK, true);
         testOverlay.setPadding(0, dp(14), 0, dp(14));
         testOverlay.setOnClickListener(v -> {
@@ -1014,10 +994,6 @@ public final class MainActivity extends Activity {
         LinearLayout toggleCopy = new LinearLayout(this);
         toggleCopy.setOrientation(LinearLayout.VERTICAL);
         toggleCopy.addView(label("开启提醒", 14, INK, true));
-        TextView reminderHint = label("按设定时间提醒你", 12, MUTED, false);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-2, -2);
-        hintParams.topMargin = dp(3);
-        toggleCopy.addView(reminderHint, hintParams);
         reminderToggleRow.addView(toggleCopy, new LinearLayout.LayoutParams(0, -2, 1));
         Switch activeSwitch = new Switch(this);
         styleSwitch(activeSwitch);
@@ -1278,7 +1254,7 @@ public final class MainActivity extends Activity {
         });
         targetButtonHolder[0] = targetButton;
         form.addView(targetButton);
-        TextView afterTargetLabel = label("达标后是否继续提醒", 14, INK, true);
+        TextView afterTargetLabel = label("达标后继续", 14, INK, true);
         afterTargetLabel.setPadding(0, dp(8), 0, dp(2));
         form.addView(afterTargetLabel);
         RadioGroup afterTargetOptions = new RadioGroup(this);

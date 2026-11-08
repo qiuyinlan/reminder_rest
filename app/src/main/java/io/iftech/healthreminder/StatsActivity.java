@@ -176,7 +176,7 @@ public final class StatsActivity extends Activity {
             shown++;
         }
         if (all.isEmpty()) {
-            TextView empty = text("还没有答题记录，去「任务 → 卡片」里安排一份卡片集。", 12, MUTED, false);
+            TextView empty = text("还没有答题记录", 12, MUTED, false);
             empty.setPadding(0, dp(6), 0, 0);
             card.addView(empty);
         }
