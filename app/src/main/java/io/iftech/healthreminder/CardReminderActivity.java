@@ -1,6 +1,7 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -14,6 +15,7 @@ import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,16 +23,20 @@ import android.widget.Toast;
 import java.util.List;
 import java.util.Locale;
 
-/** 卡片 / 答题的霸屏页：一次一张，答完退出。 */
+/**
+ * 卡片 / 答题的霸屏页：一次一张，可以前后翻、换卡片集，看完或稍后再提醒。
+ */
 public final class CardReminderActivity extends Activity {
     private String ruleTitle = "卡片";
     private int ruleId = -1;
     private CardDeck deck;
     private CardDeck.Card card;
+    private int index;
     private boolean quiz;
     private long startedAt;
     private String sessionId;
     private EditText answerInput;
+    private LinearLayout contentRoot;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -55,7 +61,8 @@ public final class CardReminderActivity extends Activity {
             finish();
             return;
         }
-        card = deck.cards.get(nextIndex(this, deck.id, deck.cards.size()));
+        index = nextIndex(this, deck.id, deck.cards.size());
+        card = deck.cards.get(index);
         buildPage();
     }
 
@@ -69,33 +76,44 @@ public final class CardReminderActivity extends Activity {
         return index;
     }
 
-    private void buildPage() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(22), dp(28), dp(22), dp(24));
-        root.setBackgroundColor(UiPalette.PAGE);
-        setContentView(root);
+    /** 记下「下次从第几张开始」。 */
+    static void setNextIndex(Context context, String deckId, int next) {
+        context.getSharedPreferences("card_progress", Context.MODE_PRIVATE)
+                .edit().putInt("card_index_deck_" + deckId, Math.max(0, next)).apply();
+    }
 
-        TextView overline = text(quiz ? "来答一题" : deck.title, 13, UiPalette.MUTED, true);
-        overline.setGravity(Gravity.CENTER);
-        overline.setPadding(dp(14), dp(8), dp(14), dp(8));
-        overline.setBackground(round(UiPalette.SOFT, 12));
-        root.addView(overline);
+    private void buildPage() {
+        if (deck == null || deck.cards.isEmpty()) {
+            finish();
+            return;
+        }
+        if (index < 0) index = 0;
+        if (index >= deck.cards.size()) index = deck.cards.size() - 1;
+        card = deck.cards.get(index);
+        answerInput = null;
+
+        contentRoot = new LinearLayout(this);
+        contentRoot.setOrientation(LinearLayout.VERTICAL);
+        contentRoot.setGravity(Gravity.CENTER_HORIZONTAL);
+        contentRoot.setPadding(dp(20), dp(22), dp(20), dp(18));
+        contentRoot.setBackgroundColor(UiPalette.PAGE);
+        setContentView(contentRoot);
+
+        contentRoot.addView(buildDeckBar(), new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout cardView = new LinearLayout(this);
         cardView.setOrientation(LinearLayout.VERTICAL);
-        cardView.setPadding(dp(22), dp(24), dp(22), dp(24));
+        cardView.setPadding(dp(20), dp(20), dp(20), dp(20));
         cardView.setBackground(round(Color.WHITE, 20));
         cardView.setElevation(dp(2));
         scroll.addView(cardView, new ScrollView.LayoutParams(-1, -2));
         LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, 0, 1f);
-        scrollParams.topMargin = dp(16);
-        root.addView(scroll, scrollParams);
+        scrollParams.topMargin = dp(12);
+        contentRoot.addView(scroll, scrollParams);
 
-        TextView counter = text(String.format(Locale.getDefault(), "%s · 第 %d/%d 张",
-                deck.title, indexOf(card) + 1, deck.cards.size()), 11, UiPalette.MUTED, false);
+        TextView counter = text(String.format(Locale.getDefault(), "第 %d/%d 张", index + 1, deck.cards.size()),
+                11, UiPalette.MUTED, false);
         cardView.addView(counter);
 
         TextView question = text(card.question, 20, UiPalette.INK, true);
@@ -142,13 +160,16 @@ public final class CardReminderActivity extends Activity {
         if (quiz) {
             answerInput = new EditText(this);
             answerInput.setHint("用一句话写下你的答案");
+            answerInput.setHintTextColor(UiPalette.MUTED);
+            answerInput.setTextColor(UiPalette.INK);
             answerInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             answerInput.setMinLines(2);
+            answerInput.setPadding(dp(12), dp(10), dp(12), dp(10));
+            answerInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
             LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(-1, -2);
             ap.topMargin = dp(16);
             cardView.addView(answerInput, ap);
         } else if (!card.answer.isEmpty()) {
-            // 阅读模式：答案在背面，点一下才翻出来。
             final TextView answer = text(card.answer, 14, UiPalette.MUTED, false);
             answer.setLineSpacing(dp(3), 1f);
             answer.setVisibility(View.GONE);
@@ -166,20 +187,181 @@ public final class CardReminderActivity extends Activity {
             });
         }
 
-        TextView primary = actionButton(quiz ? "提交" : "看完了", UiPalette.ACCENT, Color.WHITE);
+        contentRoot.addView(buildPager(), new LinearLayout.LayoutParams(-1, -2));
+        contentRoot.addView(buildActions(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** 顶部：当前卡片集 + 切换。 */
+    private View buildDeckBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView name = text(deck.title, 13, UiPalette.MUTED, true);
+        name.setMaxLines(1);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        bar.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        List<CardDeck> decks = CardDeck.all(this);
+        TextView swap = text("切换卡片集 ›", 12, UiPalette.ACCENT, true);
+        swap.setPadding(dp(8), dp(6), dp(2), dp(6));
+        bar.addView(swap);
+        swap.setOnClickListener(v -> {
+            if (decks.size() <= 1) {
+                Toast.makeText(this, "只有一个卡片集", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String[] labels = new String[decks.size()];
+            for (int i = 0; i < decks.size(); i++) labels[i] = decks.get(i).title;
+            FormKit.options(this, "切换卡片集", labels, -1, which -> {
+                CardDeck picked = decks.get(which);
+                if (picked.cards.isEmpty()) {
+                    Toast.makeText(this, "这个卡片集是空的", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                deck = picked;
+                index = nextIndex(this, deck.id, deck.cards.size());
+                buildPage();
+            });
+        });
+        return bar;
+    }
+
+    /** 上一张 / 下一张。 */
+    private View buildPager() {
+        LinearLayout pager = new LinearLayout(this);
+        pager.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams pagerParams = new LinearLayout.LayoutParams(-1, -2);
+        pagerParams.topMargin = dp(12);
+        pager.setLayoutParams(pagerParams);
+
+        TextView prev = actionButton("‹ 上一张", Color.WHITE, UiPalette.INK);
+        LinearLayout.LayoutParams prevParams = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        prevParams.rightMargin = dp(6);
+        pager.addView(prev, prevParams);
+        prev.setOnClickListener(v -> {
+            index = (index - 1 + deck.cards.size()) % deck.cards.size();
+            buildPage();
+        });
+
+        TextView next = actionButton("下一张 ›", Color.WHITE, UiPalette.INK);
+        LinearLayout.LayoutParams nextParams = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        nextParams.leftMargin = dp(6);
+        pager.addView(next, nextParams);
+        next.setOnClickListener(v -> {
+            index = (index + 1) % deck.cards.size();
+            buildPage();
+        });
+        return pager;
+    }
+
+    /** 底部：学完了 / 关闭 / 关闭并稍后提醒。 */
+    private View buildActions() {
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
+        actionsParams.topMargin = dp(12);
+        actions.setLayoutParams(actionsParams);
+
+        TextView primary = actionButton(quiz ? "提交" : "学完了", UiPalette.ACCENT, Color.WHITE);
         LinearLayout.LayoutParams primaryParams = new LinearLayout.LayoutParams(-1, dp(50));
-        primaryParams.topMargin = dp(20);
-        root.addView(primary, primaryParams);
+        primaryParams.topMargin = dp(6);
+        actions.addView(primary, primaryParams);
         primary.setOnClickListener(v -> {
             if (quiz) submitQuiz();
             else finishCard(ReminderRecord.KIND_DONE, "");
         });
 
-        TextView skip = actionButton(quiz ? "跳过这题" : "关闭", Color.TRANSPARENT, UiPalette.MUTED);
-        LinearLayout.LayoutParams skipParams = new LinearLayout.LayoutParams(-1, dp(46));
-        skipParams.topMargin = dp(6);
-        root.addView(skip, skipParams);
-        skip.setOnClickListener(v -> finishCard(ReminderRecord.KIND_MISSED, "跳过"));
+        LinearLayout secondary = new LinearLayout(this);
+        secondary.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams secondaryParams = new LinearLayout.LayoutParams(-1, -2);
+        secondaryParams.topMargin = dp(8);
+        actions.addView(secondary, secondaryParams);
+
+        TextView close = text("关闭", 13, UiPalette.MUTED, true);
+        close.setGravity(Gravity.CENTER);
+        close.setPadding(0, dp(12), 0, dp(12));
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        closeParams.rightMargin = dp(6);
+        secondary.addView(close, closeParams);
+        close.setOnClickListener(v -> finishOnly());
+
+        TextView later = text("关闭并稍后提醒", 13, UiPalette.ACCENT, true);
+        later.setGravity(Gravity.CENTER);
+        later.setPadding(0, dp(12), 0, dp(12));
+        LinearLayout.LayoutParams laterParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        laterParams.leftMargin = dp(6);
+        secondary.addView(later, laterParams);
+        later.setOnClickListener(v -> chooseSnooze());
+        return actions;
+    }
+
+    /** 竖着滚轮选「多久之后再提醒」。 */
+    private void chooseSnooze() {
+        final NumberPicker hours = WheelPicker.wheel(this, 0, 5, 0, false);
+        final NumberPicker minutes = WheelPicker.wheel(this, 0, 59, 30, true);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(6), dp(10), dp(6), dp(10));
+        card.setBackground(round(UiPalette.PALE, 16));
+        card.addView(column(hours, "小时"));
+        card.addView(column(minutes, "分钟"));
+
+        final TextView preview = text("", 20, UiPalette.INK, true);
+        preview.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1, -2);
+        previewParams.topMargin = dp(4);
+        previewParams.bottomMargin = dp(10);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(8), dp(16), dp(4));
+        content.addView(preview, previewParams);
+        content.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        final Runnable refresh = () -> {
+            int total = hours.getValue() * 60 + minutes.getValue();
+            preview.setText(total <= 0 ? "选个时间" : total + " 分钟后再提醒");
+        };
+        NumberPicker.OnValueChangeListener changed = (picker, oldValue, newValue) -> refresh.run();
+        hours.setOnValueChangedListener(changed);
+        minutes.setOnValueChangedListener(changed);
+        refresh.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("多久之后再提醒")
+                .setView(content)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确定", null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            WheelPicker.styleDialog(this, dialog);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                int total = hours.getValue() * 60 + minutes.getValue();
+                if (total <= 0) {
+                    Toast.makeText(this, "至少 1 分钟", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                ReminderScheduler.scheduleCustomSnooze(this, total, deck.title, ruleId);
+                Toast.makeText(this, total + " 分钟后再提醒", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                finish();
+            });
+        });
+        dialog.show();
+    }
+
+    private LinearLayout column(NumberPicker picker, String unit) {
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        column.addView(picker, new LinearLayout.LayoutParams(-2, dp(140)));
+        TextView label = text(unit, 11, UiPalette.MUTED, false);
+        label.setGravity(Gravity.CENTER);
+        column.addView(label);
+        return column;
     }
 
     private void submitQuiz() {
@@ -198,12 +380,13 @@ public final class CardReminderActivity extends Activity {
             return;
         }
         // 有参考答案：先给看一眼，再关。
-        new android.app.AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("参考答案")
                 .setMessage(card.answer)
                 .setPositiveButton("知道了", (d, w) -> finishOnly())
                 .setCancelable(false)
-                .show();
+                .create();
+        FormKit.showStyled(this, dialog);
     }
 
     /** 记录一次结果（阅读模式 / 跳过）并关闭。 */
@@ -213,25 +396,19 @@ public final class CardReminderActivity extends Activity {
         finishOnly();
     }
 
-    /** 已经记过记录，只关页并排下一次。 */
+    /** 只关页并排下一次。 */
     private void finishOnly() {
+        if (deck != null && !deck.cards.isEmpty()) {
+            setNextIndex(this, deck.id, index + 1);
+        }
         ReminderScheduler.scheduleNext(this, ruleId);
         finish();
-    }
-
-    private int indexOf(CardDeck.Card target) {
-        List<CardDeck.Card> cards = deck.cards;
-        for (int i = 0; i < cards.size(); i++) if (cards.get(i) == target) return i;
-        return 0;
     }
 
     private TextView actionButton(String label, int background, int textColor) {
         TextView view = text(label, 16, textColor, true);
         view.setGravity(Gravity.CENTER);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(background);
-        bg.setCornerRadius(dp(16));
-        view.setBackground(bg);
+        view.setBackground(round(background, 16));
         return view;
     }
 
@@ -251,7 +428,7 @@ public final class CardReminderActivity extends Activity {
         return view;
     }
 
-    private int dp(int value) {
+    private int dp(float value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }
