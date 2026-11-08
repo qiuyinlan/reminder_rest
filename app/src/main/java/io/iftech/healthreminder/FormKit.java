@@ -35,8 +35,24 @@ final class FormKit {
         return view;
     }
 
-    static GradientDrawable round(Context context, int color, int radius) {
+    /** 右下角圆形加号按钮。 */
+    static TextView fab(Context context, Runnable onClick) {
+        TextView fab = new TextView(context);
+        fab.setText("＋");
+        fab.setTextSize(26);
+        fab.setTextColor(Color.WHITE);
+        fab.setGravity(Gravity.CENTER);
         GradientDrawable shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.OVAL);
+        shape.setColor(UiPalette.ACCENT);
+        fab.setBackground(shape);
+        fab.setElevation(dp(context, 8));
+        fab.setContentDescription("新建");
+        fab.setOnClickListener(v -> onClick.run());
+        return fab;
+    }
+
+    static GradientDrawable round(Context context, int color, int radius) {        GradientDrawable shape = new GradientDrawable();
         shape.setColor(UiPalette.surface(color));
         shape.setCornerRadius(dp(context, radius));
         if (color == Color.WHITE) shape.setStroke(dp(context, 1), UiPalette.BORDER);

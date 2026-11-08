@@ -21,6 +21,8 @@ final class ReminderSettings {
     static final String MODULE_CARD = "card";
     /** 任务总览提醒：一个独立规则，到点弹一页列出全部任务。 */
     static final String MODULE_TASK_ALL = "task_all";
+    /** 子任务：挂在某个任务下的小条目，不单独排闹钟。 */
+    static final String MODULE_SUBTASK = "subtask";
     static final String KEY_ENABLED = "enabled";
     private static final String PREFS = "reminder_settings";
     private static final String RULES_KEY = "reminder_rules_v2";
@@ -142,6 +144,7 @@ final class ReminderSettings {
         boolean isBodyModule() { return MODULE_BODY.equals(module); }
         boolean isTaskModule() { return MODULE_TASK.equals(module); }
         boolean isTaskAllModule() { return MODULE_TASK_ALL.equals(module); }
+        boolean isSubtaskModule() { return MODULE_SUBTASK.equals(module); }
         boolean isCardModule() { return MODULE_CARD.equals(module); }
 
         /** 单次提醒（指定日期时间，只响一次）。 */

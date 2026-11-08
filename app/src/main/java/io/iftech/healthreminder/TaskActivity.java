@@ -42,10 +42,14 @@ public final class TaskActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
+        android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
+        shell.setBackgroundColor(UiPalette.PAGE);
+        setContentView(shell);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackground(UiPalette.page());
-        setContentView(root);
+        shell.addView(root, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
         root.addView(buildHeader(), new LinearLayout.LayoutParams(-1, -2));
 
@@ -72,6 +76,42 @@ public final class TaskActivity extends Activity {
         navParams.rightMargin = dp(14);
         navParams.bottomMargin = dp(10);
         root.addView(nav, navParams);
+
+        TextView fab = FormKit.fab(this, this::quickAdd);
+        android.widget.FrameLayout.LayoutParams fabParams =
+                new android.widget.FrameLayout.LayoutParams(dp(56), dp(56));
+        fabParams.gravity = Gravity.BOTTOM | Gravity.END;
+        fabParams.rightMargin = dp(20);
+        fabParams.bottomMargin = dp(86);
+        shell.addView(fab, fabParams);
+    }
+
+    /** 右下角加号：只问一句名字，其他拿默认值。 */
+    private void quickAdd() {
+        final EditText input = FormKit.textInput(this, "任务名字", "");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("新任务")
+                .setView(input)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("添加", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String title = input.getText().toString().trim();
+            if (title.isEmpty()) {
+                Toast.makeText(this, "先写个名字", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            ArrayList<Integer> points = new ArrayList<>();
+            points.add(9 * 3600);
+            ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                            ReminderSettings.nextRuleId(this), title, 9 * 60, 9 * 60, 24 * 3600,
+                            points, 1, true, false)
+                    .withModule(ReminderSettings.MODULE_TASK);
+            ReminderSettings.upsertRule(this, rule);
+            dialog.dismiss();
+            reload();
+        }));
+        FormKit.showStyled(this, dialog);
     }
 
     @Override
@@ -157,6 +197,7 @@ public final class TaskActivity extends Activity {
         }
         for (ReminderSettings.Rule task : tasks) {
             listContainer.addView(buildRow(task, dayStart));
+            listContainer.addView(buildSubtaskBlock(task, dayStart));
         }
     }
 
@@ -396,15 +437,83 @@ public final class TaskActivity extends Activity {
                 ReminderSettings.upsertRule(this, task.withEnabled(checked)));
         card.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
 
-        card.setOnClickListener(v -> showEditor(task));
+        card.setOnClickListener(v -> openSubtasks(task));
         card.setOnLongClickListener(v -> {
-            confirmDelete(task);
+            showTaskMenu(task);
             return true;
         });
         return card;
     }
 
+    /** 任务下面的子任务清单，直接铺在任务页里。 */
+    private View buildSubtaskBlock(ReminderSettings.Rule task, long dayStart) {
+        List<ReminderSettings.Rule> items = Subtasks.of(this, task.id);
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams blockParams = new LinearLayout.LayoutParams(-1, -2);
+        blockParams.leftMargin = dp(26);
+        blockParams.bottomMargin = dp(10);
+        block.setLayoutParams(blockParams);
+
+        for (ReminderSettings.Rule item : items) {
+            boolean done = Subtasks.doneToday(this, task.id, item.title, dayStart);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(6), dp(7), dp(6), dp(7));
+
+            TextView box = text(done ? "✓" : "", 12, Color.WHITE, true);
+            box.setGravity(Gravity.CENTER);
+            GradientDrawable shape = new GradientDrawable();
+            shape.setCornerRadius(dp(6));
+            shape.setColor(done ? UiPalette.ACCENT : UiPalette.SOFT);
+            if (!done) shape.setStroke(dp(1), UiPalette.BORDER);
+            box.setBackground(shape);
+            row.addView(box, new LinearLayout.LayoutParams(dp(20), dp(20)));
+
+            TextView name = text(item.title, 14, done ? UiPalette.MUTED : UiPalette.INK, false);
+            if (done) name.setPaintFlags(name.getPaintFlags()
+                    | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            nameParams.leftMargin = dp(10);
+            row.addView(name, nameParams);
+
+            row.setOnClickListener(v -> {
+                Subtasks.toggle(this, task.id, item.title, done, dayStart);
+                reload();
+            });
+            block.addView(row);
+        }
+
+        TextView add = text(items.isEmpty() ? "＋ 拆成子任务" : "＋ 加子任务", 12, UiPalette.ACCENT, true);
+        add.setPadding(dp(6), dp(6), dp(6), dp(6));
+        add.setOnClickListener(v -> openSubtasks(task));
+        block.addView(add);
+        return block;
+    }
+
+    private void openSubtasks(ReminderSettings.Rule task) {
+        startActivity(new Intent(this, SubtaskActivity.class)
+                .putExtra(SubtaskActivity.EXTRA_PARENT_ID, task.id));
+    }
+
+    private void showTaskMenu(ReminderSettings.Rule task) {
+        new AlertDialog.Builder(this)
+                .setTitle(task.title.isEmpty() ? "未命名任务" : task.title)
+                .setItems(new String[]{"编辑提醒设置", "看子任务", "删除任务"}, (d, which) -> {
+                    if (which == 0) showEditor(task);
+                    else if (which == 1) openSubtasks(task);
+                    else confirmDelete(task);
+                })
+                .show();
+    }
+
     private String describe(ReminderSettings.Rule rule) {
+        String base = describeBase(rule);
+        return rule.enabled ? base : "未单独提醒 · 只在总览页出现";
+    }
+
+    private String describeBase(ReminderSettings.Rule rule) {
         if (rule.isOnceSchedule()) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(rule.onceAt);
@@ -445,6 +554,7 @@ public final class TaskActivity extends Activity {
                 .setMessage("确定删除「" + rule.title + "」？")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("删除", (d, w) -> {
+                    Subtasks.deleteForParent(this, rule.id);
                     ReminderSettings.deleteRule(this, rule.id);
                     reload();
                 })
@@ -458,6 +568,7 @@ public final class TaskActivity extends Activity {
                 .setMessage("会删除所有任务和它们的提醒，历史记录保留。确定吗？")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("清空", (d, w) -> {
+                    ReminderSettings.clearModule(this, ReminderSettings.MODULE_SUBTASK);
                     ReminderSettings.clearModule(this, ReminderSettings.MODULE_TASK);
                     reload();
                 })

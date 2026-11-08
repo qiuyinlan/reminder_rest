@@ -36,10 +36,14 @@ public final class CardActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
+        android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
+        shell.setBackgroundColor(UiPalette.PAGE);
+        setContentView(shell);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(UiPalette.PAGE);
-        setContentView(root);
+        shell.addView(root, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
         root.addView(buildHeader(), new LinearLayout.LayoutParams(-1, -2));
 
@@ -81,6 +85,14 @@ public final class CardActivity extends Activity {
         navParams.rightMargin = dp(14);
         navParams.bottomMargin = dp(10);
         root.addView(nav, navParams);
+
+        TextView fab = FormKit.fab(this, () -> CardEditor.create(this, null, this::reload));
+        android.widget.FrameLayout.LayoutParams fabParams =
+                new android.widget.FrameLayout.LayoutParams(dp(56), dp(56));
+        fabParams.gravity = Gravity.BOTTOM | Gravity.END;
+        fabParams.rightMargin = dp(20);
+        fabParams.bottomMargin = dp(86);
+        shell.addView(fab, fabParams);
     }
 
     @Override
@@ -98,13 +110,6 @@ public final class CardActivity extends Activity {
 
         TextView title = text("卡片", 24, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        TextView addButton = text("＋ 新建", 14, UiPalette.ACCENT, true);
-        addButton.setGravity(Gravity.CENTER);
-        addButton.setPadding(dp(13), dp(9), dp(13), dp(9));
-        addButton.setBackground(FormKit.round(this, UiPalette.SOFT, 20));
-        addButton.setOnClickListener(v -> CardEditor.create(this, null, this::reload));
-        row.addView(addButton);
 
         TextView importButton = text("导入文件", 13, Color.WHITE, true);
         importButton.setGravity(Gravity.CENTER);

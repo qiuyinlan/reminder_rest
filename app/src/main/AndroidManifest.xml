@@ -60,6 +60,9 @@
             android:turnScreenOn="true"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".SubtaskActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />        <activity
             android:name=".ReminderActivity"
             android:exported="false"
             android:showWhenLocked="true"
