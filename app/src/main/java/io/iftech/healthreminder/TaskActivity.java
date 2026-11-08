@@ -58,7 +58,7 @@ public final class TaskActivity extends Activity {
         scroll.setClipToPadding(false);
         listContainer = new LinearLayout(this);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        listContainer.setPadding(dp(16), dp(4), dp(16), dp(16));
+        listContainer.setPadding(dp(16), dp(4), dp(16), dp(96));
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -89,9 +89,18 @@ public final class TaskActivity extends Activity {
     /** 右下角加号：只问一句名字，其他拿默认值。 */
     private void quickAdd() {
         final EditText input = FormKit.textInput(this, "任务名字", "");
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        TextView hint = text("只写名字，提醒时间在总览提醒里统一设", 12, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
+        hintParams.bottomMargin = dp(8);
+        form.addView(hint, hintParams);
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("新任务")
-                .setView(input)
+                .setView(form)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("添加", null)
                 .create();
@@ -132,15 +141,6 @@ public final class TaskActivity extends Activity {
 
         TextView title = text("任务清单", 25, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        TextView add = text("＋ 新任务", 13, Color.WHITE, true);
-        add.setGravity(Gravity.CENTER);
-        add.setPadding(dp(14), dp(8), dp(14), dp(8));
-        add.setBackground(FormKit.round(this, UiPalette.ACCENT, 12));
-        add.setOnClickListener(v -> showEditor(null));
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
-        addParams.leftMargin = dp(8);
-        row.addView(add, addParams);
         header.addView(row);
 
         subtitle = text("", 13, UiPalette.MUTED, false);
@@ -185,7 +185,7 @@ public final class TaskActivity extends Activity {
         for (ReminderSettings.Rule task : tasks) {
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) done++;
         }
-        subtitle.setText(tasks.isEmpty() ? "还没有任务，点右上角加一个"
+        subtitle.setText(tasks.isEmpty() ? "还没有任务，点右下角加号"
                 : String.format(Locale.getDefault(), "共 %d 个任务 · 今天完成 %d 个", tasks.size(), done));
         listContainer.addView(buildOverviewCard());
         if (tasks.isEmpty()) {
@@ -197,7 +197,6 @@ public final class TaskActivity extends Activity {
         }
         for (ReminderSettings.Rule task : tasks) {
             listContainer.addView(buildRow(task, dayStart));
-            listContainer.addView(buildSubtaskBlock(task, dayStart));
         }
     }
 
@@ -265,25 +264,32 @@ public final class TaskActivity extends Activity {
 
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(18), dp(6), dp(18), dp(4));
-        form.addView(text("每隔几分钟弹一次，列出一整页任务", 12, UiPalette.MUTED, false));
+        form.setPadding(dp(18), dp(10), dp(18), dp(4));
 
-        Button windowButton = new Button(this);
-        windowButton.setAllCaps(false);
-        windowButton.setText(clockText(window[0]) + " - " + clockText(window[1]) + "  ‹起止时间›");
-        LinearLayout.LayoutParams windowParams = new LinearLayout.LayoutParams(-1, -2);
-        windowParams.topMargin = dp(6);
-        form.addView(windowButton, windowParams);
-        windowButton.setOnClickListener(v -> pickMinutes(window[0], pickedStart ->
-                pickMinutes(window[1], pickedEnd -> {
-                    window[0] = pickedStart;
-                    window[1] = pickedEnd;
-                    windowButton.setText(clockText(window[0]) + " - " + clockText(window[1]) + "  ‹起止时间›");
-                })));
+        LinearLayout timeRow = new LinearLayout(this);
+        timeRow.setOrientation(LinearLayout.HORIZONTAL);
+        final LinearLayout startField = FormKit.timeField(this, "开始", clockText(window[0]));
+        final LinearLayout endField = FormKit.timeField(this, "结束", clockText(window[1]));
+        LinearLayout.LayoutParams startParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        startParams.rightMargin = dp(6);
+        timeRow.addView(startField, startParams);
+        LinearLayout.LayoutParams endParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        endParams.leftMargin = dp(6);
+        timeRow.addView(endField, endParams);
+        form.addView(timeRow);
 
+        startField.setOnClickListener(v -> pickMinutes(window[0], picked -> {
+            window[0] = picked;
+            FormKit.updateTimeField(startField, clockText(window[0]));
+        }));
+        endField.setOnClickListener(v -> pickMinutes(window[1], picked -> {
+            window[1] = picked;
+            FormKit.updateTimeField(endField, clockText(window[1]));
+        }));
+
+        form.addView(FormKit.editorLabel(this, "隔多久弹一次", true));
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.setPadding(0, dp(10), 0, dp(2));
         form.addView(chips);
         final int[] presets = {15, 30, 45, 60};
         final List<TextView> chipViews = new ArrayList<>();
@@ -292,14 +298,13 @@ public final class TaskActivity extends Activity {
                 boolean selected = minutes[0] == presets[i];
                 TextView chip = chipViews.get(i);
                 chip.setTextColor(selected ? Color.WHITE : UiPalette.INK);
-                chip.setBackground(FormKit.round(this, selected ? UiPalette.ACCENT : UiPalette.SOFT, 12));
+                chip.setBackground(FormKit.round(this, selected ? UiPalette.ACCENT : UiPalette.PALE, 10));
             }
         };
         for (int preset : presets) {
             TextView chip = text(preset + " 分", 13, UiPalette.INK, false);
             chip.setGravity(Gravity.CENTER);
-            chip.setPadding(dp(12), dp(8), dp(12), dp(8));
-            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, dp(40), 1f);
             chipParams.rightMargin = dp(6);
             chips.addView(chip, chipParams);
             chipViews.add(chip);
@@ -310,19 +315,13 @@ public final class TaskActivity extends Activity {
         }
         refreshChips.run();
 
-        LinearLayout custom = new LinearLayout(this);
-        custom.setOrientation(LinearLayout.HORIZONTAL);
-        custom.setGravity(Gravity.CENTER_VERTICAL);
-        custom.setPadding(0, dp(10), 0, 0);
-        form.addView(custom);
-        custom.addView(text("自定义（分钟）", 13, UiPalette.MUTED, false));
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        input.setText(String.valueOf(minutes[0]));
-        input.setTextSize(14);
-        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        inputParams.leftMargin = dp(12);
-        custom.addView(input, inputParams);
+        final EditText custom = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
+        custom.setHint("自定义分钟数");
+        custom.setText(String.valueOf(minutes[0]));
+        custom.setSelection(custom.getText().length());
+        LinearLayout.LayoutParams customParams = new LinearLayout.LayoutParams(-1, -2);
+        customParams.topMargin = dp(10);
+        form.addView(custom, customParams);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("总览提醒")
@@ -332,10 +331,12 @@ public final class TaskActivity extends Activity {
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             int picked = minutes[0];
-            try {
-                int typed = Integer.parseInt(input.getText().toString().trim());
-                if (typed > 0 && typed != minutes[0]) picked = typed;
-            } catch (NumberFormatException ignored) { }
+            String typed = custom.getText().toString().trim();
+            if (!typed.isEmpty()) {
+                try {
+                    picked = Math.max(1, Math.min(720, Integer.parseInt(typed)));
+                } catch (NumberFormatException ignored) { }
+            }
             int start = window[0];
             int end = window[1];
             if (end <= start) end = Math.min(23 * 60 + 59, start + 60);
@@ -393,18 +394,17 @@ public final class TaskActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(14), dp(10), dp(14));
-        card.setBackground(FormKit.round(this, Color.WHITE, 18));
-        card.setElevation(dp(1));
+        card.setPadding(dp(16), dp(13), dp(12), dp(13));
+        card.setBackground(FormKit.round(this, Color.WHITE, 16));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(10);
+        params.bottomMargin = dp(8);
         card.setLayoutParams(params);
 
         TextView badge = text(doneToday ? "✓" : task.badgeText(), 16,
                 doneToday ? Color.WHITE : UiPalette.ACCENT, true);
         badge.setGravity(Gravity.CENTER);
         badge.setBackground(FormKit.round(this, doneToday ? UiPalette.ACCENT : UiPalette.PALE, 12));
-        card.addView(badge, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        card.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -412,8 +412,10 @@ public final class TaskActivity extends Activity {
         textParams.leftMargin = dp(12);
         card.addView(texts, textParams);
 
-        texts.addView(text(task.title.isEmpty() ? "未命名任务" : task.title, 16,
-                doneToday ? UiPalette.MUTED : UiPalette.INK, true));
+        int subtaskCount = Subtasks.of(this, task.id).size();
+        String titleText = task.title.isEmpty() ? "未命名任务" : task.title;
+        if (subtaskCount > 0) titleText = titleText + "  ·  " + subtaskCount + " 个子任务";
+        texts.addView(text(titleText, 16, doneToday ? UiPalette.MUTED : UiPalette.INK, true));
         TextView schedule = text(describe(task), 12, UiPalette.MUTED, false);
         LinearLayout.LayoutParams scheduleParams = new LinearLayout.LayoutParams(-1, -2);
         scheduleParams.topMargin = dp(3);
@@ -443,53 +445,6 @@ public final class TaskActivity extends Activity {
             return true;
         });
         return card;
-    }
-
-    /** 任务下面的子任务清单，直接铺在任务页里。 */
-    private View buildSubtaskBlock(ReminderSettings.Rule task, long dayStart) {
-        List<ReminderSettings.Rule> items = Subtasks.of(this, task.id);
-        LinearLayout block = new LinearLayout(this);
-        block.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams blockParams = new LinearLayout.LayoutParams(-1, -2);
-        blockParams.leftMargin = dp(26);
-        blockParams.bottomMargin = dp(10);
-        block.setLayoutParams(blockParams);
-
-        for (ReminderSettings.Rule item : items) {
-            boolean done = Subtasks.doneToday(this, task.id, item.title, dayStart);
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(6), dp(7), dp(6), dp(7));
-
-            TextView box = text(done ? "✓" : "", 12, Color.WHITE, true);
-            box.setGravity(Gravity.CENTER);
-            GradientDrawable shape = new GradientDrawable();
-            shape.setCornerRadius(dp(6));
-            shape.setColor(done ? UiPalette.ACCENT : UiPalette.SOFT);
-            if (!done) shape.setStroke(dp(1), UiPalette.BORDER);
-            box.setBackground(shape);
-            row.addView(box, new LinearLayout.LayoutParams(dp(20), dp(20)));
-
-            TextView name = text(item.title, 14, done ? UiPalette.MUTED : UiPalette.INK, false);
-            if (done) name.setPaintFlags(name.getPaintFlags()
-                    | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
-            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-            nameParams.leftMargin = dp(10);
-            row.addView(name, nameParams);
-
-            row.setOnClickListener(v -> {
-                Subtasks.toggle(this, task.id, item.title, done, dayStart);
-                reload();
-            });
-            block.addView(row);
-        }
-
-        TextView add = text(items.isEmpty() ? "＋ 拆成子任务" : "＋ 加子任务", 12, UiPalette.ACCENT, true);
-        add.setPadding(dp(6), dp(6), dp(6), dp(6));
-        add.setOnClickListener(v -> openSubtasks(task));
-        block.addView(add);
-        return block;
     }
 
     private void openSubtasks(ReminderSettings.Rule task) {

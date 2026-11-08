@@ -51,7 +51,7 @@ public final class CardActivity extends Activity {
         scroll.setFillViewport(true);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(dp(16), 0, dp(16), dp(24));
+        body.setPadding(dp(16), 0, dp(16), dp(96));
         scroll.addView(body, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
