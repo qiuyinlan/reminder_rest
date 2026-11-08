@@ -9,6 +9,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -489,8 +490,28 @@ public final class CardActivity extends Activity {
             ReminderSettings.upsertRule(this, rule);
             dialog.dismiss();
             reload();
+            warnIfCannotPop();
         }));
         FormKit.showStyled(this, dialog);
+    }
+
+    /** 没有悬浮窗权限时，到点系统不会让卡片直接弹到屏幕上，提前说清楚。 */
+    private void warnIfCannotPop() {
+        if (android.os.Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) return;
+        new AlertDialog.Builder(this)
+                .setTitle("还差一个权限")
+                .setMessage("卡片到点要直接弹到屏幕上，需要允许「显示在其他应用上层」。"
+                        + "不开的话，时间到了只会发一条通知，很容易看不到。")
+                .setNegativeButton("稍后", null)
+                .setPositiveButton("去开启", (d, w) -> {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception error) {
+                        Toast.makeText(this, "无法打开悬浮窗设置", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
     }
 
     private interface OnInterval { void onPicked(int seconds); }

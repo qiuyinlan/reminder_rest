@@ -102,6 +102,10 @@ public final class ReminderDiagnosticsActivity extends Activity {
         boolean exact = Build.VERSION.SDK_INT < 31 || (alarms != null && alarms.canScheduleExactAlarms());
         boolean notify = NotificationManagerCompat.from(this).areNotificationsEnabled();
         boolean overlay = Settings.canDrawOverlays(this);
+        android.app.NotificationManager notifications =
+                (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        boolean fullScreen = Build.VERSION.SDK_INT < 34
+                || (notifications != null && notifications.canUseFullScreenIntent());
         PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
         boolean battery = power != null && power.isIgnoringBatteryOptimizations(getPackageName());
         return "总开关：" + yesNo(ReminderSettings.enabled(this))
@@ -109,6 +113,7 @@ public final class ReminderDiagnosticsActivity extends Activity {
                 + "\n精确闹钟权限：" + yesNo(exact)
                 + "\n通知权限：" + yesNo(notify)
                 + "\n悬浮窗权限：" + yesNo(overlay)
+                + "\n全屏通知权限：" + (Build.VERSION.SDK_INT < 34 ? "系统无需" : yesNo(fullScreen))
                 + "\n电池优化白名单：" + yesNo(battery)
                 + "\n当前界面在前台：" + yesNo(ReminderApplication.isInForeground());
     }

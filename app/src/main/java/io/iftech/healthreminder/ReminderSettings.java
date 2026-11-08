@@ -431,6 +431,9 @@ final class ReminderSettings {
         }
         if (!replaced) all.add(rule);
         saveRules(context, all);
+        // 保存规则后立即重排闹钟：以前只有回到首页 / 重启才会补排，
+        // 卡片提醒设好后如果直接退出，下一个闹钟就一直是「未安排」。
+        ReminderScheduler.update(context);
     }
 
     static void deleteRule(Context context, int ruleId) {

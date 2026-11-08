@@ -25,7 +25,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 public final class ReminderReceiver extends BroadcastReceiver {
-    private static final String CHANNEL_ID = "health_breaks_v2";
+    private static final String CHANNEL_ID = "health_breaks_v3";
     private static final String ACTION_STOP_ALARM_VIBRATION = "io.iftech.healthreminder.STOP_ALARM_VIBRATION";
     private static final String TAG = "HealthReminderAlarm";
     @Override
@@ -205,10 +205,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setAutoCancel(true)
                 .setContentIntent(content)
                 .setDeleteIntent(delete)
-                .setFullScreenIntent(content, alarmMode);
+                // 所有提醒都挂全屏通知：锁屏时系统可以直接拉起提醒页，
+                // 亮屏未锁时退化成横幅，总比静默躺在通知栏里好。
+                .setFullScreenIntent(content, true);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             NotificationManagerCompat.from(context).notify(703, builder.build());
-            Log.i(TAG, "notificationPosted channel=" + channelId + " fullScreen=" + alarmMode);
+            Log.i(TAG, "notificationPosted channel=" + channelId + " fullScreen=true");
         } else {
             Log.w(TAG, "notificationSkipped permissionDenied");
         }
