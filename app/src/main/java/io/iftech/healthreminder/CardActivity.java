@@ -30,7 +30,6 @@ public final class CardActivity extends Activity {
     private LinearLayout deckList;
     private LinearLayout ruleList;
     private LinearLayout answerList;
-    private TextView deckHint;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -55,20 +54,14 @@ public final class CardActivity extends Activity {
         scroll.addView(body, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        body.addView(sectionTitle("卡片集"));
-        deckHint = text("", 12, UiPalette.MUTED, false);
-        deckHint.setPadding(dp(4), 0, dp(4), dp(8));
-        body.addView(deckHint);
         deckList = new LinearLayout(this);
         deckList.setOrientation(LinearLayout.VERTICAL);
         body.addView(deckList);
 
-        body.addView(sectionTitle("已安排的提醒"));
         ruleList = new LinearLayout(this);
         ruleList.setOrientation(LinearLayout.VERTICAL);
         body.addView(ruleList);
 
-        body.addView(sectionTitle("最近的答题"));
         answerList = new LinearLayout(this);
         answerList.setOrientation(LinearLayout.VERTICAL);
         body.addView(answerList);
@@ -172,9 +165,6 @@ public final class CardActivity extends Activity {
     private void reload() {
         List<CardDeck> decks = CardDeck.all(this);
         deckList.removeAllViews();
-        deckHint.setText(decks.isEmpty()
-                ? "还没有卡片集。点右上角导入一个 JSON 文件。"
-                : "共 " + decks.size() + " 份卡片集");
         for (CardDeck deck : decks) deckList.addView(deckRow(deck));
 
         List<ReminderSettings.Rule> rules = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_CARD);
@@ -207,11 +197,7 @@ public final class CardActivity extends Activity {
         texts.setOrientation(LinearLayout.VERTICAL);
         card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
         texts.addView(text(deck.title, 16, UiPalette.INK, true));
-        int taskCount = 0;
-        for (CardDeck.Card item : deck.cards) if (item.isTask()) taskCount++;
-        texts.addView(text(deck.size() + " 张 · " + (deck.isQuiz() ? "答题模式" : "阅读模式")
-                + (taskCount > 0 ? " · " + taskCount + " 个任务" : ""),
-                12, UiPalette.MUTED, false));
+        texts.addView(text(deck.size() + " 张", 12, UiPalette.MUTED, false));
 
         TextView plan = small(decksHasRule(deck) ? "编辑提醒" : "设提醒", UiPalette.ACCENT);
         plan.setOnClickListener(v -> scheduleDeckForDeck(deck));
