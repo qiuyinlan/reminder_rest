@@ -1247,18 +1247,17 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < customIntervals.size(); i++) intervalOptions[i] = "自定义 · " + intervalText(customIntervals.get(i));
         intervalOptions[customIntervals.size()] = "新增自定义时间…";
         System.arraycopy(labels, 0, intervalOptions, customIntervals.size() + 1, labels.length);
-        intervalButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("提醒间隔")
-                .setItems(intervalOptions, (dialog, which) -> {
-                    if (which < customIntervals.size()) {
-                        interval[0] = customIntervals.get(which);
-                        intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
-                    } else if (which == customIntervals.size()) {
-                        chooseCustomInterval(interval, intervalButton);
-                    } else {
-                        interval[0] = values[which - customIntervals.size() - 1] * 60;
-                        intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
-                    }
-                }).show());
+        intervalButton.setOnClickListener(v -> FormKit.options(this, "提醒间隔", intervalOptions, -1, which -> {
+            if (which < customIntervals.size()) {
+                interval[0] = customIntervals.get(which);
+                intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
+            } else if (which == customIntervals.size()) {
+                chooseCustomInterval(interval, intervalButton);
+            } else {
+                interval[0] = values[which - customIntervals.size() - 1] * 60;
+                intervalButton.setText("提醒间隔  " + intervalText(interval[0]));
+            }
+        }));
         Switch enabledSwitch = new Switch(this);
         enabledSwitch.setText("启用此事项");
         enabledSwitch.setChecked(active[0]);
