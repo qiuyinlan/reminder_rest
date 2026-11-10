@@ -1091,14 +1091,21 @@ public final class TaskActivity extends Activity {
         LinearLayout catRow = new LinearLayout(this);
         catRow.setOrientation(LinearLayout.HORIZONTAL);
         catRow.setGravity(Gravity.CENTER_VERTICAL);
-        catRow.setPadding(0, dp(10), 0, 0);
+        catRow.setPadding(0, dp(12), 0, 0);
+        
         TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
         catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        
         final int[] categoryId = {existing == null ? 0 : existing.categoryId};
-        final TextView catBtn = text(getCategoryName(categoryId[0]), 13, UiPalette.ACCENT, true);
-        catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+        final TextView catBtn = text(getCategoryName(categoryId[0]), 14, UiPalette.INK, true);
+        GradientDrawable catBtnBg = new GradientDrawable();
+        catBtnBg.setCornerRadius(dp(6));
+        catBtnBg.setColor(UiPalette.PALE);
+        catBtn.setBackground(catBtnBg);
+        catBtn.setPadding(dp(12), dp(6), dp(12), dp(6));
         catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
-        catRow.addView(catBtn);
+        catRow.addView(catBtn, new LinearLayout.LayoutParams(-2, -2));
+        
         form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
 
         EditText note = FormKit.input(this, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
