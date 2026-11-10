@@ -150,7 +150,9 @@ public final class SubtaskActivity extends Activity {
     private void addSubtask() {
         String title = input.getText().toString().trim();
         if (title.isEmpty()) return;
-        Subtasks.add(this, parentId, title);
+        List<ReminderSettings.Rule> existing = Subtasks.of(this, parentId);
+        int step = existing.isEmpty() ? 0 : (existing.get(existing.size() - 1).step + 1);
+        Subtasks.add(this, parentId, title, step);
         input.setText("");
         render();
     }

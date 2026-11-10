@@ -3,12 +3,14 @@ package io.iftech.healthreminder;
 import android.content.Context;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * 子任务：挂在某个任务下面的小条目。
+ * 子任务：挂在某个任务下面的小条目（流程式拆解）。
  * 复用 ReminderSettings.Rule 存，module = subtask，deckId 存父任务 id，
- * 不排独立闹钟；完成情况记在 ReminderRecord，module 也用 subtask。
+ * step 字段存顺序（从 0 开始），不排独立闹钟；
+ * 完成情况记在 ReminderRecord，module 也用 subtask。
  */
 final class Subtasks {
     private Subtasks() { }
@@ -18,6 +20,7 @@ final class Subtasks {
         for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
             if (rule.isSubtaskModule() && parentKey(parentId).equals(rule.deckId)) result.add(rule);
         }
+        Collections.sort(result, (a, b) -> Integer.compare(a.step, b.step));
         return result;
     }
 
@@ -29,13 +32,23 @@ final class Subtasks {
         return done;
     }
 
-    static ReminderSettings.Rule add(Context context, int parentId, String title) {
+    static ReminderSettings.Rule add(Context context, int parentId, String title, int step) {
         ReminderSettings.Rule rule = ReminderSettings.Rule
                 .withIntervalSeconds(ReminderSettings.nextRuleId(context), title, 0, 0, 24 * 3600, 1, true, false)
                 .withModule(ReminderSettings.MODULE_SUBTASK)
-                .withDeck(parentKey(parentId), false);
+                .withDeck(parentKey(parentId), false)
+                .withStep(step);
         ReminderSettings.upsertRule(context, rule);
         return rule;
+    }
+
+    static boolean allCompleted(Context context, int parentId, long dayStart) {
+        List<ReminderSettings.Rule> list = of(context, parentId);
+        if (list.isEmpty()) return false;
+        for (ReminderSettings.Rule rule : list) {
+            if (!doneToday(context, parentId, rule.title, dayStart)) return false;
+        }
+        return true;
     }
 
     static void delete(Context context, ReminderSettings.Rule subtask) {

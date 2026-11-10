@@ -59,6 +59,8 @@ final class ReminderSettings {
         final int daysMask;
         /** 单次提醒的时间戳；0 表示不是单次。 */
         final long onceAt;
+        /** 子任务步骤序号（从 0 开始）；非子任务固定为 0。 */
+        final int step;
 
         Rule(int id, String title, int start, int end, int interval, boolean enabled) {
             this(id, title, start, end, interval, 3, false, enabled);
@@ -112,6 +114,16 @@ final class ReminderSettings {
                      boolean specificTimeMode, List<Integer> timePointsSeconds,
                      String reminderMessage, String icon, String overlayArtwork, int color,
                      String module, String deckId, boolean quiz, int daysMask, long onceAt) {
+            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
+                    enabled, specificTimeMode, timePointsSeconds, reminderMessage, icon,
+                    overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, 0);
+        }
+
+        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
+                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
+                     boolean specificTimeMode, List<Integer> timePointsSeconds,
+                     String reminderMessage, String icon, String overlayArtwork, int color,
+                     String module, String deckId, boolean quiz, int daysMask, long onceAt, int step) {
             this.id = id;
             this.title = title;
             this.icon = icon == null ? "" : icon.trim();
@@ -139,6 +151,7 @@ final class ReminderSettings {
             this.quiz = quiz;
             this.daysMask = daysMask & 0x7f;
             this.onceAt = Math.max(0L, onceAt);
+            this.step = step;
         }
 
         boolean isBodyModule() { return MODULE_BODY.equals(module); }
@@ -224,7 +237,13 @@ final class ReminderSettings {
         Rule withSchedule(boolean specificTimes, List<Integer> points, int weekdays, long onceMillis) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimes, points,
-                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, weekdays, onceMillis);
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, weekdays, onceMillis, step);
+        }
+
+        Rule withStep(int value) {
+            return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
+                    remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, value);
         }
 
         /** 内置图片图标的存储值；没有设置图片图标时返回空串。 */
@@ -366,6 +385,7 @@ final class ReminderSettings {
                         item.optInt("daysMask", 0), item.optLong("onceAt", 0L));
                 rule = rule.withModule(item.optString("module", MODULE_BODY))
                         .withDeck(item.optString("deckId", ""), item.optBoolean("quiz", false));
+                rule = rule.withStep(item.optInt("step", 0));
                 result.add(rule.withReminderMessage(item.optString("reminderMessage", ""))
                         .withIcon(item.optString("icon", ""))
                         .withColor(item.optInt("color", Rule.COLOR_AUTO))
@@ -517,6 +537,7 @@ final class ReminderSettings {
                 item.put("quiz", rule.quiz);
                 item.put("daysMask", rule.daysMask);
                 item.put("onceAt", rule.onceAt);
+                item.put("step", rule.step);
                 array.put(item);
             } catch (JSONException ignored) { }
         }
