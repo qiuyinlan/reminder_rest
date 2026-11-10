@@ -1,7 +1,7 @@
 {
-    "versionCode": 35,
+    "versionCode": 36,
     "versionName": "0.3.0-beta25",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta25/rest-bean.apk",
-    "sha256": "",
-    "notes": "任务页横向流程式子任务。"
+    "sha256": "38afed31b0e968a441a582d31aa238b2dce9a52a6cd6730d40fca35e26bfd2db",
+    "notes": "# 0.3.0-beta25"
 }
