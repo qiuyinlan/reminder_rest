@@ -82,11 +82,8 @@ public final class TaskOverviewReminderActivity extends Activity {
 
     private void renderTasks() {
         listContainer.removeAllViews();
-        List<ReminderSettings.Rule> tasks = Tasks.today(this);
-        List<ReminderSettings.Rule> shown = new ArrayList<>();
-        for (ReminderSettings.Rule task : tasks) {
-            if (task.enabled) shown.add(task);
-        }
+        // 总览页列出任务清单里的全部任务（含「之后」的、关掉单独提醒的）
+        List<ReminderSettings.Rule> shown = new ArrayList<>(Tasks.all(this));
         int doneCount = 0;
         for (ReminderSettings.Rule task : shown) {
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) doneCount++;
@@ -94,7 +91,7 @@ public final class TaskOverviewReminderActivity extends Activity {
         summary.setText(shown.isEmpty() ? ""
                 : String.format(Locale.getDefault(), "%d/%d", doneCount, shown.size()));
         if (shown.isEmpty()) {
-            TextView empty = text("任务清单里还没有任务。\n回任务页加几个，到点我再来喊你。", 14, UiPalette.MUTED, false);
+            TextView empty = text("没有任务", 14, UiPalette.MUTED, false);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(20), dp(30), dp(20), dp(30));
             listContainer.addView(empty, new LinearLayout.LayoutParams(-1, -2));
@@ -150,14 +147,8 @@ public final class TaskOverviewReminderActivity extends Activity {
     }
 
     private void dismissPage() {
-        boolean allDone = true;
-        for (ReminderSettings.Rule task : ReminderSettings.moduleRules(this, ReminderSettings.MODULE_TASK)) {
-            if (!ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
-                allDone = false;
-                break;
-            }
-        }
-        if (ruleId >= 0 && !allDone) ReminderScheduler.scheduleNext(this, ruleId);
+        // 只有「今天该做且还开着提醒」的任务会影响是否继续提醒
+        if (ruleId >= 0 && !allTasksDone(this)) ReminderScheduler.scheduleNext(this, ruleId);
         finish();
     }
 
