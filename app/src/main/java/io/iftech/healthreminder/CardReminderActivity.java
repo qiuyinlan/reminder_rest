@@ -159,7 +159,6 @@ public final class CardReminderActivity extends Activity {
 
         if (quiz) {
             answerInput = new EditText(this);
-            answerInput.setHint("用一句话写下你的答案");
             answerInput.setHintTextColor(UiPalette.MUTED);
             answerInput.setTextColor(UiPalette.INK);
             answerInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);

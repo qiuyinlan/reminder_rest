@@ -922,23 +922,15 @@ public final class StatsActivity extends Activity {
         actions.addView(end, endParams);
         card.addView(actions);
 
-        TextView hint = text(future && active == null
-                ? "开始日和结束日都不能选在未来；先回到今天或更早的日期再标记。"
-                : "在日历上选中日期再点按钮。粉色细线会把开始到结束串成一段。", 12, MUTED, false);
-        hint.setLineSpacing(dp(3), 1f);
-        hint.setPadding(0, dp(9), 0, 0);
-        card.addView(hint);
 
         if (latest != null) {
             if (!latest.ongoing()) {
-                TextView editEnd = text("改结束日（现在是 " + PeriodLog.monthDay(latest.endKey) + "）",
-                        12, PERIOD_INK, false);
+                TextView editEnd = text("改结束日", 12, PERIOD_INK, false);
                 editEnd.setPadding(0, dp(10), 0, 0);
                 editEnd.setOnClickListener(v -> pickPeriodEnd(latest));
                 card.addView(editEnd);
             }
-            TextView delete = text("删除最近一次记录（" + PeriodLog.monthDay(latest.startKey) + "）",
-                    12, MUTED, false);
+            TextView delete = text("删除", 12, MUTED, false);
             delete.setPadding(0, dp(10), 0, 0);
             delete.setOnClickListener(v -> confirmDeletePeriod(latest));
             card.addView(delete);

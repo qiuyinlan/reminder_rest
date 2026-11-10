@@ -78,7 +78,7 @@ public final class BodyExportActivity extends Activity {
         heading.setOrientation(LinearLayout.VERTICAL);
         heading.setPadding(dp(12), 0, 0, 0);
         heading.addView(text("导出身体数据", 22, INK, true));
-        heading.addView(text("CSV 文件 · 只在本机生成", 12, MUTED, false));
+        heading.addView(text("CSV", 12, MUTED, false));
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         screen.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
@@ -192,13 +192,7 @@ public final class BodyExportActivity extends Activity {
             }).show());
             row.addView(chip);
             controls.addView(row);
-            TextView hint = text("导出该月份内所有记录。", 12, MUTED, false);
-            hint.setPadding(0, dp(8), 0, 0);
-            controls.addView(hint);
         } else {
-            TextView hint = text("从第一条身体记录一直到今天，全部导出。", 13, MUTED, false);
-            hint.setLineSpacing(dp(3), 1f);
-            controls.addView(hint);
         }
         controls.setLayoutParams(params);
         return controls;

@@ -93,9 +93,6 @@ public final class WallpaperSettingsActivity extends Activity {
         header.addView(title);
         page.addView(header);
 
-        TextView subtitle = text("选一张软件提供的壁纸，或用自己相册里的照片", 13, MUTED, false);
-        subtitle.setPadding(dp(54), dp(5), 0, 0);
-        page.addView(subtitle);
 
         LinearLayout intro = new LinearLayout(this);
         intro.setGravity(Gravity.CENTER_VERTICAL);
@@ -116,9 +113,6 @@ public final class WallpaperSettingsActivity extends Activity {
         LinearLayout introCopy = new LinearLayout(this);
         introCopy.setOrientation(LinearLayout.VERTICAL);
         introCopy.addView(text("把好好歇会设为动态壁纸", 16, INK, true));
-        TextView introDetail = text("系统更不容易回收壁纸服务；不想用时在系统壁纸设置里换回即可。", 12, MUTED, false);
-        introDetail.setPadding(0, dp(5), 0, 0);
-        introCopy.addView(introDetail);
         intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout previewCard = new LinearLayout(this);
@@ -284,9 +278,6 @@ public final class WallpaperSettingsActivity extends Activity {
         params.bottomMargin = dp(9);
         page.addView(heading, params);
         heading.addView(text(title, 15, INK, true));
-        TextView caption = text(detail, 12, MUTED, false);
-        caption.setPadding(0, dp(3), 0, 0);
-        heading.addView(caption);
     }
 
     private void pickUserImage() {

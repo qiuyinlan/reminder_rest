@@ -264,7 +264,6 @@ public final class CompanionActivity extends Activity {
         note.setTextSize(15);
         note.setTextColor(INK);
         note.setHintTextColor(MUTED);
-        note.setHint("例如：整理了桌面、读了几页书");
         note.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         note.setGravity(Gravity.TOP | Gravity.START);

@@ -221,11 +221,6 @@ public final class MainActivity extends Activity {
             render();
         });
         usage.addView(blockEnabled, new LinearLayout.LayoutParams(-1, dp(52)));
-        TextView blockHint = label(isWatchServiceEnabled()
-                ? "无障碍服务已启用，只读取前台应用名称。系统仍允许 Home 键或手势退出。"
-                : "需在系统无障碍设置中手动启用；不读取屏幕内容，也不能阻止 Home 键退出。", 11, MUTED, false);
-        blockHint.setPadding(dp(2), 0, dp(2), dp(10));
-        usage.addView(blockHint);
         body.addView(usage, full());
 
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.HOME, null,
@@ -243,13 +238,10 @@ public final class MainActivity extends Activity {
 
     private void addDailyBodyNote() {
         LinearLayout card = columnCard();
-        TextView title = label("今天身体怎么样？", 17, INK, true);
-        card.addView(title);
         EditText note = new EditText(this);
         note.setTextSize(15);
         note.setTextColor(INK);
         note.setHintTextColor(MUTED);
-        note.setHint("记下今天的精神、睡眠，或身体的小变化……");
         note.setGravity(Gravity.TOP | Gravity.LEFT);
         note.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -272,7 +264,7 @@ public final class MainActivity extends Activity {
         if (UserProfile.isFemale(this)) {
             addDivider(card);
             LinearLayout periodRow = row();
-            periodRow.setPadding(0, dp(10), 0, dp(4));
+            periodRow.setPadding(0, dp(12), 0, dp(2));
             final PeriodLog.Range active = PeriodLog.active(this);
             final boolean ongoing = active != null;
             final PeriodLog.Range finished = ongoing ? null : PeriodLog.latest(this);
@@ -282,7 +274,7 @@ public final class MainActivity extends Activity {
                 statusText = "经期进行中 · 第 " + PeriodLog.days(this, active) + " 天";
             } else if (hasFinished) {
                 statusText = "经期：" + PeriodLog.monthDay(finished.startKey) + " - "
-                        + PeriodLog.monthDay(finished.endKey) + " · 点这里改结束日";
+                        + PeriodLog.monthDay(finished.endKey);
             } else {
                 statusText = "经期：未标记";
             }
@@ -436,11 +428,6 @@ public final class MainActivity extends Activity {
         TextView statusTitle = label(ReminderSettings.enabled(this) ? "提醒正在运行" : "提醒已暂停", 17, INK, true);
         statusTitle.setLetterSpacing(0.02f);
         copy.addView(statusTitle);
-        TextView greeting = label(rules.isEmpty()
-                ? "添加计划，按时照顾自己" : "忙了一阵子啦，给身体留点空档", 12, MUTED, false);
-        greeting.setPadding(0, dp(5), 0, 0);
-        greeting.setLetterSpacing(0.02f);
-        copy.addView(greeting);
         overview.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
         Switch enabled = new Switch(this);
@@ -1486,7 +1473,7 @@ public final class MainActivity extends Activity {
     private LinearLayout columnCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(6), dp(16), dp(6));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackground(glassRound(20));
         card.setElevation(dp(1));
         return card;
@@ -1554,6 +1541,8 @@ public final class MainActivity extends Activity {
         View divider = new View(this);
         divider.setBackgroundColor(LINE);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(1));
+        params.topMargin = dp(12);
+        params.bottomMargin = dp(2);
         parent.addView(divider, params);
     }
 

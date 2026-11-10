@@ -104,7 +104,6 @@ public final class SubtaskActivity extends Activity {
         bar.setPadding(dp(16), dp(8), dp(16), dp(14));
 
         input = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
-        input.setHint("加一个子任务");
         input.setTextSize(15);
         input.setSingleLine(true);
         bar.addView(input, new LinearLayout.LayoutParams(0, dp(48), 1f));

@@ -35,7 +35,6 @@ final class CardEditor {
         form.addView(FormKit.editorLabel(activity, "正面内容", presetDeck != null));
         EditText front = FormKit.input(activity,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        front.setHint("写问题、单词或想记住的一句话");
         front.setMinLines(3);
         front.setMaxLines(8);
         form.addView(front, new LinearLayout.LayoutParams(-1, -2));
@@ -43,7 +42,6 @@ final class CardEditor {
         form.addView(FormKit.editorLabel(activity, "背面答案（选填）", true));
         EditText back = FormKit.input(activity,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        back.setHint("留空就是一张没有答案的卡片");
         back.setMinLines(2);
         back.setMaxLines(6);
         form.addView(back, new LinearLayout.LayoutParams(-1, -2));
@@ -98,7 +96,6 @@ final class CardEditor {
         EditText back = FormKit.input(activity,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         back.setText(card.answer);
-        back.setHint("留空就是一张没有答案的卡片");
         back.setMinLines(2);
         back.setMaxLines(6);
         form.addView(back, new LinearLayout.LayoutParams(-1, -2));

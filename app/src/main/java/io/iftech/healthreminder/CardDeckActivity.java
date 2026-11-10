@@ -100,7 +100,7 @@ public final class CardDeckActivity extends Activity {
             list.addView(cardRow(deck, card, index), new LinearLayout.LayoutParams(-1, -2));
         }
         if (deck.cards.isEmpty()) {
-            TextView empty = text("这个卡片集还没有卡片。", 13, UiPalette.MUTED, false);
+            TextView empty = text("还没有卡片", 13, UiPalette.MUTED, false);
             empty.setPadding(dp(4), dp(24), dp(4), dp(24));
             list.addView(empty);
         }

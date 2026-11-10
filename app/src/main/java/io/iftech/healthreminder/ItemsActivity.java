@@ -341,7 +341,6 @@ public final class ItemsActivity extends Activity {
         EditText name = styledInput(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         name.setSingleLine(true);
-        name.setHint("例如：喝水、站起来活动");
         name.setText(existing == null ? "" : existing.title);
         form.addView(name);
 
@@ -426,7 +425,6 @@ public final class ItemsActivity extends Activity {
         form.addView(editorLabel("霸屏提醒语句", true));
         EditText reminderMessage = styledInput(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        reminderMessage.setHint("选填，留空使用事项默认文案");
         reminderMessage.setMinLines(2);
         reminderMessage.setMaxLines(4);
         reminderMessage.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(120)});

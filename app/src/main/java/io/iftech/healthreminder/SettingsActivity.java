@@ -58,7 +58,6 @@ public final class SettingsActivity extends Activity {
 
         TextView subtitle = text("", 13, MUTED, false);
         subtitle.setPadding(dp(54), dp(5), 0, 0);
-        page.addView(subtitle);
 
         LinearLayout membership = new LinearLayout(this);
         membership.setGravity(Gravity.CENTER_VERTICAL);
@@ -79,7 +78,6 @@ public final class SettingsActivity extends Activity {
         memberCopy.addView(text("会员与账号", 15, INK, true));
         TextView memberDetail = text("", 12, MUTED, false);
         memberDetail.setPadding(0, dp(4), 0, 0);
-        memberCopy.addView(memberDetail);
         membership.addView(memberCopy, new LinearLayout.LayoutParams(0, -2, 1));
         membership.addView(text("›", 23, GREEN, false));
 
@@ -127,7 +125,6 @@ public final class SettingsActivity extends Activity {
                 12, MUTED, false);
         genderDetail.setLineSpacing(dp(3), 1f);
         genderDetail.setPadding(0, dp(6), 0, 0);
-        profileCard.addView(genderDetail);
 
         LinearLayout genderOptions = new LinearLayout(this);
         genderOptions.setPadding(dp(4), dp(4), dp(4), dp(4));
@@ -164,7 +161,6 @@ public final class SettingsActivity extends Activity {
         introCopy.addView(text("息屏时也能准时提醒", 16, INK, true));
         TextView introDetail = text("", 12, MUTED, false);
         introDetail.setPadding(0, dp(5), 0, 0);
-        introCopy.addView(introDetail);
         intro.addView(introCopy, new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout appearanceHeader = new LinearLayout(this);
@@ -195,7 +191,6 @@ public final class SettingsActivity extends Activity {
         appearanceCard.addView(themeOptions, themeOptionsParams);
         TextView themeNote = text("", 12, MUTED, false);
         themeNote.setPadding(0, dp(9), 0, 0);
-        appearanceCard.addView(themeNote);
 
         LinearLayout sectionHeader = new LinearLayout(this);
         sectionHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -232,7 +227,6 @@ public final class SettingsActivity extends Activity {
         TextView settingDetail = text("", 12, MUTED, false);
         settingDetail.setMaxLines(2);
         settingDetail.setPadding(0, dp(5), 0, 0);
-        settingCopy.addView(settingDetail);
         settingCard.addView(settingCopy, new LinearLayout.LayoutParams(0, -2, 1));
 
         TextView arrow = text("›", 25, GREEN, false);
@@ -259,7 +253,6 @@ public final class SettingsActivity extends Activity {
         diagCopy.addView(text("提醒诊断", 16, INK, true));
         TextView diagDetail = text("", 12, MUTED, false);
         diagDetail.setPadding(0, dp(5), 0, 0);
-        diagCopy.addView(diagDetail);
         diagnostics.addView(diagCopy, new LinearLayout.LayoutParams(0, -2, 1));
         diagnostics.addView(text("›", 25, GREEN, false));
 
@@ -291,7 +284,6 @@ public final class SettingsActivity extends Activity {
         exportCopy.addView(text("导出身体数据", 16, INK, true));
         TextView exportDetail = text("", 12, MUTED, false);
         exportDetail.setPadding(0, dp(5), 0, 0);
-        exportCopy.addView(exportDetail);
         exportCard.addView(exportCopy, new LinearLayout.LayoutParams(0, -2, 1));
         exportCard.addView(text("›", 25, GREEN, false));
 
@@ -316,7 +308,6 @@ public final class SettingsActivity extends Activity {
         importCopy.addView(text("导入身体数据", 16, INK, true));
         TextView importDetail = text("从另一台设备导出的 CSV 恢复", 12, MUTED, false);
         importDetail.setPadding(0, dp(5), 0, 0);
-        importCopy.addView(importDetail);
         importCard.addView(importCopy, new LinearLayout.LayoutParams(0, -2, 1));
         importCard.addView(text("›", 25, GREEN, false));
 
@@ -342,23 +333,10 @@ public final class SettingsActivity extends Activity {
             crashCopy.addView(text("上次崩溃日志", 16, INK, true));
             TextView crashDetail = text("", 12, MUTED, false);
             crashDetail.setPadding(0, dp(5), 0, 0);
-            crashCopy.addView(crashDetail);
             crashCard.addView(crashCopy, new LinearLayout.LayoutParams(0, -2, 1));
             crashCard.addView(text("›", 25, GREEN, false));
         }
 
-        LinearLayout note = new LinearLayout(this);
-        note.setOrientation(LinearLayout.VERTICAL);
-        note.setPadding(dp(15), dp(13), dp(15), dp(13));
-        note.setBackground(round(Color.WHITE, 16));
-        note.setElevation(dp(1));
-        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
-        noteParams.topMargin = dp(13);
-        page.addView(note, noteParams);
-        note.addView(text("息屏提醒小贴士", 13, INK, true));
-        TextView noteBody = text("", 12, MUTED, false);
-        noteBody.setPadding(0, dp(5), 0, 0);
-        note.addView(noteBody);
     }
 
     private void showCrashLog(String log) {

@@ -170,7 +170,7 @@ public final class CardActivity extends Activity {
         List<ReminderSettings.Rule> rules = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_CARD);
         ruleList.removeAllViews();
         if (rules.isEmpty()) {
-            TextView empty = text("还没有安排提醒。给某个卡片集点「设提醒」。", 12, UiPalette.MUTED, false);
+            TextView empty = text("还没有安排提醒", 12, UiPalette.MUTED, false);
             empty.setPadding(dp(4), dp(4), dp(4), dp(10));
             ruleList.addView(empty);
         }
@@ -179,7 +179,7 @@ public final class CardActivity extends Activity {
         answerList.removeAllViews();
         List<QuizLog> answers = QuizLog.all(this);
         if (answers.isEmpty()) {
-            TextView empty = text("还没有答题记录。", 12, UiPalette.MUTED, false);
+            TextView empty = text("还没有答题记录", 12, UiPalette.MUTED, false);
             empty.setPadding(dp(4), dp(4), dp(4), dp(10));
             answerList.addView(empty);
         }
@@ -354,9 +354,6 @@ public final class CardActivity extends Activity {
         // ---------------- 固定时间点
         final LinearLayout fixedSection = new LinearLayout(this);
         fixedSection.setOrientation(LinearLayout.VERTICAL);
-        TextView hint = text("点时间可以直接改，不用删掉重加。", 12, UiPalette.MUTED, false);
-        hint.setPadding(0, dp(8), 0, 0);
-        fixedSection.addView(hint);
         final LinearLayout timeList = new LinearLayout(this);
         timeList.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(-1, -2);
@@ -511,8 +508,6 @@ public final class CardActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(6), dp(18), dp(4));
-        TextView hint = text("每隔多久弹一张卡片", 12, UiPalette.MUTED, false);
-        form.addView(hint);
         LinearLayout quick = new LinearLayout(this);
         quick.setOrientation(LinearLayout.HORIZONTAL);
         quick.setPadding(0, dp(8), 0, dp(4));

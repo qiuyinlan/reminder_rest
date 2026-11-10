@@ -225,7 +225,6 @@ public final class ReminderActivity extends Activity {
         completionNote.setTextSize(15);
         completionNote.setTextColor(textColor);
         completionNote.setHintTextColor(mutedColor);
-        completionNote.setHint("做了什么？（选填）");
         completionNote.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         completionNote.setPadding(dp(14), dp(10), dp(14), dp(10));
         completionNote.setBackground(UiPalette.inputBackground(this,
@@ -295,12 +294,8 @@ public final class ReminderActivity extends Activity {
         busyParams.topMargin = dp(6);
         content.addView(busy, busyParams);
 
-        TextView subtitle = text("记下为什么没能完成，也可以选择稍后提醒。", 14, TEXT_MUTED, false);
-        subtitle.setPadding(0, dp(7), 0, dp(18));
-        content.addView(subtitle);
 
         EditText reason = new EditText(this);
-        reason.setHint("什么事比我还重要！");
         reason.setTextSize(16);
         reason.setTextColor(TEXT_PRIMARY);
         reason.setHintTextColor(TEXT_MUTED);
@@ -367,9 +362,6 @@ public final class ReminderActivity extends Activity {
         pickerParams.topMargin = dp(8);
         content.addView(delayPickers, pickerParams);
 
-        TextView defaultDelay = text("不选的话，默认下一次到时再提醒", 12, TEXT_MUTED, false);
-        defaultDelay.setPadding(0, 0, 0, dp(3));
-        content.addView(defaultDelay);
         TextView warning = text("想想清楚，最好是真的有事！\n不要骗别人把自己也骗了！", 12,
                 UiPalette.WARN, false);
         warning.setLineSpacing(dp(2), 1f);

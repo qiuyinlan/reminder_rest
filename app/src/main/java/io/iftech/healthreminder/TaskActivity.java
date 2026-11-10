@@ -95,10 +95,6 @@ public final class TaskActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(10), dp(18), dp(0));
-        TextView hint = text("只写名字，提醒时间在总览提醒里统一设", 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-        hintParams.bottomMargin = dp(8);
-        form.addView(hint, hintParams);
         form.addView(input, new LinearLayout.LayoutParams(-1, -2));
 
         // 分类选择行
@@ -858,10 +854,6 @@ public final class TaskActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(10), dp(18), dp(0));
-        TextView hint = text("只写名字，按顺序添加", 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-        hintParams.bottomMargin = dp(8);
-        form.addView(hint, hintParams);
         form.addView(input, new LinearLayout.LayoutParams(-1, -2));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -999,7 +991,6 @@ public final class TaskActivity extends Activity {
         form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
 
         EditText note = FormKit.input(this, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        note.setHint("备注（选填，会显示在霸屏页上）");
         note.setMinLines(2);
         note.setMaxLines(3);
         note.setText(existing == null ? "" : existing.reminderMessage);

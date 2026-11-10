@@ -113,7 +113,7 @@ public final class BodyImportActivity extends Activity {
             page.addView(previewCard(), cardParams());
             page.addView(actionButtons(), cardParams());
         } else if (snapshot != null) {
-            TextView empty = text("这个文件里没有可导入的身体记录。", 12, MUTED, false);
+            TextView empty = text("没有可导入的记录", 12, MUTED, false);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.topMargin = dp(12);
             page.addView(empty, params);
