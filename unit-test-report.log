@@ -1,0 +1,127 @@
+RESULT: success
+
+== DIAG ==
+
+== junit ==
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.PeriodLogEditTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:33" hostname="runnervmwuk1x" time="5.974">
+  <properties/>
+  <testcase name="wrongEndCanBeMovedToAnotherDay" classname="io.iftech.healthreminder.PeriodLogEditTest" time="5.826"/>
+  <testcase name="endNeverCrossesTheNextPeriod" classname="io.iftech.healthreminder.PeriodLogEditTest" time="0.065"/>
+  <testcase name="endIsClampedBetweenStartAndToday" classname="io.iftech.healthreminder.PeriodLogEditTest" time="0.082"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.WallpaperCatalogTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:45" hostname="runnervmwuk1x" time="0.002">
+  <properties/>
+  <testcase name="unknownIdsFallBackToDefault" classname="io.iftech.healthreminder.WallpaperCatalogTest" time="0.002"/>
+  <testcase name="builtInCatalogIsComplete" classname="io.iftech.healthreminder.WallpaperCatalogTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.MembershipRepositoryTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:33" hostname="runnervmwuk1x" time="0.006">
+  <properties/>
+  <testcase name="entitlementUsesServerActiveValueAndExpiry" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.002"/>
+  <testcase name="unauthorizedAndNetworkFailureDoNotGrantMembership" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.0"/>
+  <testcase name="logoutClearsCredentialsEvenWhenNetworkFails" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.001"/>
+  <testcase name="redeemRefreshesServerEntitlementAndRejectsFailure" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.001"/>
+  <testcase name="sendCodeAccepts202AndSurfacesRateLimit" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.001"/>
+  <testcase name="freeUserCanRemainLoggedOutAndThirdItemIsFree" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.0"/>
+  <testcase name="loginSavesServerTokenAndAccount" classname="io.iftech.healthreminder.MembershipRepositoryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.AppUpdateManagerTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:33" hostname="runnervmwuk1x" time="0.014">
+  <properties/>
+  <testcase name="acceptsSnakeCaseApkUrl" classname="io.iftech.healthreminder.AppUpdateManagerTest" time="0.011"/>
+  <testcase name="parsesHttpsUpdateManifest" classname="io.iftech.healthreminder.AppUpdateManagerTest" time="0.001"/>
+  <testcase name="automaticCheckIntervalIsOneDay" classname="io.iftech.healthreminder.AppUpdateManagerTest" time="0.0"/>
+  <testcase name="rejectsInsecureOrUnverifiableUpdates" classname="io.iftech.healthreminder.AppUpdateManagerTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.ReminderScheduleMathTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:39" hostname="runnervmwuk1x" time="0.005">
+  <properties/>
+  <testcase name="tomorrowOnlySkipsLaterPointsToday" classname="io.iftech.healthreminder.ReminderScheduleMathTest" time="0.002"/>
+  <testcase name="choosesNextSelectedTimeToday" classname="io.iftech.healthreminder.ReminderScheduleMathTest" time="0.0"/>
+  <testcase name="skipsThePointThatIsExactlyNow" classname="io.iftech.healthreminder.ReminderScheduleMathTest" time="0.001"/>
+  <testcase name="movesToTomorrowAfterTheLastPoint" classname="io.iftech.healthreminder.ReminderScheduleMathTest" time="0.0"/>
+  <testcase name="treatsMidnightAsAValidDailyTimePoint" classname="io.iftech.healthreminder.ReminderScheduleMathTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.StatsSmokeTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:39" hostname="runnervmwuk1x" time="5.977">
+  <properties/>
+  <testcase name="opensWithFemaleAndClosedPeriod" classname="io.iftech.healthreminder.StatsSmokeTest" time="5.333"/>
+  <testcase name="opensWithFemaleAndOngoingPeriod" classname="io.iftech.healthreminder.StatsSmokeTest" time="0.392"/>
+  <testcase name="opensWithoutProfileOrRecords" classname="io.iftech.healthreminder.StatsSmokeTest" time="0.251"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.iftech.healthreminder.TaskCategoryStorageTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-10T12:36:45" hostname="runnervmwuk1x" time="0.141">
+  <properties/>
+  <testcase name="everyWithMethodKeepsCategoryId" classname="io.iftech.healthreminder.TaskCategoryStorageTest" time="0.046"/>
+  <testcase name="categoryIdSurvivesSaveAndReload" classname="io.iftech.healthreminder.TaskCategoryStorageTest" time="0.095"/>
+  <system-out><![CDATA[[DIAG] added category id=1 all=[0:默认][1:学习]
+[DIAG] stored categoryId after create=0
+[DIAG] rule handed to upsert has categoryId=1
+[DIAG] stored after move=1 raw=[{"id":1,"title":"背单词","icon":"","color":-1,"reminderMessage":"","overlayArtwork":"default","start":540,"end":720,"interval":60,"intervalSeconds":3600,"dailyTarget":1,"remindAfterTarget":true,"enabled":true,"scheduleMode":"interval","timePointsSeconds":[],"module":"task","deckId":"","quiz":false,"daysMask":0,"onceAt":0,"step":0,"categoryId":1}]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+
+== log tail ==
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.overridePathCheck=true' is experimental.
+The current default is 'false'.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:processDebugManifestForPackage
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes NO-SOURCE
+> Task :app:processDebugResources
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:compileDebugUnitTestJavaWithJavac
+> Task :app:generateDebugUnitTestConfig
+> Task :app:testDebugUnitTest
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/test-1794314162200.json
+[Incubating] Problems report is available at: file:///home/runner/work/reminder_rest/reminder_rest/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 49s
+25 actionable tasks: 25 executed
