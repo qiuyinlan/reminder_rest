@@ -1,7 +1,7 @@
 {
-    "versionCode": 55,
-    "versionName": "0.3.0-beta35",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta35/rest-bean.apk",
-    "sha256": "74e79c394857b4a48175f354b6d04edbbd42ae30a46c3849f604b090f9ca5a88",
-    "notes": "应用内更新支持断点续传和自动重试，网络断线不再导致校验失败"
+    "versionCode": 56,
+    "versionName": "0.3.0-beta36",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta36/rest-bean.apk",
+    "sha256": "fb3282e0de2291a15cb653c38ff6b0088b95a6cf7d23442981216d72b3154f03",
+    "notes": "修复任务分类丢失（开关单独提醒、改名字后任务不再掉回默认分类），分类选择器换成和全局一致的卡片式弹窗。"
 }
