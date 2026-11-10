@@ -22,6 +22,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -171,9 +172,7 @@ final class AppUpdateManager {
                 if (!parent.exists() && !parent.mkdirs()) throw new IOException("无法创建更新目录");
                 File part = new File(parent, "update.apk.part");
                 apk = new File(parent, "update.apk");
-                String downloadedHash = downloadAndHash(update.apkUrl, part);
-                if (!MessageDigest.isEqual(downloadedHash.getBytes(StandardCharsets.US_ASCII),
-                        update.sha256.getBytes(StandardCharsets.US_ASCII))) {
+                if (!downloadVerified(update.apkUrl, part, update.sha256)) {
                     throw new IOException("更新文件校验失败");
                 }
                 if (!matchesPackageVersionAndSignature(activity, part, update)) {
@@ -217,6 +216,76 @@ final class AppUpdateManager {
         } finally { connection.disconnect(); }
     }
 
+    /**
+     * 带断点续传 + 自动重试的下载。网络中断时从已下载位置继续，最多 6 次。
+     */
+    private static boolean downloadVerified(String url, File destination, String expectedSha) {
+        if (destination.exists() && !destination.delete()) {
+            // 删不掉就换个新文件，避免脏数据
+            destination = new File(destination.getParentFile(), "update.apk.part2");
+        }
+        for (int attempt = 1; attempt <= 6; attempt++) {
+            try {
+                appendFrom(url, destination);
+            } catch (Exception error) {
+                if (attempt == 6) return false;
+                sleepQuietly(800L * attempt);
+                continue;
+            }
+            String hash = sha256Of(destination);
+            if (expectedSha.equals(hash)) return true;
+            // 校验不符：已下的部分可能损坏，从头再来
+            if (destination.exists() && !destination.delete()) return false;
+            if (attempt == 6) return false;
+            sleepQuietly(800L * attempt);
+        }
+        return false;
+    }
+
+    private static void sleepQuietly(long millis) {
+        try { Thread.sleep(millis); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+    }
+
+    /** 从已有文件长度处继续下载；服务器不认识 Range 时会从头写。 */
+    private static void appendFrom(String url, File destination) throws Exception {
+        long existing = destination.exists() ? destination.length() : 0;
+        if (existing > MAX_APK_BYTES) throw new IOException("更新包超过大小限制");
+        HttpURLConnection connection = openHttps(url, existing);
+        try {
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
+            int status = connection.getResponseCode();
+            boolean append = status == 206 && existing > 0;
+            try (InputStream input = new BufferedInputStream(connection.getInputStream());
+                 FileOutputStream file = new FileOutputStream(destination, append);
+                 BufferedOutputStream output = new BufferedOutputStream(file)) {
+                byte[] buffer = new byte[32 * 1024];
+                int count;
+                long total = append ? existing : 0;
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    if (total > MAX_APK_BYTES) throw new IOException("更新包超过大小限制");
+                    output.write(buffer, 0, count);
+                }
+            }
+        } finally { connection.disconnect(); }
+    }
+
+    private static String sha256Of(File file) {
+        try (InputStream input = new BufferedInputStream(new FileInputStream(file))) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[32 * 1024];
+            int count;
+            while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count);
+            byte[] hash = digest.digest();
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) hex.append(String.format(Locale.ROOT, "%02x", b & 0xff));
+            return hex.toString();
+        } catch (Exception error) {
+            return "";
+        }
+    }
+
     private static String downloadAndHash(String url, File destination) throws Exception {
         HttpURLConnection connection = openHttps(url);
         connection.setConnectTimeout(15000);
@@ -246,6 +315,10 @@ final class AppUpdateManager {
     }
 
     private static HttpURLConnection openHttps(String value) throws IOException {
+        return openHttps(value, 0L);
+    }
+
+    private static HttpURLConnection openHttps(String value, long rangeStart) throws IOException {
         String current = value;
         for (int redirects = 0; redirects <= 5; redirects++) {
             if (!isHttps(current)) throw new IOException("更新地址必须使用 HTTPS");
@@ -255,6 +328,7 @@ final class AppUpdateManager {
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(15000);
             connection.setRequestProperty("Accept", "application/json, application/vnd.android.package-archive, application/octet-stream");
+            if (rangeStart > 0) connection.setRequestProperty("Range", "bytes=" + rangeStart + "-");
             int status = connection.getResponseCode();
             if (status >= 300 && status < 400) {
                 String location = connection.getHeaderField("Location");
