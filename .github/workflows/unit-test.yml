@@ -40,9 +40,10 @@ jobs:
             --no-daemon --stacktrace 2>&1 | tee /tmp/test.log
           exit ${PIPESTATUS[0]}
 
-      - name: Collect report
+      - name: Publish report to ci-log
         if: always()
         run: |
+          set -e
           {
             echo "RESULT: ${{ steps.test.outcome }}"
             echo
@@ -53,23 +54,15 @@ jobs:
             find app/build/test-results -name '*.xml' -exec cat {} \; 2>/dev/null | head -c 15000 || true
             echo
             echo "== log tail =="
-            tail -c 12000 /tmp/test.log || true
-          } > /tmp/report/unit-test-report.log 2>/dev/null || {
-            mkdir -p /tmp/report
-            tail -c 12000 /tmp/test.log > /tmp/report/unit-test-report.log
-          }
-
-      - name: Publish report branch
-        if: always()
-        run: |
-          mkdir -p /tmp/pub && cd /tmp/pub
-          git init -q
+            tail -c 15000 /tmp/test.log || true
+          } > unit-test-report.log || true
           git config user.name github-actions
           git config user.email actions@github.com
-          cp /tmp/report/unit-test-report.log .
-          git add unit-test-report.log
-          git commit -q -m "unit test report for ${{ github.sha }}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-report
+          git push -f origin HEAD:refs/heads/ci-report || true
+          git checkout -B ci-report
+          git add -f unit-test-report.log
+          git commit -m "test report ${{ github.sha }}" || true
+          git push -f origin ci-report || true
 
       - name: Fail if tests failed
         if: steps.test.outcome == 'failure'
