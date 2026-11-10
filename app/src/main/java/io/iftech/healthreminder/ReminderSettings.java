@@ -118,17 +118,7 @@ final class ReminderSettings {
                      String module, String deckId, boolean quiz, int daysMask, long onceAt) {
             this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
                     enabled, specificTimeMode, timePointsSeconds, reminderMessage, icon,
-                    overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, 0);
-        }
-
-        private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
-                     int dailyTarget, boolean remindAfterTarget, boolean enabled,
-                     boolean specificTimeMode, List<Integer> timePointsSeconds,
-                     String reminderMessage, String icon, String overlayArtwork, int color,
-                     String module, String deckId, boolean quiz, int daysMask, long onceAt, int step) {
-            this(id, title, start, end, interval, intervalSeconds, dailyTarget, remindAfterTarget,
-                    enabled, specificTimeMode, timePointsSeconds, reminderMessage, icon,
-                    overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, step, 0);
+                    overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, 0, 0);
         }
 
         private Rule(int id, String title, int start, int end, int interval, int intervalSeconds,
@@ -202,49 +192,49 @@ final class ReminderSettings {
         Rule withTitle(String value) {
             return new Rule(id, value == null ? "" : value.trim(), start, end, interval, intervalSeconds,
                     dailyTarget, remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withReminderMessage(String message) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, message, icon, overlayArtwork, color,
-                    module, deckId, quiz, daysMask, onceAt, categoryId);
+                    module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withIcon(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds, reminderMessage, value, overlayArtwork, color,
-                    module, deckId, quiz, daysMask, onceAt, categoryId);
+                    module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withOverlayArtwork(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, value, color, module, deckId, quiz, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, value, color, module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withColor(int value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, value, module, deckId, quiz, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, overlayArtwork, value, module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withEnabled(boolean value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, value, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, overlayArtwork, color, module, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withModule(String value) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, color, value, deckId, quiz, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, overlayArtwork, color, value, deckId, quiz, daysMask, onceAt, step, categoryId);
         }
 
         Rule withDeck(String value, boolean quizMode) {
             return new Rule(id, title, start, end, interval, intervalSeconds, dailyTarget,
                     remindAfterTarget, enabled, specificTimeMode, timePointsSeconds,
-                    reminderMessage, icon, overlayArtwork, color, module, value, quizMode, daysMask, onceAt, categoryId);
+                    reminderMessage, icon, overlayArtwork, color, module, value, quizMode, daysMask, onceAt, step, categoryId);
         }
 
         Rule withSchedule(boolean specificTimes, List<Integer> points, int weekdays, long onceMillis) {
