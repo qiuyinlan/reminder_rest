@@ -166,6 +166,45 @@ final class PeriodLog {
         return true;
     }
 
+    /**
+     * 改正某一段的结束日（点错了「结束了」之后用这个补救）。
+     * 会自动收进 [开始日, 今天] 之间，也不会越过下一段经期的开始日。
+     */
+    static boolean setEnd(Context context, Range range, Calendar endDay) {
+        if (range == null || endDay == null) return false;
+        Calendar start = parse(range.startKey);
+        if (start == null) return false;
+        Calendar end = atMidnight(endDay);
+        Calendar today = atMidnight(Calendar.getInstance());
+        if (end.after(today)) end = (Calendar) today.clone();
+        if (end.before(start)) end = (Calendar) start.clone();
+
+        // 不能越过下一段的开始日，否则两段会重叠
+        String nextStartKey = null;
+        for (Range other : all(context)) {
+            if (other.startKey.compareTo(range.startKey) > 0
+                    && (nextStartKey == null || other.startKey.compareTo(nextStartKey) < 0)) {
+                nextStartKey = other.startKey;
+            }
+        }
+        if (nextStartKey != null) {
+            Calendar nextStart = parse(nextStartKey);
+            if (nextStart != null) {
+                Calendar cap = (Calendar) nextStart.clone();
+                cap.add(Calendar.DAY_OF_MONTH, -1);
+                if (end.after(cap)) end = cap;
+            }
+        }
+        if (end.before(start)) return false;
+        prefs(context).edit().putString(KEY_PREFIX + range.startKey, dayKey(end)).apply();
+        return true;
+    }
+
+    /** 把 "yyyy-MM-dd" 转成当天零点；解析失败返回 null。 */
+    static Calendar toCalendar(String key) {
+        return parse(key);
+    }
+
     /** 导入时直接写入一段记录（不做「自动收尾」等副作用）。 */
     static void put(Context context, String startKey, String endKey) {
         if (!isValidDay(startKey)) return;

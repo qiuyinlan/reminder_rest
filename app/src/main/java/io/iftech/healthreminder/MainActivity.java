@@ -275,10 +275,22 @@ public final class MainActivity extends Activity {
             periodRow.setPadding(0, dp(10), 0, dp(4));
             final PeriodLog.Range active = PeriodLog.active(this);
             final boolean ongoing = active != null;
-            TextView status = label(ongoing
-                            ? "经期进行中 · 第 " + PeriodLog.days(this, active) + " 天"
-                            : "经期：未标记",
-                    12, ongoing ? UiPalette.PERIOD_INK : MUTED, true);
+            final PeriodLog.Range finished = ongoing ? null : PeriodLog.latest(this);
+            final boolean hasFinished = finished != null && !finished.ongoing();
+            String statusText;
+            if (ongoing) {
+                statusText = "经期进行中 · 第 " + PeriodLog.days(this, active) + " 天";
+            } else if (hasFinished) {
+                statusText = "经期：" + PeriodLog.monthDay(finished.startKey) + " - "
+                        + PeriodLog.monthDay(finished.endKey) + " · 点这里改结束日";
+            } else {
+                statusText = "经期：未标记";
+            }
+            TextView status = label(statusText, 12,
+                    ongoing || hasFinished ? UiPalette.PERIOD_INK : MUTED, true);
+            if (hasFinished) {
+                status.setOnClickListener(v -> pickPeriodEnd(finished));
+            }
             periodRow.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
             TextView action = label(ongoing ? "今天结束" : "今天来了", 12, UiPalette.PERIOD_INK, true);
             action.setGravity(Gravity.CENTER);
@@ -302,6 +314,22 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params = full();
         params.topMargin = dp(14);
         body.addView(card, params);
+    }
+
+    /** 结束日点错了，从首页直接改回来。 */
+    private void pickPeriodEnd(final PeriodLog.Range range) {
+        Calendar current = PeriodLog.toCalendar(range.endKey);
+        if (current == null) current = Calendar.getInstance();
+        WheelPicker.date(this, "结束日", current, picked -> {
+            if (!PeriodLog.setEnd(this, range, picked)) {
+                Toast.makeText(this, "这段经期没法改到这个日期", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            PeriodLog.Range updated = PeriodLog.latest(this);
+            String label = updated == null ? "" : PeriodLog.monthDay(updated.endKey);
+            Toast.makeText(this, "结束日改成 " + label, Toast.LENGTH_SHORT).show();
+            render();
+        }).show();
     }
 
     private void showWelcomeLetter() {
