@@ -100,6 +100,7 @@ public final class TaskActivity extends Activity {
         form.addView(input, new LinearLayout.LayoutParams(-1, -2));
 
         // 分类选择行
+        final TextView[] catBtnRef = {null};
         LinearLayout catRow = new LinearLayout(this);
         catRow.setOrientation(LinearLayout.HORIZONTAL);
         catRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -107,7 +108,9 @@ public final class TaskActivity extends Activity {
         TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
         catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
         final TextView catBtn = text("默认", 13, UiPalette.ACCENT, true);
+        catBtnRef[0] = catBtn;
         catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+        catBtn.setClickable(true);
         catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
         catRow.addView(catBtn);
         form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
@@ -118,23 +121,25 @@ public final class TaskActivity extends Activity {
                 .setNegativeButton("取消", null)
                 .setPositiveButton("添加", null)
                 .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String title = input.getText().toString().trim();
-            if (title.isEmpty()) {
-                Toast.makeText(this, "先写个名字", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            ArrayList<Integer> points = new ArrayList<>();
-            points.add(9 * 3600);
-            ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
-                            ReminderSettings.nextRuleId(this), title, 9 * 60, 9 * 60, 24 * 3600,
-                            points, 1, true, false)
-                    .withModule(ReminderSettings.MODULE_TASK)
-                    .withCategory(categoryId[0]);
-            ReminderSettings.upsertRule(this, rule);
-            dialog.dismiss();
-            reload();
-        }));
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String title = input.getText().toString().trim();
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "先写个名字", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                ArrayList<Integer> points = new ArrayList<>();
+                points.add(9 * 3600);
+                ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                                ReminderSettings.nextRuleId(this), title, 9 * 60, 9 * 60, 24 * 3600,
+                                points, 1, true, false)
+                        .withModule(ReminderSettings.MODULE_TASK)
+                        .withCategory(categoryId[0]);
+                ReminderSettings.upsertRule(this, rule);
+                dialog.dismiss();
+                reload();
+            });
+        });
         FormKit.showStyled(this, dialog);
     }
 
@@ -281,17 +286,26 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(14), dp(16), dp(8));
+        header.setPadding(dp(16), dp(10), dp(16), dp(10));
+        header.setMinimumHeight(dp(44));
+        
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        bg.setColor(cat.expanded ? UiPalette.SOFT : Color.TRANSPARENT);
+        header.setBackground(bg);
 
-        TextView arrow = text(cat.expanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true);
-        arrow.setPadding(0, 0, dp(8), 0);
+        TextView arrow = text("›", 16, UiPalette.MUTED, true);
+        arrow.setPadding(dp(4), 0, dp(12), 0);
+        arrow.setRotation(cat.expanded ? 90 : 0);
         header.addView(arrow);
 
-        TextView label = text(cat.name, 14, UiPalette.MUTED, true);
+        TextView label = text(cat.name, 15, UiPalette.INK, true);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView count = text(totalCount + " 个", 12, UiPalette.MUTED, false);
-        header.addView(count);
+        TextView count = text(totalCount + "", 12, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, -2);
+        countParams.leftMargin = dp(12);
+        header.addView(count, countParams);
 
         header.setOnClickListener(v -> {
             TaskCategories.toggleExpanded(this, cat.id);
@@ -632,10 +646,11 @@ public final class TaskActivity extends Activity {
 
     /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
     private View buildSubtaskFlow(ReminderSettings.Rule task, List<ReminderSettings.Rule> subtasks, long dayStart) {
-        ScrollView scroll = new ScrollView(this);
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(true);
         scroll.setFillViewport(false);
-        scroll.setPadding(dp(44), dp(6), dp(4), dp(6));
+        scroll.setPadding(dp(38), dp(6), dp(4), dp(6));
+        scroll.setMinimumHeight(dp(44));
 
         LinearLayout flow = new LinearLayout(this);
         flow.setOrientation(LinearLayout.HORIZONTAL);
@@ -692,7 +707,7 @@ public final class TaskActivity extends Activity {
                 flow.addView(arrow, arrowParams);
             }
         }
-        scroll.addView(flow, new ScrollView.LayoutParams(-2, -2));
+        scroll.addView(flow, new HorizontalScrollView.LayoutParams(-2, -2));
         return scroll;
     }
 
