@@ -36,8 +36,7 @@ jobs:
         id: test
         continue-on-error: true
         run: |
-          gradle :app:testDebugUnitTest --tests 'io.iftech.healthreminder.TaskCategoryStorageTest' \
-            --no-daemon --stacktrace 2>&1 | tee /tmp/test.log
+          gradle :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee /tmp/test.log
           exit ${PIPESTATUS[0]}
 
       - name: Publish report to ci-log

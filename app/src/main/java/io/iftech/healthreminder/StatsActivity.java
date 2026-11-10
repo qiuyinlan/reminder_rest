@@ -930,12 +930,35 @@ public final class StatsActivity extends Activity {
         card.addView(hint);
 
         if (latest != null) {
+            if (!latest.ongoing()) {
+                TextView editEnd = text("改结束日（现在是 " + PeriodLog.monthDay(latest.endKey) + "）",
+                        12, PERIOD_INK, false);
+                editEnd.setPadding(0, dp(10), 0, 0);
+                editEnd.setOnClickListener(v -> pickPeriodEnd(latest));
+                card.addView(editEnd);
+            }
             TextView delete = text("删除最近一次记录（" + PeriodLog.monthDay(latest.startKey) + "）",
                     12, MUTED, false);
             delete.setPadding(0, dp(10), 0, 0);
             delete.setOnClickListener(v -> confirmDeletePeriod(latest));
             card.addView(delete);
         }
+    }
+
+    /** 点错了「结束了」时改结束日：默认填现在的结束日，可选到今天之前的任意一天。 */
+    private void pickPeriodEnd(final PeriodLog.Range range) {
+        Calendar current = PeriodLog.toCalendar(range.endKey);
+        if (current == null) current = Calendar.getInstance();
+        WheelPicker.date(dialogContext(), "结束日", current, picked -> {
+            if (!PeriodLog.setEnd(this, range, picked)) {
+                Toast.makeText(this, "这段经期没法改到这个日期", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            PeriodLog.Range updated = PeriodLog.latest(this);
+            String label = updated == null ? "" : PeriodLog.monthDay(updated.endKey);
+            Toast.makeText(this, "结束日改成 " + label, Toast.LENGTH_SHORT).show();
+            render();
+        }).show();
     }
 
     private void confirmDeletePeriod(PeriodLog.Range range) {
