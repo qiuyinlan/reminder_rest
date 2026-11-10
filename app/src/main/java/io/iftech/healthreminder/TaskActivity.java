@@ -107,12 +107,10 @@ public final class TaskActivity extends Activity {
         catRow.setOrientation(LinearLayout.HORIZONTAL);
         catRow.setGravity(Gravity.CENTER_VERTICAL);
         catRow.setPadding(0, dp(10), 0, 0);
-        TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
+        TextView catLabel = text("分类", 12, UiPalette.MUTED, false);
         catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
-        final TextView catBtn = text("默认", 13, UiPalette.ACCENT, true);
+        final TextView catBtn = CategoryPicker.chip(this, "默认");
         catBtnRef[0] = catBtn;
-        catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
-        catBtn.setClickable(true);
         catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
         catRow.addView(catBtn);
         form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
@@ -146,32 +144,10 @@ public final class TaskActivity extends Activity {
     }
 
     private void pickCategory(final int[] selectedId, final TextView display) {
-        List<TaskCategories.Category> cats = TaskCategories.all(this);
-        String[] names = new String[cats.size()];
-        for (int i = 0; i < cats.size(); i++) names[i] = cats.get(i).name;
-        new AlertDialog.Builder(this)
-                .setTitle("选择分类")
-                .setItems(names, (d, which) -> {
-                    selectedId[0] = cats.get(which).id;
-                    display.setText(cats.get(which).name);
-                })
-                .setNeutralButton("＋ 新建", (d, w) -> {
-                    final EditText input = FormKit.textInput(this, "分类名", "");
-                    new AlertDialog.Builder(this)
-                            .setTitle("新建分类")
-                            .setView(input)
-                            .setNegativeButton("取消", null)
-                            .setPositiveButton("创建", (d2, w2) -> {
-                                String name = input.getText().toString().trim();
-                                if (!name.isEmpty()) {
-                                    TaskCategories.Category cat = TaskCategories.add(this, name);
-                                    selectedId[0] = cat.id;
-                                    display.setText(cat.name);
-                                }
-                            })
-                            .show();
-                })
-                .show();
+        CategoryPicker.show(this, selectedId[0], cat -> {
+            selectedId[0] = cat.id;
+            CategoryPicker.updateChip(display, cat.name);
+        });
     }
 
     @Override
@@ -244,7 +220,8 @@ public final class TaskActivity extends Activity {
         }
         
         for (ReminderSettings.Rule task : tasks) {
-            int catId = task.categoryId > 0 ? task.categoryId : 0;
+            // 分类被删掉或数据异常时，退回默认分类，不能让任务凭空消失
+            int catId = byCat.containsKey(task.categoryId) ? task.categoryId : 0;
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
                 List<ReminderSettings.Rule> list = doneByCat.get(catId);
                 if (list != null) list.add(task);
@@ -259,13 +236,16 @@ public final class TaskActivity extends Activity {
         
         if (tasks.isEmpty()) return;
         
-        // 按分类渲染
+        // 按分类渲染（只有一个分类时不显示分组标题）
+        boolean showHeaders = cats.size() > 1;
         for (TaskCategories.Category cat : cats) {
             List<ReminderSettings.Rule> pending = byCat.get(cat.id);
             List<ReminderSettings.Rule> done = doneByCat.get(cat.id);
             if (pending != null && !pending.isEmpty()) {
-                listContainer.addView(buildCategoryHeader(cat, pending.size() + (done != null ? done.size() : 0)));
-                if (cat.expanded) {
+                if (showHeaders) {
+                    listContainer.addView(buildCategoryHeader(cat, pending.size() + (done != null ? done.size() : 0)));
+                }
+                if (!showHeaders || cat.expanded) {
                     for (ReminderSettings.Rule task : pending) {
                         listContainer.addView(buildRow(task, dayStart));
                     }
@@ -297,31 +277,24 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(16), dp(16), dp(16));
-        
-        // 左侧横线
-        View leftLine = new View(this);
-        leftLine.setBackgroundColor(UiPalette.MUTED);
-        header.addView(leftLine, new LinearLayout.LayoutParams(0, dp(1), 1f));
-        
+        header.setPadding(dp(6), dp(14), dp(6), dp(6));
+
         // 分类名
-        TextView label = text(cat.name, 14, UiPalette.MUTED, true);
-        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
-        labelParams.leftMargin = dp(12);
-        labelParams.rightMargin = dp(12);
-        header.addView(label, labelParams);
-        
-        // 右侧横线
-        View rightLine = new View(this);
-        rightLine.setBackgroundColor(UiPalette.MUTED);
-        header.addView(rightLine, new LinearLayout.LayoutParams(0, dp(1), 2f));
-        
-        // 展开箭头
-        TextView arrow = text(cat.expanded ? "∨" : "", 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
-        arrowParams.leftMargin = dp(8);
-        header.addView(arrow, arrowParams);
-        
+        TextView label = text(cat.name, 12, UiPalette.MUTED, true);
+        header.addView(label, new LinearLayout.LayoutParams(-2, -2));
+
+        // 右侧细线，把分类名和右边空白隔开
+        View line = new View(this);
+        line.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
+        lineParams.leftMargin = dp(10);
+        lineParams.rightMargin = dp(10);
+        header.addView(line, lineParams);
+
+        // 展开／收起箭头
+        TextView arrow = text(cat.expanded ? "⌄" : "›", 13, UiPalette.ACCENT, true);
+        header.addView(arrow, new LinearLayout.LayoutParams(-2, -2));
+
         header.setOnClickListener(v -> {
             TaskCategories.toggleExpanded(this, cat.id);
             reload();
@@ -865,32 +838,10 @@ public final class TaskActivity extends Activity {
     }
 
     private void changeCategory(ReminderSettings.Rule task) {
-        List<TaskCategories.Category> cats = TaskCategories.all(this);
-        String[] names = new String[cats.size()];
-        for (int i = 0; i < cats.size(); i++) names[i] = cats.get(i).name;
-        new AlertDialog.Builder(this)
-                .setTitle("修改分类")
-                .setItems(names, (d, which) -> {
-                    ReminderSettings.upsertRule(this, task.withCategory(cats.get(which).id));
-                    reload();
-                })
-                .setNeutralButton("＋ 新建", (d, w) -> {
-                    final EditText input = FormKit.textInput(this, "分类名", "");
-                    new AlertDialog.Builder(this)
-                            .setTitle("新建分类")
-                            .setView(input)
-                            .setNegativeButton("取消", null)
-                            .setPositiveButton("创建", (d2, w2) -> {
-                                String name = input.getText().toString().trim();
-                                if (!name.isEmpty()) {
-                                    TaskCategories.Category cat = TaskCategories.add(this, name);
-                                    ReminderSettings.upsertRule(this, task.withCategory(cat.id));
-                                    reload();
-                                }
-                            })
-                            .show();
-                })
-                .show();
+        CategoryPicker.show(this, task.categoryId, cat -> {
+            ReminderSettings.upsertRule(this, task.withCategory(cat.id));
+            reload();
+        });
     }
 
     private String getCategoryName(int id) {
@@ -1037,11 +988,10 @@ public final class TaskActivity extends Activity {
         catRow.setOrientation(LinearLayout.HORIZONTAL);
         catRow.setGravity(Gravity.CENTER_VERTICAL);
         catRow.setPadding(0, dp(10), 0, 0);
-        TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
+        TextView catLabel = text("分类", 12, UiPalette.MUTED, false);
         catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
         final int[] categoryId = {existing == null ? 0 : existing.categoryId};
-        final TextView catBtn = text(getCategoryName(categoryId[0]), 13, UiPalette.ACCENT, true);
-        catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+        final TextView catBtn = CategoryPicker.chip(this, getCategoryName(categoryId[0]));
         catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
         catRow.addView(catBtn);
         form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
