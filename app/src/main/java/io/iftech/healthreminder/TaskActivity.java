@@ -89,6 +89,7 @@ public final class TaskActivity extends Activity {
     /** 右下角加号：只问一句名字，其他拿默认值。 */
     private void quickAdd() {
         final EditText input = FormKit.textInput(this, "任务名字", "");
+        final int[] categoryId = {0};
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(10), dp(18), dp(0));
@@ -97,6 +98,19 @@ public final class TaskActivity extends Activity {
         hintParams.bottomMargin = dp(8);
         form.addView(hint, hintParams);
         form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        // 分类选择行
+        LinearLayout catRow = new LinearLayout(this);
+        catRow.setOrientation(LinearLayout.HORIZONTAL);
+        catRow.setGravity(Gravity.CENTER_VERTICAL);
+        catRow.setPadding(0, dp(10), 0, 0);
+        TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
+        catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView catBtn = text("默认", 13, UiPalette.ACCENT, true);
+        catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+        catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
+        catRow.addView(catBtn);
+        form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("新任务")
@@ -115,12 +129,42 @@ public final class TaskActivity extends Activity {
             ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
                             ReminderSettings.nextRuleId(this), title, 9 * 60, 9 * 60, 24 * 3600,
                             points, 1, true, false)
-                    .withModule(ReminderSettings.MODULE_TASK);
+                    .withModule(ReminderSettings.MODULE_TASK)
+                    .withCategory(categoryId[0]);
             ReminderSettings.upsertRule(this, rule);
             dialog.dismiss();
             reload();
         }));
         FormKit.showStyled(this, dialog);
+    }
+
+    private void pickCategory(final int[] selectedId, final TextView display) {
+        List<TaskCategories.Category> cats = TaskCategories.all(this);
+        String[] names = new String[cats.size()];
+        for (int i = 0; i < cats.size(); i++) names[i] = cats.get(i).name;
+        new AlertDialog.Builder(this)
+                .setTitle("选择分类")
+                .setItems(names, (d, which) -> {
+                    selectedId[0] = cats.get(which).id;
+                    display.setText(cats.get(which).name);
+                })
+                .setNeutralButton("＋ 新建", (d, w) -> {
+                    final EditText input = FormKit.textInput(this, "分类名", "");
+                    new AlertDialog.Builder(this)
+                            .setTitle("新建分类")
+                            .setView(input)
+                            .setNegativeButton("取消", null)
+                            .setPositiveButton("创建", (d2, w2) -> {
+                                String name = input.getText().toString().trim();
+                                if (!name.isEmpty()) {
+                                    TaskCategories.Category cat = TaskCategories.add(this, name);
+                                    selectedId[0] = cat.id;
+                                    display.setText(cat.name);
+                                }
+                            })
+                            .show();
+                })
+                .show();
     }
 
     @Override
@@ -173,21 +217,47 @@ public final class TaskActivity extends Activity {
     private void reload() {
         List<ReminderSettings.Rule> tasks = Tasks.today(this);
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
-        List<ReminderSettings.Rule> pending = new ArrayList<>();
-        List<ReminderSettings.Rule> finished = new ArrayList<>();
+        
+        // 按分类分组
+        List<TaskCategories.Category> cats = TaskCategories.all(this);
+        java.util.Map<Integer, List<ReminderSettings.Rule>> byCat = new java.util.HashMap<>();
+        java.util.Map<Integer, List<ReminderSettings.Rule>> doneByCat = new java.util.HashMap<>();
+        for (TaskCategories.Category cat : cats) {
+            byCat.put(cat.id, new ArrayList<>());
+            doneByCat.put(cat.id, new ArrayList<>());
+        }
+        
         for (ReminderSettings.Rule task : tasks) {
+            int catId = task.categoryId > 0 ? task.categoryId : 0;
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
-                finished.add(task);
+                List<ReminderSettings.Rule> list = doneByCat.get(catId);
+                if (list != null) list.add(task);
             } else {
-                pending.add(task);
+                List<ReminderSettings.Rule> list = byCat.get(catId);
+                if (list != null) list.add(task);
             }
         }
+        
         listContainer.removeAllViews();
         listContainer.addView(buildOverviewCard());
+        
         if (tasks.isEmpty()) return;
-        for (ReminderSettings.Rule task : pending) {
-            listContainer.addView(buildRow(task, dayStart));
+        
+        // 按分类渲染
+        for (TaskCategories.Category cat : cats) {
+            List<ReminderSettings.Rule> pending = byCat.get(cat.id);
+            List<ReminderSettings.Rule> done = doneByCat.get(cat.id);
+            if (pending != null && !pending.isEmpty()) {
+                listContainer.addView(buildCategoryHeader(cat, pending.size() + (done != null ? done.size() : 0)));
+                if (cat.expanded) {
+                    for (ReminderSettings.Rule task : pending) {
+                        listContainer.addView(buildRow(task, dayStart));
+                    }
+                }
+            }
         }
+        
+        // 未分类的其他任务（之后/已完成）
         List<ReminderSettings.Rule> future = new ArrayList<>();
         long now = System.currentTimeMillis();
         for (ReminderSettings.Rule task : Tasks.all(this)) {
@@ -196,9 +266,38 @@ public final class TaskActivity extends Activity {
         if (!future.isEmpty()) {
             listContainer.addView(buildFutureSection(future));
         }
-        if (!finished.isEmpty()) {
-            listContainer.addView(buildCompletedSection(finished, dayStart));
+        
+        List<ReminderSettings.Rule> allDone = new ArrayList<>();
+        for (TaskCategories.Category cat : cats) {
+            List<ReminderSettings.Rule> done = doneByCat.get(cat.id);
+            if (done != null) allDone.addAll(done);
         }
+        if (!allDone.isEmpty()) {
+            listContainer.addView(buildCompletedSection(allDone, dayStart));
+        }
+    }
+
+    private View buildCategoryHeader(TaskCategories.Category cat, int totalCount) {
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(16), dp(14), dp(16), dp(8));
+
+        TextView arrow = text(cat.expanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true);
+        arrow.setPadding(0, 0, dp(8), 0);
+        header.addView(arrow);
+
+        TextView label = text(cat.name, 14, UiPalette.MUTED, true);
+        header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView count = text(totalCount + " 个", 12, UiPalette.MUTED, false);
+        header.addView(count);
+
+        header.setOnClickListener(v -> {
+            TaskCategories.toggleExpanded(this, cat.id);
+            reload();
+        });
+        return header;
     }
 
     /** 之后的任务：设成未来日期的任务收在这里，默认收起。 */
@@ -647,15 +746,60 @@ public final class TaskActivity extends Activity {
     private void showTaskMenu(ReminderSettings.Rule task) {
         String toggleLabel = task.enabled ? "关闭单独提醒" : "开启单独提醒";
         FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                new String[]{"编辑提醒设置", "添加子任务", "看子任务", toggleLabel, "删除任务"}, 4, which -> {
+                new String[]{"编辑提醒设置", "修改分类", "添加子任务", "看子任务", toggleLabel, "删除任务"}, 5, which -> {
                     if (which == 0) showEditor(task);
-                    else if (which == 1) quickAddSubtask(task);
-                    else if (which == 2) openSubtasks(task);
-                    else if (which == 3) {
+                    else if (which == 1) changeCategory(task);
+                    else if (which == 2) quickAddSubtask(task);
+                    else if (which == 3) openSubtasks(task);
+                    else if (which == 4) {
                         ReminderSettings.upsertRule(this, task.withEnabled(!task.enabled));
                         reload();
                     } else confirmDelete(task);
                 });
+    }
+
+    private void changeCategory(ReminderSettings.Rule task) {
+        final int[] selectedId = {task.categoryId};
+        final String[] catName = {getCategoryName(task.categoryId)};
+        List<TaskCategories.Category> cats = TaskCategories.all(this);
+        String[] names = new String[cats.size()];
+        for (int i = 0; i < cats.size(); i++) names[i] = cats.get(i).name;
+        new AlertDialog.Builder(this)
+                .setTitle("选择分类")
+                .setItems(names, (d, which) -> {
+                    selectedId[0] = cats.get(which).id;
+                    catName[0] = cats.get(which).name;
+                })
+                .setNeutralButton("＋ 新建", (d, w) -> {
+                    final EditText input = FormKit.textInput(this, "分类名", "");
+                    new AlertDialog.Builder(this)
+                            .setTitle("新建分类")
+                            .setView(input)
+                            .setNegativeButton("取消", null)
+                            .setPositiveButton("创建", (d2, w2) -> {
+                                String name = input.getText().toString().trim();
+                                if (!name.isEmpty()) {
+                                    TaskCategories.Category cat = TaskCategories.add(this, name);
+                                    selectedId[0] = cat.id;
+                                    catName[0] = cat.name;
+                                    ReminderSettings.upsertRule(this, task.withCategory(cat.id));
+                                    reload();
+                                }
+                            })
+                            .show();
+                })
+                .setPositiveButton("确定", (d, w) -> {
+                    ReminderSettings.upsertRule(this, task.withCategory(selectedId[0]));
+                    reload();
+                })
+                .show();
+    }
+
+    private String getCategoryName(int id) {
+        for (TaskCategories.Category cat : TaskCategories.all(this)) {
+            if (cat.id == id) return cat.name;
+        }
+        return "默认";
     }
 
     private void quickAddSubtask(ReminderSettings.Rule task) {
@@ -789,6 +933,20 @@ public final class TaskActivity extends Activity {
         EditText name = FormKit.textInput(this, "例如：背 20 个单词", existing == null ? "" : existing.title);
         name.setSingleLine(true);
         form.addView(name);
+
+        // 分类选择行
+        LinearLayout catRow = new LinearLayout(this);
+        catRow.setOrientation(LinearLayout.HORIZONTAL);
+        catRow.setGravity(Gravity.CENTER_VERTICAL);
+        catRow.setPadding(0, dp(10), 0, 0);
+        TextView catLabel = text("分类", 13, UiPalette.MUTED, false);
+        catRow.addView(catLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        final int[] categoryId = {existing == null ? 0 : existing.categoryId};
+        final TextView catBtn = text(getCategoryName(categoryId[0]), 13, UiPalette.ACCENT, true);
+        catBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+        catBtn.setOnClickListener(v -> pickCategory(categoryId, catBtn));
+        catRow.addView(catBtn);
+        form.addView(catRow, new LinearLayout.LayoutParams(-1, -2));
 
         EditText note = FormKit.input(this, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         note.setHint("备注（选填，会显示在霸屏页上）");
@@ -994,7 +1152,8 @@ public final class TaskActivity extends Activity {
                 return;
             }
             ReminderSettings.Rule rule = buildRule(id, existing, title, note.getText().toString().trim(),
-                    draftMode, points, daysMask[0], onceAt[0], window, intervalMinutes[0]);
+                    draftMode, points, daysMask[0], onceAt[0], window, intervalMinutes[0])
+                    .withCategory(categoryId[0]);
             ReminderSettings.upsertRule(this, rule);
             ReminderSettings.setAutoReset(this, id, resetSwitch.isChecked());
             dialog.dismiss();
