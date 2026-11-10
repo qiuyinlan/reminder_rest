@@ -58,7 +58,8 @@ public final class TaskCategoryStorageTest {
         assertEquals(7, base.withModule(ReminderSettings.MODULE_TASK).categoryId);
         assertEquals(7, base.withDeck("d", false).categoryId);
         assertEquals(7, base.withStep(3).categoryId);
-        assertEquals(7, base.withCategory(9).categoryId);
+        assertEquals(3, base.withStep(3).step);
+        assertEquals(9, base.withCategory(9).categoryId);
     }
 
     private static String dumpCategories(Application app) {
