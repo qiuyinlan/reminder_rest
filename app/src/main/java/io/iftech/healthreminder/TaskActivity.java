@@ -297,32 +297,97 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(10), dp(16), dp(10));
-        header.setMinimumHeight(dp(44));
+        header.setPadding(dp(16), dp(14), dp(16), dp(14));
+        header.setMinimumHeight(dp(48));
         
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(8));
-        bg.setColor(cat.expanded ? UiPalette.SOFT : Color.TRANSPARENT);
-        header.setBackground(bg);
-
-        TextView arrow = text("›", 16, UiPalette.MUTED, true);
-        arrow.setPadding(dp(4), 0, dp(12), 0);
-        arrow.setRotation(cat.expanded ? 90 : 0);
+        // 左侧箭头：⌵ 展开时向下，收起时向右
+        TextView arrow = text("⌵", 14, UiPalette.ACCENT, true);
+        arrow.setPadding(0, 0, dp(10), 0);
+        arrow.setRotation(cat.expanded ? 0 : -90);
         header.addView(arrow);
 
+        // 分类名
         TextView label = text(cat.name, 15, UiPalette.INK, true);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView count = text(totalCount + "", 12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, -2);
-        countParams.leftMargin = dp(12);
-        header.addView(count, countParams);
+        // 数量标签：小圆角胶囊
+        TextView count = text(totalCount + "", 11, Color.WHITE, true);
+        GradientDrawable countBg = new GradientDrawable();
+        countBg.setCornerRadius(dp(10));
+        countBg.setColor(UiPalette.ACCENT);
+        count.setBackground(countBg);
+        count.setPadding(dp(8), dp(4), dp(8), dp(4));
+        header.addView(count);
+
+        // 右侧菜单按钮
+        TextView more = text("⋮", 18, UiPalette.MUTED, false);
+        more.setPadding(dp(12), 0, 0, 0);
+        more.setOnClickListener(v -> showCategoryMenu(cat));
+        header.addView(more);
 
         header.setOnClickListener(v -> {
             TaskCategories.toggleExpanded(this, cat.id);
             reload();
         });
         return header;
+    }
+
+    private void showCategoryMenu(TaskCategories.Category cat) {
+        if (cat.id == 0) {
+            Toast.makeText(this, "默认分类不能删除", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        FormKit.options(this, cat.name, new String[]{"重命名", "删除"}, 0, which -> {
+            if (which == 0) renameCategory(cat);
+            else confirmDeleteCategory(cat);
+        });
+    }
+
+    private void renameCategory(TaskCategories.Category cat) {
+        final EditText input = FormKit.textInput(this, "分类名", cat.name);
+        new AlertDialog.Builder(this)
+                .setTitle("重命名分类")
+                .setView(input)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", (d, w) -> {
+                    String newName = input.getText().toString().trim();
+                    if (!newName.isEmpty() && !newName.equals(cat.name)) {
+                        List<TaskCategories.Category> cats = TaskCategories.all(this);
+                        for (TaskCategories.Category c : cats) {
+                            if (c.id == cat.id) {
+                                c.name = newName;
+                                break;
+                            }
+                        }
+                        TaskCategories.update(this, cats);
+                        reload();
+                    }
+                })
+                .show();
+    }
+
+    private void confirmDeleteCategory(TaskCategories.Category cat) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除分类")
+                .setMessage("确定要删除「" + cat.name + "」吗？该分类下的任务会移到默认分类。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (d, w) -> {
+                    List<TaskCategories.Category> cats = TaskCategories.all(this);
+                    List<TaskCategories.Category> toKeep = new ArrayList<>();
+                    for (TaskCategories.Category c : cats) {
+                        if (c.id != cat.id) toKeep.add(c);
+                    }
+                    TaskCategories.update(this, toKeep);
+                    
+                    // 将该分类下的任务移到默认分类
+                    for (ReminderSettings.Rule task : Tasks.all(this)) {
+                        if (task.categoryId == cat.id) {
+                            ReminderSettings.upsertRule(this, task.withCategory(0));
+                        }
+                    }
+                    reload();
+                })
+                .show();
     }
 
     /** 之后的任务：设成未来日期的任务收在这里，默认收起。 */
@@ -834,12 +899,9 @@ public final class TaskActivity extends Activity {
     private void showTaskMenu(ReminderSettings.Rule task) {
         String toggleLabel = task.enabled ? "关闭单独提醒" : "开启单独提醒";
         FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                new String[]{"编辑提醒设置", "修改分类", "添加子任务", "看子任务", toggleLabel, "删除任务"}, 5, which -> {
-                    if (which == 0) showEditor(task);
-                    else if (which == 1) changeCategory(task);
-                    else if (which == 2) quickAddSubtask(task);
-                    else if (which == 3) openSubtasks(task);
-                    else if (which == 4) {
+                new String[]{"修改分类", toggleLabel, "删除任务"}, 2, which -> {
+                    if (which == 0) changeCategory(task);
+                    else if (which == 1) {
                         ReminderSettings.upsertRule(this, task.withEnabled(!task.enabled));
                         reload();
                     } else confirmDelete(task);
@@ -847,16 +909,14 @@ public final class TaskActivity extends Activity {
     }
 
     private void changeCategory(ReminderSettings.Rule task) {
-        final int[] selectedId = {task.categoryId};
-        final String[] catName = {getCategoryName(task.categoryId)};
         List<TaskCategories.Category> cats = TaskCategories.all(this);
         String[] names = new String[cats.size()];
         for (int i = 0; i < cats.size(); i++) names[i] = cats.get(i).name;
         new AlertDialog.Builder(this)
-                .setTitle("选择分类")
+                .setTitle("修改分类")
                 .setItems(names, (d, which) -> {
-                    selectedId[0] = cats.get(which).id;
-                    catName[0] = cats.get(which).name;
+                    ReminderSettings.upsertRule(this, task.withCategory(cats.get(which).id));
+                    reload();
                 })
                 .setNeutralButton("＋ 新建", (d, w) -> {
                     final EditText input = FormKit.textInput(this, "分类名", "");
@@ -868,17 +928,11 @@ public final class TaskActivity extends Activity {
                                 String name = input.getText().toString().trim();
                                 if (!name.isEmpty()) {
                                     TaskCategories.Category cat = TaskCategories.add(this, name);
-                                    selectedId[0] = cat.id;
-                                    catName[0] = cat.name;
                                     ReminderSettings.upsertRule(this, task.withCategory(cat.id));
                                     reload();
                                 }
                             })
                             .show();
-                })
-                .setPositiveButton("确定", (d, w) -> {
-                    ReminderSettings.upsertRule(this, task.withCategory(selectedId[0]));
-                    reload();
                 })
                 .show();
     }
