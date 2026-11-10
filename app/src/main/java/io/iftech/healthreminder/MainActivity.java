@@ -238,6 +238,10 @@ public final class MainActivity extends Activity {
 
     private void addDailyBodyNote() {
         LinearLayout card = columnCard();
+        TextView title = label("今天身体怎么样？", 17, INK, true);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+        titleParams.bottomMargin = dp(10);
+        card.addView(title, titleParams);
         EditText note = new EditText(this);
         note.setTextSize(15);
         note.setTextColor(INK);
