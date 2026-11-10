@@ -1,7 +1,7 @@
 {
-    "versionCode": 54,
+    "versionCode": 55,
     "versionName": "0.3.0-beta35",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta35/rest-bean.apk",
-    "sha256": "",
-    "notes": "更新下载支持断点续传，子任务自动滚到第一个未完成。"
+    "sha256": "74e79c394857b4a48175f354b6d04edbbd42ae30a46c3849f604b090f9ca5a88",
+    "notes": "应用内更新支持断点续传和自动重试，网络断线不再导致校验失败"
 }
