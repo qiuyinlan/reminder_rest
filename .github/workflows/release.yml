@@ -145,6 +145,12 @@ jobs:
             fi
           fi
           gh release upload "$TAG" artifacts/rest-bean.apk --clobber
+          # 如果 release 是草稿（比如 tag 被删过再推），转成正式发布
+          if [ "${{ steps.v.outputs.prerelease }}" = "true" ]; then
+            gh release edit "$TAG" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --draft=false
+          fi
 
       - name: Update manifest
         run: |
@@ -159,8 +165,10 @@ jobs:
           m['versionName'] = os.environ['NEW_VERSION']
           m['apkUrl'] = f"https://github.com/qiuyinlan/reminder_rest/releases/download/{os.environ['NEW_TAG']}/rest-bean.apk"
           m['sha256'] = os.environ['APK_SHA256']
-          notes = pathlib.Path(os.environ['NOTES_PATH']).read_text(encoding='utf-8').strip().splitlines()
-          m['notes'] = notes[0] if notes else ''
+          lines = [l.strip() for l in pathlib.Path(os.environ['NOTES_PATH']).read_text(encoding='utf-8').splitlines()]
+          body = [l for l in lines if l and not l.startswith('#') and not l.startswith('-') and not l.startswith('*')]
+          bullets = [l.lstrip('-* ').strip() for l in lines if l.startswith(('-', '*')) and l.strip('-* ').strip()]
+          m['notes'] = (body[0] if body else (bullets[0] if bullets else ''))
           out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'manifest-out.json'
           out.write_text(json.dumps(m, ensure_ascii=False, indent=4) + "\n", encoding='utf-8')
           print(out.read_text(encoding='utf-8'))
