@@ -297,92 +297,36 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(14), dp(16), dp(14));
-        header.setMinimumHeight(dp(48));
+        header.setPadding(dp(16), dp(16), dp(16), dp(16));
         
-        // 左侧箭头
-        TextView arrow = text("⌵", 14, UiPalette.ACCENT, true);
-        arrow.setPadding(0, 0, dp(10), 0);
-        arrow.setRotation(cat.expanded ? 0 : -90);
-        header.addView(arrow);
-
+        // 左侧横线
+        View leftLine = new View(this);
+        leftLine.setBackgroundColor(UiPalette.MUTED);
+        header.addView(leftLine, new LinearLayout.LayoutParams(0, dp(1), 1f));
+        
         // 分类名
-        TextView label = text(cat.name, 15, UiPalette.INK, true);
-        header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        // 数量胶囊
-        TextView count = text(totalCount + "", 11, Color.WHITE, true);
-        GradientDrawable countBg = new GradientDrawable();
-        countBg.setCornerRadius(dp(10));
-        countBg.setColor(UiPalette.ACCENT);
-        count.setBackground(countBg);
-        count.setPadding(dp(8), dp(4), dp(8), dp(4));
-        header.addView(count);
-
-        // 右侧菜单
-        TextView more = text("⋮", 18, UiPalette.MUTED, false);
-        more.setPadding(dp(12), 0, 0, 0);
-        more.setOnClickListener(v -> showCategoryMenu(cat));
-        header.addView(more);
-
+        TextView label = text(cat.name, 14, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
+        labelParams.leftMargin = dp(12);
+        labelParams.rightMargin = dp(12);
+        header.addView(label, labelParams);
+        
+        // 右侧横线
+        View rightLine = new View(this);
+        rightLine.setBackgroundColor(UiPalette.MUTED);
+        header.addView(rightLine, new LinearLayout.LayoutParams(0, dp(1), 2f));
+        
+        // 展开箭头
+        TextView arrow = text(cat.expanded ? "∨" : "", 12, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
+        arrowParams.leftMargin = dp(8);
+        header.addView(arrow, arrowParams);
+        
         header.setOnClickListener(v -> {
             TaskCategories.toggleExpanded(this, cat.id);
             reload();
         });
         return header;
-    }
-
-    private void showCategoryMenu(TaskCategories.Category cat) {
-        if (cat.id == 0) {
-            Toast.makeText(this, "默认分类不能删除", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        FormKit.options(this, cat.name, new String[]{"重命名", "删除"}, 0, which -> {
-            if (which == 0) renameCategory(cat);
-            else confirmDeleteCategory(cat);
-        });
-    }
-
-    private void renameCategory(TaskCategories.Category cat) {
-        final EditText input = FormKit.textInput(this, "分类名", cat.name);
-        new AlertDialog.Builder(this)
-                .setTitle("重命名分类")
-                .setView(input)
-                .setNegativeButton("取消", null)
-                .setPositiveButton("保存", (d, w) -> {
-                    String newName = input.getText().toString().trim();
-                    if (!newName.isEmpty() && !newName.equals(cat.name)) {
-                        List<TaskCategories.Category> cats = TaskCategories.all(this);
-                        for (TaskCategories.Category c : cats) {
-                            if (c.id == cat.id) c.name = newName;
-                        }
-                        TaskCategories.update(this, cats);
-                        reload();
-                    }
-                })
-                .show();
-    }
-
-    private void confirmDeleteCategory(TaskCategories.Category cat) {
-        new AlertDialog.Builder(this)
-                .setTitle("删除分类")
-                .setMessage("确定要删除「" + cat.name + "」吗？该分类下的任务会移到默认分类。")
-                .setNegativeButton("取消", null)
-                .setPositiveButton("删除", (d, w) -> {
-                    List<TaskCategories.Category> cats = TaskCategories.all(this);
-                    List<TaskCategories.Category> toKeep = new ArrayList<>();
-                    for (TaskCategories.Category c : cats) {
-                        if (c.id != cat.id) toKeep.add(c);
-                    }
-                    TaskCategories.update(this, toKeep);
-                    for (ReminderSettings.Rule task : Tasks.all(this)) {
-                        if (task.categoryId == cat.id) {
-                            ReminderSettings.upsertRule(this, task.withCategory(0));
-                        }
-                    }
-                    reload();
-                })
-                .show();
     }
 
     /** 之后的任务：设成未来日期的任务收在这里，默认收起。 */
