@@ -531,12 +531,16 @@ public final class TaskActivity extends Activity {
         return wrapper;
     }
 
-    /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3 */
+    /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
     private View buildSubtaskFlow(ReminderSettings.Rule task, List<ReminderSettings.Rule> subtasks, long dayStart) {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(true);
+        scroll.setFillViewport(false);
+        scroll.setPadding(dp(44), dp(6), dp(4), dp(6));
+
         LinearLayout flow = new LinearLayout(this);
         flow.setOrientation(LinearLayout.HORIZONTAL);
         flow.setGravity(Gravity.CENTER_VERTICAL);
-        flow.setPadding(dp(44), dp(6), dp(4), dp(6));
 
         for (int i = 0; i < subtasks.size(); i++) {
             ReminderSettings.Rule sub = subtasks.get(i);
@@ -589,7 +593,8 @@ public final class TaskActivity extends Activity {
                 flow.addView(arrow, arrowParams);
             }
         }
-        return flow;
+        scroll.addView(flow, new ScrollView.LayoutParams(-2, -2));
+        return scroll;
     }
 
     private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart, boolean allSubDone) {
