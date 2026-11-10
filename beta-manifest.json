@@ -1,7 +1,7 @@
 {
-    "versionCode": 50,
+    "versionCode": 51,
     "versionName": "0.3.0-beta33",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta33/rest-bean.apk",
-    "sha256": "59428813dd819b35cc623b4bfdcd4f89b2804109ef54d84cf60eecb10b31165f",
-    "notes": "分类头部 UI 优化 + 任务菜单简化。"
+    "sha256": "6984dbe19792d121dcd3027add98e79049056a4c3015433594887a42b75babfa",
+    "notes": "# 0.3.0-beta33"
 }
