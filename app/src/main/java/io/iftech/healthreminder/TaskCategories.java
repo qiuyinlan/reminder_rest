@@ -19,11 +19,14 @@ final class TaskCategories {
     private static final String KEY = "task_categories";
     private static final String DEFAULT = "默认";
 
+    private static final String KEY_DEFAULT_EXPANDED = "default_expanded";
+
     private TaskCategories() { }
 
     static List<Category> all(Context context) {
         List<Category> result = new ArrayList<>();
-        result.add(new Category(0, DEFAULT, true)); // 默认分类不可删除
+        // 默认分类不可删除，但可以收起；展开状态单独存，不写进分类数组
+        result.add(new Category(0, DEFAULT, defaultExpanded(context)));
         try {
             String json = prefs(context).getString(KEY, "[]");
             JSONArray array = new JSONArray(json);
@@ -64,6 +67,11 @@ final class TaskCategories {
     }
 
     static void toggleExpanded(Context context, int categoryId) {
+        if (categoryId <= 0) {
+            // 默认分类不在分类数组里，单独存一个开关
+            prefs(context).edit().putBoolean(KEY_DEFAULT_EXPANDED, !defaultExpanded(context)).apply();
+            return;
+        }
         List<Category> cats = all(context);
         for (Category c : cats) {
             if (c.id == categoryId) {
@@ -72,6 +80,10 @@ final class TaskCategories {
             }
         }
         update(context, cats);
+    }
+
+    private static boolean defaultExpanded(Context context) {
+        return prefs(context).getBoolean(KEY_DEFAULT_EXPANDED, true);
     }
 
     private static void save(Context context, List<Category> cats) {

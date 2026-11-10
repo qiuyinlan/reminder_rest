@@ -277,7 +277,8 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(6), dp(14), dp(6), dp(6));
+        header.setMinimumHeight(dp(44));
+        header.setPadding(dp(6), dp(12), dp(6), dp(6));
 
         // 分类名
         TextView label = text(cat.name, 12, UiPalette.MUTED, true);
@@ -828,7 +829,7 @@ public final class TaskActivity extends Activity {
     private void showTaskMenu(ReminderSettings.Rule task) {
         String toggleLabel = task.enabled ? "关闭单独提醒" : "开启单独提醒";
         FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                new String[]{"修改分类", toggleLabel, "删除任务"}, 2, which -> {
+                new String[]{"分类 · " + getCategoryName(task.categoryId), toggleLabel, "删除任务"}, 2, which -> {
                     if (which == 0) changeCategory(task);
                     else if (which == 1) {
                         ReminderSettings.upsertRule(this, task.withEnabled(!task.enabled));
@@ -841,6 +842,7 @@ public final class TaskActivity extends Activity {
         CategoryPicker.show(this, task.categoryId, cat -> {
             ReminderSettings.upsertRule(this, task.withCategory(cat.id));
             reload();
+            Toast.makeText(this, "已移到「" + cat.name + "」", Toast.LENGTH_SHORT).show();
         });
     }
 
