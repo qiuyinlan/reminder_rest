@@ -1,7 +1,7 @@
 {
-    "versionCode": 59,
-    "versionName": "0.3.0-beta39",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta39/rest-bean.apk",
-    "sha256": "0732b3ba24978659be323128dc63078f221955f83d9942fd415064a23c9cff56",
-    "notes": "经期结束日点错了可以改：首页和「每日记录」里都能把结束日换到别的日子。"
+    "versionCode": 60,
+    "versionName": "0.3.0-beta40",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta40/rest-bean.apk",
+    "sha256": "746da180abd34aeafb84a160ff213f5ab85e045d79c65ee3c5b3823d1991f749",
+    "notes": "首页卡片间距修好，并把各页面的说明小字基本清空。"
 }
