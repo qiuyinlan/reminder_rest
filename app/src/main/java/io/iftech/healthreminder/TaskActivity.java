@@ -677,6 +677,8 @@ public final class TaskActivity extends Activity {
 
         final int[] dragStartStep = {-1};
         final float[] dragStartX = {0};
+        final List<View> boxes = new ArrayList<>();
+        final List<Boolean> dones = new ArrayList<>();
 
         for (int i = 0; i < subtasks.size(); i++) {
             ReminderSettings.Rule sub = subtasks.get(i);
@@ -744,6 +746,8 @@ public final class TaskActivity extends Activity {
 
             LinearLayout.LayoutParams flowParams = new LinearLayout.LayoutParams(-2, -2);
             flow.addView(subBox, flowParams);
+            boxes.add(subBox);
+            dones.add(subDone);
 
             // 箭头 →
             if (i < subtasks.size() - 1) {
@@ -761,14 +765,27 @@ public final class TaskActivity extends Activity {
             subtaskScrollPositions.put(task.id, scrollX);
         });
         
-        // 延迟滚动到第一个未完成（确保布局完成）
-        scroll.postDelayed(() -> {
-            int firstIncomplete = Subtasks.firstIncompleteScrollOffset(TaskActivity.this, task.id, dayStart);
-            if (firstIncomplete > 0) {
-                scroll.smoothScrollTo(firstIncomplete, 0);
-                subtaskScrollPositions.put(task.id, firstIncomplete);
+        // 布局完成后，滚动到第一个未完成子任务的真实位置
+        scroll.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() {
+                if (flow.getWidth() == 0 || scroll.getWidth() == 0) return; // 还没测量，等下一轮
+                int targetLeft = -1;
+                for (int i = 0; i < boxes.size(); i++) {
+                    if (!dones.get(i)) {
+                        targetLeft = boxes.get(i).getLeft();
+                        break;
+                    }
+                }
+                if (targetLeft < 0) {
+                    scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    return;
+                }
+                int x = Math.max(0, targetLeft - scroll.getPaddingLeft());
+                scroll.scrollTo(x, 0);
+                subtaskScrollPositions.put(task.id, x);
+                scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
-        }, 150);
+        });
         
         return scroll;
     }
