@@ -1,7 +1,7 @@
 {
-    "versionCode": 39,
-    "versionName": "0.3.0-beta27",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta27/rest-bean.apk",
-    "sha256": "a5ec1f8e86f0bccbfe8abe9e2facd9bbeef16226a038c6f7135eccc8a82a7944",
-    "notes": "任务分类功能。"
+    "versionCode": 40,
+    "versionName": "0.3.0-beta28",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta28/rest-bean.apk",
+    "sha256": "",
+    "notes": "修复分类按钮、展开样式、子任务滚动。"
 }
