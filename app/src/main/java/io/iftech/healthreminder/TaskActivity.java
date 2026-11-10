@@ -300,7 +300,7 @@ public final class TaskActivity extends Activity {
         header.setPadding(dp(16), dp(14), dp(16), dp(14));
         header.setMinimumHeight(dp(48));
         
-        // 左侧箭头：⌵ 展开时向下，收起时向右
+        // 左侧箭头
         TextView arrow = text("⌵", 14, UiPalette.ACCENT, true);
         arrow.setPadding(0, 0, dp(10), 0);
         arrow.setRotation(cat.expanded ? 0 : -90);
@@ -310,7 +310,7 @@ public final class TaskActivity extends Activity {
         TextView label = text(cat.name, 15, UiPalette.INK, true);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        // 数量标签：小圆角胶囊
+        // 数量胶囊
         TextView count = text(totalCount + "", 11, Color.WHITE, true);
         GradientDrawable countBg = new GradientDrawable();
         countBg.setCornerRadius(dp(10));
@@ -319,7 +319,7 @@ public final class TaskActivity extends Activity {
         count.setPadding(dp(8), dp(4), dp(8), dp(4));
         header.addView(count);
 
-        // 右侧菜单按钮
+        // 右侧菜单
         TextView more = text("⋮", 18, UiPalette.MUTED, false);
         more.setPadding(dp(12), 0, 0, 0);
         more.setOnClickListener(v -> showCategoryMenu(cat));
@@ -354,10 +354,7 @@ public final class TaskActivity extends Activity {
                     if (!newName.isEmpty() && !newName.equals(cat.name)) {
                         List<TaskCategories.Category> cats = TaskCategories.all(this);
                         for (TaskCategories.Category c : cats) {
-                            if (c.id == cat.id) {
-                                c.name = newName;
-                                break;
-                            }
+                            if (c.id == cat.id) c.name = newName;
                         }
                         TaskCategories.update(this, cats);
                         reload();
@@ -378,8 +375,6 @@ public final class TaskActivity extends Activity {
                         if (c.id != cat.id) toKeep.add(c);
                     }
                     TaskCategories.update(this, toKeep);
-                    
-                    // 将该分类下的任务移到默认分类
                     for (ReminderSettings.Rule task : Tasks.all(this)) {
                         if (task.categoryId == cat.id) {
                             ReminderSettings.upsertRule(this, task.withCategory(0));
