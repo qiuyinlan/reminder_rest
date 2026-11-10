@@ -77,6 +77,29 @@ final class Subtasks {
         }
     }
 
+    static void swapStep(Context context, int parentId, int step1, int step2) {
+        List<ReminderSettings.Rule> list = of(context, parentId);
+        for (ReminderSettings.Rule rule : list) {
+            if (rule.step == step1) {
+                ReminderSettings.upsertRule(context, rule.withStep(step2));
+            } else if (rule.step == step2) {
+                ReminderSettings.upsertRule(context, rule.withStep(step1));
+            }
+        }
+    }
+
+    static int firstIncompleteScrollOffset(Context context, int parentId, long dayStart) {
+        List<ReminderSettings.Rule> list = of(context, parentId);
+        float density = context.getResources().getDisplayMetrics().density;
+        int itemWidth = (int) (120 * density); // 估算每个子任务宽度 + 间距
+        for (ReminderSettings.Rule rule : list) {
+            if (!doneToday(context, parentId, rule.title, dayStart)) {
+                return rule.step * itemWidth;
+            }
+        }
+        return 0;
+    }
+
     private static String recordKey(int parentId, String title) {
         return parentKey(parentId) + ":" + title;
     }

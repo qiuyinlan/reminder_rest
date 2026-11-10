@@ -668,6 +668,9 @@ public final class TaskActivity extends Activity {
         flow.setOrientation(LinearLayout.HORIZONTAL);
         flow.setGravity(Gravity.CENTER_VERTICAL);
 
+        final int[] dragStartStep = {-1};
+        final float[] dragStartX = {0};
+
         for (int i = 0; i < subtasks.size(); i++) {
             ReminderSettings.Rule sub = subtasks.get(i);
             boolean subDone = Subtasks.doneToday(this, task.id, sub.title, dayStart);
@@ -702,9 +705,34 @@ public final class TaskActivity extends Activity {
             subBox.addView(subTitle, subParams);
 
             subBox.setOnClickListener(v -> toggleSubtask(task, sub, !subDone, dayStart));
+            
+            // 长按拖动排序
             subBox.setOnLongClickListener(v -> {
-                showSubtaskMenu(task, sub, dayStart);
-                return true;
+                dragStartStep[0] = sub.step;
+                dragStartX[0] = 0;
+                Toast.makeText(TaskActivity.this, "拖动调整顺序", Toast.LENGTH_SHORT).show();
+                return false;
+            });
+            
+            subBox.setOnTouchListener((v, event) -> {
+                if (dragStartStep[0] >= 0) {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_MOVE) {
+                        dragStartX[0] += event.getX();
+                    } else if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                        if (dragStartX[0] > dp(80) && sub.step > 0) {
+                            // 向右拖，和前一个交换
+                            Subtasks.swapStep(TaskActivity.this, task.id, sub.step, sub.step - 1);
+                        } else if (dragStartX[0] < -dp(80) && sub.step < subtasks.size() - 1) {
+                            // 向左拖，和后一个交换
+                            Subtasks.swapStep(TaskActivity.this, task.id, sub.step, sub.step + 1);
+                        }
+                        dragStartStep[0] = -1;
+                        dragStartX[0] = 0;
+                        reload();
+                    }
+                    return true;
+                }
+                return false;
             });
 
             LinearLayout.LayoutParams flowParams = new LinearLayout.LayoutParams(-2, -2);
@@ -724,6 +752,15 @@ public final class TaskActivity extends Activity {
         // 滚动变化时保存位置
         scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             subtaskScrollPositions.put(task.id, scrollX);
+        });
+        
+        // 打钩后滚动到第一个未完成
+        scroll.post(() -> {
+            int firstIncomplete = Subtasks.firstIncompleteScrollOffset(this, task.id, dayStart);
+            if (firstIncomplete > 0) {
+                scroll.scrollTo(firstIncomplete, 0);
+                subtaskScrollPositions.put(task.id, firstIncomplete);
+            }
         });
         
         return scroll;
