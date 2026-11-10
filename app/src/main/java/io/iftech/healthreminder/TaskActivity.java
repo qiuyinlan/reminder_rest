@@ -39,6 +39,7 @@ public final class TaskActivity extends Activity {
     private LinearLayout listContainer;
     private boolean completedExpanded;
     private boolean futureExpanded;
+    private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -183,6 +184,12 @@ public final class TaskActivity extends Activity {
             ReminderSettings.Rule rule = ReminderSettings.ruleById(this, editId);
             if (rule != null) listContainer.post(() -> showEditor(rule));
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        subtaskScrollPositions.clear();
     }
 
     static final String EXTRA_EDIT_RULE_ID = "edit_rule_id";
@@ -646,12 +653,16 @@ public final class TaskActivity extends Activity {
     }
 
     /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
-    private View buildSubtaskFlow(ReminderSettings.Rule task, List<ReminderSettings.Rule> subtasks, long dayStart) {
+    private View buildSubtaskFlow(final ReminderSettings.Rule task, List<ReminderSettings.Rule> subtasks, long dayStart) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(true);
         scroll.setFillViewport(false);
         scroll.setPadding(dp(38), dp(6), dp(4), dp(6));
         scroll.setMinimumHeight(dp(44));
+        
+        // 恢复之前保存的滚动位置
+        int savedScroll = subtaskScrollPositions.get(task.id, 0);
+        scroll.scrollTo(savedScroll, 0);
 
         LinearLayout flow = new LinearLayout(this);
         flow.setOrientation(LinearLayout.HORIZONTAL);
@@ -709,6 +720,12 @@ public final class TaskActivity extends Activity {
             }
         }
         scroll.addView(flow, new HorizontalScrollView.LayoutParams(-2, -2));
+        
+        // 滚动变化时保存位置
+        scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            subtaskScrollPositions.put(task.id, scrollX);
+        });
+        
         return scroll;
     }
 
