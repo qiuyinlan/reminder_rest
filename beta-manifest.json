@@ -3,5 +3,5 @@
     "versionName": "0.3.0-beta31",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta31/rest-bean.apk",
     "sha256": "",
-    "notes": "子任务重命名 + 分类管理。"
+    "notes": "子任务支持重命名。"
 }
