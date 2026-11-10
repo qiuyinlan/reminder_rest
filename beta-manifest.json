@@ -1,7 +1,7 @@
 {
-    "versionCode": 57,
-    "versionName": "0.3.0-beta37",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta37/rest-bean.apk",
-    "sha256": "125916aaa4cbfed297a94cd4bbecdd721a384bab6aea89492ab3418c84336358",
-    "notes": "分类切换真正生效（上次的修复还差一层：读取时也会被清空），默认分类也能收起了。"
+    "versionCode": 58,
+    "versionName": "0.3.0-beta38",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta38/rest-bean.apk",
+    "sha256": "90051653a1580ea3e1a09e1ba06717366cc7813c56e2e9f0b0e91b3b2a3c90e8",
+    "notes": "分类切换真正修好：问题出在 Rule 的复制方法少传了一个参数，categoryId 被当成 step 吞掉了。"
 }
