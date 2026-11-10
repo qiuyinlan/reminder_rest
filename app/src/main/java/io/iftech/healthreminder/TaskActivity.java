@@ -228,6 +228,9 @@ public final class TaskActivity extends Activity {
     // ---------------------------------------------------------------- 列表
 
     private void reload() {
+        // 清除子任务滚动位置，让每次都能自动滚动到第一个未完成
+        subtaskScrollPositions.clear();
+        
         List<ReminderSettings.Rule> tasks = Tasks.today(this);
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         
@@ -754,14 +757,14 @@ public final class TaskActivity extends Activity {
             subtaskScrollPositions.put(task.id, scrollX);
         });
         
-        // 打钩后滚动到第一个未完成
-        scroll.post(() -> {
-            int firstIncomplete = Subtasks.firstIncompleteScrollOffset(this, task.id, dayStart);
+        // 延迟滚动到第一个未完成（确保布局完成）
+        scroll.postDelayed(() -> {
+            int firstIncomplete = Subtasks.firstIncompleteScrollOffset(TaskActivity.this, task.id, dayStart);
             if (firstIncomplete > 0) {
-                scroll.scrollTo(firstIncomplete, 0);
+                scroll.smoothScrollTo(firstIncomplete, 0);
                 subtaskScrollPositions.put(task.id, firstIncomplete);
             }
-        });
+        }, 150);
         
         return scroll;
     }
