@@ -1,7 +1,7 @@
 {
-    "versionCode": 60,
-    "versionName": "0.3.0-beta40",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta40/rest-bean.apk",
-    "sha256": "746da180abd34aeafb84a160ff213f5ab85e045d79c65ee3c5b3823d1991f749",
-    "notes": "首页卡片间距修好，并把各页面的说明小字基本清空。"
+    "versionCode": 61,
+    "versionName": "0.3.0-beta41",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta41/rest-bean.apk",
+    "sha256": "ee4f8c796189046de6879d903c85caf90863045c203bfeb40f97610b27d06628",
+    "notes": "把首页「今天身体怎么样？」这行加回来了，只调间距：卡片上下内边距 12dp，标题和输入框之间留 10dp。"
 }
