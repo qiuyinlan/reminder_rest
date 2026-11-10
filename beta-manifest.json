@@ -1,7 +1,7 @@
 {
-    "versionCode": 53,
-    "versionName": "0.3.0-beta34",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta34/rest-bean.apk",
-    "sha256": "c59a6e4088b3b55d4114efd312d4d7408cde6cc79d6beb837dd3589f6aad1176",
-    "notes": "任务按分类分组显示：分类名两侧横线，点分类可收起/展开"
+    "versionCode": 54,
+    "versionName": "0.3.0-beta35",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta35/rest-bean.apk",
+    "sha256": "",
+    "notes": "更新下载支持断点续传，子任务自动滚到第一个未完成。"
 }
