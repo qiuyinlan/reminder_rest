@@ -1,7 +1,7 @@
 {
-    "versionCode": 64,
-    "versionName": "0.3.0-beta44",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta44/rest-bean.apk",
-    "sha256": "947392aeee21588ec9093dabeb942554e71c964343b2946033eb490ca2d06dae",
-    "notes": "版本 0.3.0-beta44 更新。"
+    "versionCode": 65,
+    "versionName": "0.3.0-beta45",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta45/rest-bean.apk",
+    "sha256": "eb8011452c3bccd15409ef654db29299e8d088f1d03d13d9f19a99254628ed76",
+    "notes": "版本 0.3.0-beta45 更新。"
 }
