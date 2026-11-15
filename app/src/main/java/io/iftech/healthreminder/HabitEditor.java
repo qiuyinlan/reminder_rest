@@ -174,6 +174,7 @@ public final class HabitEditor extends Activity {
                 return;
             }
             habit.frequencyMask = mask[0];
+            habit.title = name;
             Habits.update(this, habit);
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
             setResult(RESULT_OK);

@@ -254,6 +254,7 @@ public final class MainActivity extends Activity {
         note.setMaxLines(7);
         note.setPadding(dp(12), dp(10), dp(12), dp(10));
         note.setBackground(round(UiPalette.PALE, 12));
+        note.setHint("睡得好不好、精神、酸痛、心情…随便写一句就行");
         note.setContentDescription("每日身体情况");
         Calendar noteDay = Calendar.getInstance();
         note.setText(DailyBodyNote.read(this, noteDay));

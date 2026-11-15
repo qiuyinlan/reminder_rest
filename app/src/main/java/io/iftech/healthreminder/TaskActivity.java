@@ -344,10 +344,28 @@ public final class TaskActivity extends Activity {
     }
 
     private void addHabit() {
-        final EditText input = FormKit.textInput(this, "习惯名称", "");
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(18), dp(20), dp(4));
+
+        TextView heading = text("新习惯", 18, UiPalette.INK, true);
+        heading.setGravity(Gravity.CENTER);
+        box.addView(heading, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView sub = text("默认每天都要做，之后点条目就能改频率", 12, UiPalette.MUTED, false);
+        sub.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(6);
+        subParams.bottomMargin = dp(16);
+        box.addView(sub, subParams);
+
+        final EditText input = FormKit.textInput(this, "比如：打八段锦、颈椎训练", "");
+        input.setGravity(Gravity.CENTER_VERTICAL);
+        input.setTextSize(15);
+        box.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("新习惯")
-                .setView(input)
+                .setView(box)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("添加", null)
                 .create();
@@ -839,14 +857,14 @@ public final class TaskActivity extends Activity {
             subBox.setMinimumHeight(dp(36));
             GradientDrawable subBg = new GradientDrawable();
             subBg.setCornerRadius(dp(10));
-            subBg.setColor(subDone ? UiPalette.SOFT : UiPalette.PALE);
-            // 无边框
+            subBg.setColor(subDone ? UiPalette.PALE : UiPalette.SOFT);
+            subBg.setStroke(dp(1), UiPalette.BORDER);
             subBox.setBackground(subBg);
             subBox.setPadding(dp(8), dp(4), dp(8), dp(4));
 
             GradientDrawable cbShape = new GradientDrawable();
             cbShape.setCornerRadius(dp(4));
-            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.WHITE);
+            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
             // 未勾选时用灰色边框
             cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : 0xff9ca3af);
             TextView cb = text(subDone ? "✓" : "", 10, subDone ? Color.WHITE : 0xff9ca3af, true);

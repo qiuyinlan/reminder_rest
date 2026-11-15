@@ -24,7 +24,7 @@ final class Habits {
 
     static class Habit {
         final int id;
-        final String title;
+        String title;
         /** 频率掩码：周一=1, 周二=2, ..., 周日=64，全选=127 */
         int frequencyMask;
         final long createdAt;
@@ -86,7 +86,8 @@ final class Habits {
             if (h.id >= nextId) nextId = h.id + 1;
         }
         Habit habit = new Habit(nextId, title, 127, System.currentTimeMillis());
-        save(context, habits, habit);
+        habits.add(habit);
+        save(context, habits, null);
         return habit;
     }
 
