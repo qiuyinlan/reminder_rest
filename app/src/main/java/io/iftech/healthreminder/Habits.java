@@ -79,6 +79,11 @@ final class Habits {
         return result;
     }
 
+    /** 子任务挂在习惯下时用的父 id，避开任务 id（任务 id 从 1 连续增长）。 */
+    static int parentId(int habitId) {
+        return 100000 + habitId;
+    }
+
     static Habit add(Context context, String title) {
         List<Habit> habits = all(context);
         int nextId = 1;

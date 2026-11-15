@@ -401,9 +401,7 @@ public final class TaskActivity extends Activity {
         rowBg.setColor(Color.WHITE);
         rowBg.setStroke(dp(1), UiPalette.BORDER);
         row.setBackground(rowBg);
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-        rowParams.bottomMargin = dp(8);
-        row.setLayoutParams(rowParams);
+        row.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
 
         // Checkbox
         GradientDrawable cbShape = new GradientDrawable();
@@ -445,16 +443,40 @@ public final class TaskActivity extends Activity {
             dotParams.leftMargin = dp(3);
             dotsRow.addView(dot, dotParams);
         }
+        dotsRow.setOnClickListener(v -> openHabitEditor(habit));
         row.addView(dotsRow);
 
-        // 点击进入编辑
-        row.setOnClickListener(v -> {
-            Intent intent = new Intent(this, HabitEditor.class);
-            intent.putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id);
-            startActivityForResult(intent, REQUEST_EDIT_HABIT);
+        // 和普通任务一致：点一下进子任务
+        final int habitParentId = Habits.parentId(habit.id);
+        final List<ReminderSettings.Rule> habitSubs = Subtasks.of(this, habitParentId);
+        row.setOnClickListener(v -> openHabitSubtasks(habit));
+        // 长按编辑名字 / 频率
+        row.setOnLongClickListener(v -> {
+            openHabitEditor(habit);
+            return true;
         });
 
-        return row;
+        LinearLayout wrapper = new LinearLayout(this);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(-1, -2);
+        wrapperParams.bottomMargin = dp(8);
+        wrapper.addView(row);
+        if (!habitSubs.isEmpty()) {
+            wrapper.addView(buildSubtaskFlow(habitParentId, habitSubs, dayStart));
+        }
+        return wrapper;
+    }
+
+    private void openHabitEditor(Habits.Habit habit) {
+        Intent intent = new Intent(this, HabitEditor.class);
+        intent.putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id);
+        startActivityForResult(intent, REQUEST_EDIT_HABIT);
+    }
+
+    private void openHabitSubtasks(Habits.Habit habit) {
+        startActivity(new Intent(this, SubtaskActivity.class)
+                .putExtra(SubtaskActivity.EXTRA_PARENT_ID, Habits.parentId(habit.id))
+                .putExtra(SubtaskActivity.EXTRA_PARENT_TITLE, habit.title));
     }
 
     private static final int REQUEST_EDIT_HABIT = 5001;
@@ -824,13 +846,13 @@ public final class TaskActivity extends Activity {
 
         // 子任务流程视图（横向）
         if (!subtasks.isEmpty()) {
-            wrapper.addView(buildSubtaskFlow(task, subtasks, dayStart));
+            wrapper.addView(buildSubtaskFlow(task.id, subtasks, dayStart));
         }
         return wrapper;
     }
 
     /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
-    private View buildSubtaskFlow(final ReminderSettings.Rule task, List<ReminderSettings.Rule> subtasks, long dayStart) {
+    private View buildSubtaskFlow(final int parentId, List<ReminderSettings.Rule> subtasks, long dayStart) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(true);
         scroll.setFillViewport(false);
@@ -838,7 +860,7 @@ public final class TaskActivity extends Activity {
         scroll.setMinimumHeight(dp(44));
         
         // 恢复之前保存的滚动位置
-        int savedScroll = subtaskScrollPositions.get(task.id, 0);
+        int savedScroll = subtaskScrollPositions.get(parentId, 0);
         scroll.scrollTo(savedScroll, 0);
 
         LinearLayout flow = new LinearLayout(this);
@@ -852,7 +874,7 @@ public final class TaskActivity extends Activity {
 
         for (int i = 0; i < subtasks.size(); i++) {
             ReminderSettings.Rule sub = subtasks.get(i);
-            boolean subDone = Subtasks.doneToday(this, task.id, sub.title, dayStart);
+            boolean subDone = Subtasks.doneToday(this, parentId, sub.title, dayStart);
 
             // 子任务框：checkbox + 标题
             LinearLayout subBox = new LinearLayout(this);
@@ -876,7 +898,7 @@ public final class TaskActivity extends Activity {
             cb.setBackground(cbShape);
             LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(18), dp(18));
             subBox.addView(cb, cbParams);
-            cb.setOnClickListener(v -> toggleSubtask(task, sub, !subDone, dayStart));
+            cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
 
             TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
             if (subDone) subTitle.setPaintFlags(subTitle.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
@@ -884,7 +906,7 @@ public final class TaskActivity extends Activity {
             subParams.leftMargin = dp(6);
             subBox.addView(subTitle, subParams);
 
-            subBox.setOnClickListener(v -> toggleSubtask(task, sub, !subDone, dayStart));
+            subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
             
             // 长按拖动排序
             subBox.setOnLongClickListener(v -> {
@@ -901,10 +923,10 @@ public final class TaskActivity extends Activity {
                     } else if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
                         if (dragStartX[0] > dp(80) && sub.step > 0) {
                             // 向右拖，和前一个交换
-                            Subtasks.swapStep(TaskActivity.this, task.id, sub.step, sub.step - 1);
+                            Subtasks.swapStep(TaskActivity.this, parentId, sub.step, sub.step - 1);
                         } else if (dragStartX[0] < -dp(80) && sub.step < subtasks.size() - 1) {
                             // 向左拖，和后一个交换
-                            Subtasks.swapStep(TaskActivity.this, task.id, sub.step, sub.step + 1);
+                            Subtasks.swapStep(TaskActivity.this, parentId, sub.step, sub.step + 1);
                         }
                         dragStartStep[0] = -1;
                         dragStartX[0] = 0;
@@ -933,7 +955,7 @@ public final class TaskActivity extends Activity {
         
         // 滚动变化时保存位置
         scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-            subtaskScrollPositions.put(task.id, scrollX);
+            subtaskScrollPositions.put(parentId, scrollX);
         });
         
         // 布局完成后，滚动到第一个未完成子任务的真实位置
@@ -953,7 +975,7 @@ public final class TaskActivity extends Activity {
                 }
                 int x = Math.max(0, targetLeft - scroll.getPaddingLeft());
                 scroll.scrollTo(x, 0);
-                subtaskScrollPositions.put(task.id, x);
+                subtaskScrollPositions.put(parentId, x);
                 scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
         });
@@ -981,12 +1003,12 @@ public final class TaskActivity extends Activity {
         reload();
     }
 
-    private void toggleSubtask(ReminderSettings.Rule task, ReminderSettings.Rule sub, boolean done, long dayStart) {
-        Subtasks.toggle(this, task.id, sub.title, !done, dayStart);
+    private void toggleSubtask(int parentId, ReminderSettings.Rule sub, boolean done, long dayStart) {
+        Subtasks.toggle(this, parentId, sub.title, !done, dayStart);
         reload();
     }
 
-    private void showSubtaskMenu(ReminderSettings.Rule task, ReminderSettings.Rule sub, long dayStart) {
+    private void showSubtaskMenu(int parentId, ReminderSettings.Rule sub, long dayStart) {
         FormKit.options(this, sub.title, new String[]{"重命名", "删除"}, 0, which -> {
             if (which == 0) {
                 final EditText input = FormKit.textInput(this, "子任务名字", sub.title);
@@ -998,16 +1020,16 @@ public final class TaskActivity extends Activity {
                         String newTitle = input.getText().toString().trim();
                         if (!newTitle.isEmpty() && !newTitle.equals(sub.title)) {
                             Subtasks.delete(TaskActivity.this, sub);
-                            Subtasks.add(TaskActivity.this, task.id, newTitle, sub.step);
+                            Subtasks.add(TaskActivity.this, parentId, newTitle, sub.step);
                             reload();
                         }
                     })
                     .show();
-            } else confirmDeleteSubtask(task, sub);
+            } else confirmDeleteSubtask(parentId, sub);
         });
     }
 
-    private void confirmDeleteSubtask(ReminderSettings.Rule task, ReminderSettings.Rule sub) {
+    private void confirmDeleteSubtask(int parentId, ReminderSettings.Rule sub) {
         new AlertDialog.Builder(this)
                 .setTitle("删除子任务")
                 .setMessage("确定要删除「" + sub.title + "」吗？")

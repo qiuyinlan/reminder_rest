@@ -23,8 +23,10 @@ import java.util.Locale;
 /** 单个任务的子任务清单：在这里加子任务、勾完成，父任务页也会同步显示。 */
 public final class SubtaskActivity extends Activity {
     static final String EXTRA_PARENT_ID = "parent_id";
+    static final String EXTRA_PARENT_TITLE = "parent_title";
 
     private int parentId = -1;
+    private String fallbackTitle = "";
     private LinearLayout listContainer;
     private EditText input;
     private TextView parentTitle;
@@ -34,6 +36,8 @@ public final class SubtaskActivity extends Activity {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
         parentId = getIntent().getIntExtra(EXTRA_PARENT_ID, -1);
+        String extraTitle = getIntent().getStringExtra(EXTRA_PARENT_TITLE);
+        fallbackTitle = extraTitle == null ? "" : extraTitle;
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -85,7 +89,9 @@ public final class SubtaskActivity extends Activity {
         more.setOnClickListener(v -> FormKit.options(this, null,
                 new String[]{"改名字", "提醒设置"}, -1, which -> {
                     if (which == 0) editTitle();
-                    else {
+                    else if (ReminderSettings.ruleById(this, parentId) == null) {
+                        Toast.makeText(this, "习惯的提醒请长按任务页条目修改", Toast.LENGTH_SHORT).show();
+                    } else {
                         startActivity(new Intent(this, TaskActivity.class)
                                 .putExtra(TaskActivity.EXTRA_EDIT_RULE_ID, parentId));
                         finish();
@@ -158,7 +164,11 @@ public final class SubtaskActivity extends Activity {
 
     private void render() {
         ReminderSettings.Rule parent = ReminderSettings.ruleById(this, parentId);
-        parentTitle.setText(parent == null || parent.title.isEmpty() ? "任务" : parent.title);
+        if (parent != null && !parent.title.isEmpty()) {
+            parentTitle.setText(parent.title);
+        } else {
+            parentTitle.setText(fallbackTitle.isEmpty() ? "任务" : fallbackTitle);
+        }
 
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         List<ReminderSettings.Rule> items = Subtasks.of(this, parentId);
