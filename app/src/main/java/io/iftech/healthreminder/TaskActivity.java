@@ -661,16 +661,17 @@ public final class TaskActivity extends Activity {
             subBox.setMinimumHeight(dp(36));
             GradientDrawable subBg = new GradientDrawable();
             subBg.setCornerRadius(dp(10));
-            subBg.setColor(subDone ? UiPalette.SOFT : Color.WHITE);
-            subBg.setStroke(dp(1), subDone ? UiPalette.ACCENT : UiPalette.BORDER);
+            subBg.setColor(subDone ? UiPalette.SOFT : UiPalette.PALE);
+            // 无边框
             subBox.setBackground(subBg);
             subBox.setPadding(dp(8), dp(4), dp(8), dp(4));
 
             GradientDrawable cbShape = new GradientDrawable();
             cbShape.setCornerRadius(dp(4));
-            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
-            if (!subDone) cbShape.setStroke(dp(1), UiPalette.MUTED);
-            TextView cb = text(subDone ? "✓" : "", 10, subDone ? Color.WHITE : UiPalette.MUTED, true);
+            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.WHITE);
+            // 未勾选时用灰色边框
+            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : 0xff9ca3af);
+            TextView cb = text(subDone ? "✓" : "", 10, subDone ? Color.WHITE : 0xff9ca3af, true);
             cb.setGravity(Gravity.CENTER);
             cb.setBackground(cbShape);
             LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(18), dp(18));
@@ -765,11 +766,12 @@ public final class TaskActivity extends Activity {
             ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
             ReminderSettings.unmarkCompleted(this, task.id);
         } else {
-            // 有子任务时，必须全部完成才能标记父任务完成
+            // 勾选大任务时，自动把所有子任务一并勾选
             List<ReminderSettings.Rule> subtasks = Subtasks.of(this, task.id);
-            if (!subtasks.isEmpty() && !allSubDone) {
-                Toast.makeText(this, "先把子任务都勾完", Toast.LENGTH_SHORT).show();
-                return;
+            if (!subtasks.isEmpty()) {
+                for (ReminderSettings.Rule sub : subtasks) {
+                    Subtasks.toggle(this, task.id, sub.title, false, dayStart);
+                }
             }
             long now = System.currentTimeMillis();
             ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
