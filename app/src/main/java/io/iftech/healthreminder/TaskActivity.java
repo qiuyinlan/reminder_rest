@@ -280,70 +280,51 @@ public final class TaskActivity extends Activity {
     private View buildHabitSection(long dayStart) {
         LinearLayout section = new LinearLayout(this);
         section.setOrientation(LinearLayout.VERTICAL);
-        section.setPadding(0, dp(18), 0, dp(8));
+        section.setPadding(0, dp(14), 0, dp(6));
 
-        // 顶部汇总卡片
-        LinearLayout summaryCard = new LinearLayout(this);
-        summaryCard.setOrientation(LinearLayout.HORIZONTAL);
-        summaryCard.setGravity(Gravity.CENTER_VERTICAL);
-        summaryCard.setPadding(dp(16), dp(14), dp(16), dp(14));
-        GradientDrawable summaryBg = new GradientDrawable();
-        summaryBg.setColor(UiPalette.PALE);
-        summaryBg.setCornerRadius(dp(16));
-        summaryCard.setBackground(summaryBg);
-        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
-        summaryParams.bottomMargin = dp(12);
-        section.addView(summaryCard, summaryParams);
-
-        TextView title = text("微习惯", 18, UiPalette.INK, true);
-        summaryCard.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        // 圆形进度环
         int completed = Habits.countCompletedToday(this, dayStart);
         List<Habits.Habit> todayHabits = Habits.todayScheduled(this);
         int total = todayHabits.size();
-        int percent = total > 0 ? (completed * 100 / total) : 0;
 
-        TextView progressRing = new TextView(this);
-        progressRing.setText(percent + "%");
-        progressRing.setTextSize(18);
-        progressRing.setTypeface(null, Typeface.BOLD);
-        progressRing.setTextColor(UiPalette.INK);
-        progressRing.setGravity(Gravity.CENTER);
-        progressRing.setBackground(FormKit.round(this, Color.WHITE, 24));
-        progressRing.setMinimumWidth(dp(48));
-        progressRing.setMinimumHeight(dp(48));
-        progressRing.setPadding(dp(10), dp(12), dp(10), dp(10));
-        summaryCard.addView(progressRing);
+        // 分组头：和「默认」那一行同款
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setMinimumHeight(dp(44));
+        header.setPadding(dp(6), dp(12), dp(6), dp(6));
 
-        // 今日习惯列表标题
-        LinearLayout listHeader = new LinearLayout(this);
-        listHeader.setOrientation(LinearLayout.HORIZONTAL);
-        listHeader.setGravity(Gravity.CENTER_VERTICAL);
-        listHeader.setPadding(dp(4), dp(12), dp(4), dp(8));
-        TextView listTitle = text("今日习惯", 15, UiPalette.INK, true);
-        listHeader.addView(listTitle, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView count = text(completed + "/" + total + " 个已完成", 12, UiPalette.MUTED, false);
-        listHeader.addView(count);
-        section.addView(listHeader);
+        TextView label = text("微习惯", 12, UiPalette.MUTED, true);
+        header.addView(label, new LinearLayout.LayoutParams(-2, -2));
 
-        // 添加按钮
-        TextView addBtn = text("+ 添加", 13, UiPalette.ACCENT, true);
-        addBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
+        View line = new View(this);
+        line.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
+        lineParams.leftMargin = dp(10);
+        lineParams.rightMargin = dp(10);
+        header.addView(line, lineParams);
+
+        TextView count = text(completed + "/" + total, 12, UiPalette.MUTED, true);
+        header.addView(count);
+
+        TextView addBtn = text("+ 添加", 12, UiPalette.ACCENT, true);
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
+        addParams.leftMargin = dp(10);
+        addBtn.setLayoutParams(addParams);
+        addBtn.setPadding(dp(4), dp(2), dp(4), dp(2));
         addBtn.setOnClickListener(v -> addHabit());
-        listHeader.addView(addBtn);
+        header.addView(addBtn);
 
-        // 习惯列表
+        section.addView(header);
+
         if (todayHabits.isEmpty()) {
             TextView empty = text("今天没有要做的习惯", 12, UiPalette.MUTED, false);
-            empty.setPadding(dp(4), dp(4), dp(4), dp(10));
+            empty.setPadding(dp(8), dp(2), dp(4), dp(10));
             section.addView(empty);
         } else {
             for (Habits.Habit habit : todayHabits) {
                 section.addView(buildHabitRow(habit, dayStart));
             }
         }
-
         return section;
     }
 
