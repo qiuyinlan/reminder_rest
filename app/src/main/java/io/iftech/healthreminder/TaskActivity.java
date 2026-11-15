@@ -375,8 +375,8 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(52));
-        row.setPadding(dp(10), dp(10), dp(10), dp(10));
+        row.setMinimumHeight(dp(48));
+        row.setPadding(dp(14), dp(10), dp(14), dp(10));
         GradientDrawable rowBg = new GradientDrawable();
         rowBg.setCornerRadius(dp(12));
         rowBg.setColor(Color.WHITE);
@@ -516,7 +516,7 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(4), dp(12), dp(4), dp(8));
+        header.setPadding(dp(6), dp(12), dp(6), dp(6));
         header.addView(text("之后 " + future.size(), 12, UiPalette.MUTED, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
         header.addView(text(futureExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true));
@@ -538,8 +538,8 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(44));
-        row.setPadding(dp(6), dp(10), dp(6), dp(10));
+        row.setMinimumHeight(dp(48));
+        row.setPadding(dp(14), dp(10), dp(14), dp(10));
 
         TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 15, UiPalette.INK, false);
         title.setMaxLines(1);
@@ -574,7 +574,7 @@ public final class TaskActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(4), dp(12), dp(4), dp(8));
+        header.setPadding(dp(6), dp(12), dp(6), dp(6));
         TextView label = text("已完成 " + finished.size(), 12, UiPalette.MUTED, true);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView arrow = text(completedExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true);
@@ -599,8 +599,8 @@ public final class TaskActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
-        card.setBackground(FormKit.round(this, Color.WHITE, 16));
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(FormKit.round(this, Color.WHITE, 12));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
         cardParams.bottomMargin = dp(12);
         card.setLayoutParams(cardParams);
@@ -789,7 +789,7 @@ public final class TaskActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setMinimumHeight(dp(48));
-        row.setPadding(dp(6), dp(10), dp(6), dp(10));
+        row.setPadding(dp(14), dp(10), dp(14), dp(10));
 
         GradientDrawable rowBg = new GradientDrawable();
         rowBg.setCornerRadius(dp(12));
