@@ -230,6 +230,9 @@ public final class TaskActivity extends Activity {
         listContainer.removeAllViews();
         listContainer.addView(buildOverviewCard());
         
+        // 微习惯板块
+        listContainer.addView(buildHabitSection(dayStart));
+        
         if (tasks.isEmpty()) return;
         
         // 按分类渲染（只有一个分类时不显示分组标题）
@@ -268,6 +271,181 @@ public final class TaskActivity extends Activity {
             listContainer.addView(buildCompletedSection(allDone, dayStart));
         }
     }
+
+    // ------------------------------------------------------------ 微习惯
+
+    private View buildHabitSection(long dayStart) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+
+        // 顶部汇总卡片
+        LinearLayout summaryCard = new LinearLayout(this);
+        summaryCard.setOrientation(LinearLayout.HORIZONTAL);
+        summaryCard.setGravity(Gravity.CENTER_VERTICAL);
+        summaryCard.setPadding(dp(16), dp(14), dp(16), dp(14));
+        GradientDrawable summaryBg = new GradientDrawable();
+        summaryBg.setColor(UiPalette.PALE);
+        summaryBg.setCornerRadius(dp(16));
+        summaryCard.setBackground(summaryBg);
+        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
+        summaryParams.bottomMargin = dp(12);
+        section.addView(summaryCard, summaryParams);
+
+        TextView title = text("微习惯", 18, UiPalette.INK, true);
+        summaryCard.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        // 圆形进度环
+        int completed = Habits.countCompletedToday(this, dayStart);
+        List<Habits.Habit> todayHabits = Habits.todayScheduled(this);
+        int total = todayHabits.size();
+        int percent = total > 0 ? (completed * 100 / total) : 0;
+
+        TextView progressRing = new TextView(this);
+        progressRing.setText(percent + "%");
+        progressRing.setTextSize(18);
+        progressRing.setTypeface(null, Typeface.BOLD);
+        progressRing.setTextColor(UiPalette.INK);
+        progressRing.setGravity(Gravity.CENTER);
+        progressRing.setBackground(FormKit.round(this, Color.WHITE, 24));
+        progressRing.setMinimumWidth(dp(48));
+        progressRing.setMinimumHeight(dp(48));
+        progressRing.setPadding(dp(10), dp(12), dp(10), dp(10));
+        summaryCard.addView(progressRing);
+
+        // 今日习惯列表标题
+        LinearLayout listHeader = new LinearLayout(this);
+        listHeader.setOrientation(LinearLayout.HORIZONTAL);
+        listHeader.setGravity(Gravity.CENTER_VERTICAL);
+        listHeader.setPadding(dp(4), dp(12), dp(4), dp(8));
+        TextView listTitle = text("今日习惯", 15, UiPalette.INK, true);
+        listHeader.addView(listTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView count = text(completed + "/" + total + " 个已完成", 12, UiPalette.MUTED, false);
+        listHeader.addView(count);
+        section.addView(listHeader);
+
+        // 添加按钮
+        TextView addBtn = text("+ 添加", 13, UiPalette.ACCENT, true);
+        addBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
+        addBtn.setOnClickListener(v -> addHabit());
+        listHeader.addView(addBtn);
+
+        // 习惯列表
+        if (todayHabits.isEmpty()) {
+            TextView empty = text("今天没有要做的习惯", 12, UiPalette.MUTED, false);
+            empty.setPadding(dp(4), dp(4), dp(4), dp(10));
+            section.addView(empty);
+        } else {
+            for (Habits.Habit habit : todayHabits) {
+                section.addView(buildHabitRow(habit, dayStart));
+            }
+        }
+
+        return section;
+    }
+
+    private void addHabit() {
+        final EditText input = FormKit.textInput(this, "习惯名称", "");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("新习惯")
+                .setView(input)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("添加", null)
+                .create();
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String title = input.getText().toString().trim();
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "先写个名字", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Habits.add(this, title);
+                dialog.dismiss();
+                reload();
+            });
+        });
+        FormKit.showStyled(this, dialog);
+    }
+
+    private View buildHabitRow(Habits.Habit habit, long dayStart) {
+        boolean done = Habits.isCompletedToday(this, habit.id, dayStart);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(52));
+        row.setPadding(dp(10), dp(10), dp(10), dp(10));
+        GradientDrawable rowBg = new GradientDrawable();
+        rowBg.setCornerRadius(dp(12));
+        rowBg.setColor(Color.WHITE);
+        rowBg.setStroke(dp(1), UiPalette.BORDER);
+        row.setBackground(rowBg);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.bottomMargin = dp(8);
+        row.setLayoutParams(rowParams);
+
+        // Checkbox
+        GradientDrawable cbShape = new GradientDrawable();
+        cbShape.setCornerRadius(dp(6));
+        cbShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) cbShape.setStroke(dp(1), 0xff9ca3af);
+        TextView cb = text(done ? "✓" : "", 12, done ? Color.WHITE : 0xff9ca3af, true);
+        cb.setGravity(Gravity.CENTER);
+        cb.setBackground(cbShape);
+        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(24), dp(24));
+        row.addView(cb, cbParams);
+        cb.setOnClickListener(v -> {
+            Habits.toggleCompletion(this, habit.id, dayStart, !done);
+            reload();
+        });
+
+        // 标题
+        TextView title = text(habit.title, 15, done ? UiPalette.MUTED : UiPalette.INK, false);
+        title.setMaxLines(1);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        if (done) title.setPaintFlags(title.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleParams.leftMargin = dp(12);
+        row.addView(title, titleParams);
+
+        // 7 个圆点
+        int[] bits = {1, 2, 4, 8, 16, 32, 64};
+        LinearLayout dotsRow = new LinearLayout(this);
+        dotsRow.setOrientation(LinearLayout.HORIZONTAL);
+        for (int bit : bits) {
+            TextView dot = new TextView(this);
+            dot.setText(Habits.getDayLabel(bit));
+            dot.setTextSize(10);
+            dot.setGravity(Gravity.CENTER);
+            boolean selected = (habit.frequencyMask & bit) != 0;
+            dot.setTextColor(selected ? UiPalette.ACCENT : UiPalette.DISABLED);
+            dot.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(18), dp(18));
+            dotParams.leftMargin = dp(3);
+            dotsRow.addView(dot, dotParams);
+        }
+        row.addView(dotsRow);
+
+        // 点击进入编辑
+        row.setOnClickListener(v -> {
+            Intent intent = new Intent(this, HabitEditor.class);
+            intent.putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id);
+            startActivityForResult(intent, REQUEST_EDIT_HABIT);
+        });
+
+        return row;
+    }
+
+    private static final int REQUEST_EDIT_HABIT = 5001;
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_EDIT_HABIT && resultCode == RESULT_OK) {
+            reload();
+        }
+    }
+
+    // ------------------------------------------------------------ 分类
 
     private View buildCategoryHeader(TaskCategories.Category cat, int totalCount) {
         LinearLayout header = new LinearLayout(this);
