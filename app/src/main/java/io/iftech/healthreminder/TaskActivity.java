@@ -229,11 +229,11 @@ public final class TaskActivity extends Activity {
         
         listContainer.removeAllViews();
         listContainer.addView(buildOverviewCard());
-        
-        // 微习惯板块
-        listContainer.addView(buildHabitSection(dayStart));
-        
-        if (tasks.isEmpty()) return;
+
+        if (tasks.isEmpty()) {
+            listContainer.addView(buildHabitSection(dayStart));
+            return;
+        }
         
         // 按分类渲染（只有一个分类时不显示分组标题）
         boolean showHeaders = cats.size() > 1;
@@ -270,6 +270,9 @@ public final class TaskActivity extends Activity {
         if (!allDone.isEmpty()) {
             listContainer.addView(buildCompletedSection(allDone, dayStart));
         }
+
+        // 微习惯板块：固定放在页面最下面
+        listContainer.addView(buildHabitSection(dayStart));
     }
 
     // ------------------------------------------------------------ 微习惯
@@ -277,6 +280,7 @@ public final class TaskActivity extends Activity {
     private View buildHabitSection(long dayStart) {
         LinearLayout section = new LinearLayout(this);
         section.setOrientation(LinearLayout.VERTICAL);
+        section.setPadding(0, dp(18), 0, dp(8));
 
         // 顶部汇总卡片
         LinearLayout summaryCard = new LinearLayout(this);
