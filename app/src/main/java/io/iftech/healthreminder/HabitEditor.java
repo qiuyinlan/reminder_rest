@@ -29,17 +29,18 @@ public final class HabitEditor extends Activity {
             return;
         }
 
-        Habits.Habit habit = null;
+        Habits.Habit found = null;
         for (Habits.Habit h : Habits.all(this)) {
             if (h.id == habitId) {
-                habit = h;
+                found = h;
                 break;
             }
         }
-        if (habit == null) {
+        if (found == null) {
             finish();
             return;
         }
+        final Habits.Habit habit = found;
 
         android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
         shell.setBackgroundColor(UiPalette.PAGE);
