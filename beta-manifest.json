@@ -1,7 +1,7 @@
 {
     "versionCode": 63,
     "versionName": "0.3.0-beta43",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta43/rest-bean.apk",
-    "sha256": "pending",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta42/rest-bean.apk",
+    "sha256": "b722437f750684df9b7cad0de211be2d81301aa7412ba3bcac1b7ba88c4495f3",
     "notes": "微习惯板块上线 + 子任务 UI 优化 + 大任务勾选自动带子任务"
 }
