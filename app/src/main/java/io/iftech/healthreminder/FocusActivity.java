@@ -451,15 +451,21 @@ public final class FocusActivity extends Activity {
                 "专注完成", ReminderSettings.MODULE_TASK);
 
         if (ruleId >= 0) {
+            final long dayStart = ReminderRecord.dayStart(now);
             ReminderSettings.Rule rule = ReminderSettings.ruleById(this, ruleId);
             if (rule != null) {
-                long dayStart = ReminderRecord.dayStart(now);
                 for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
                     if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
                         Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
                     }
                 }
                 ReminderSettings.markCompleted(this, ruleId, Math.max(1, rule.dailyTarget));
+            } else {
+                // 微习惯不在规则表里，走 Habits 的打卡
+                Habits.Habit habit = Habits.byParentId(this, ruleId);
+                if (habit != null && !Habits.isCompletedToday(this, habit.id, dayStart)) {
+                    Habits.toggleCompletion(this, habit.id, dayStart, true);
+                }
             }
         }
 
@@ -506,7 +512,7 @@ public final class FocusActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(text(FocusStore.hasCurrent(this) ? "换一件" : "从今天的任务挑一件",
+        head.addView(text(FocusStore.hasCurrent(this) ? "换一件" : "现在做哪一件",
                         14, UiPalette.INK, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
         if (FocusStore.hasCurrent(this)) {
@@ -530,11 +536,22 @@ public final class FocusActivity extends Activity {
             }
         }
 
-        if (pending.isEmpty()) {
+        // 微习惯也在候选里：任务页上能看到的，这里都能挑
+        List<Habits.Habit> habits = Habits.todayScheduled(this);
+        if (!habits.isEmpty()) {
+            card.addView(pickerSectionLabel("微习惯"));
+            for (int i = 0; i < habits.size(); i++) {
+                if (i > 0) card.addView(rowDivider());
+                card.addView(buildHabitPickerRow(habits.get(i), dayStart));
+            }
+        }
+
+        if (pending.isEmpty() && habits.isEmpty()) {
             TextView empty = text("今天清单是空的，直接在下面写一件", 13, UiPalette.MUTED, false);
             empty.setPadding(dp(2), dp(12), dp(2), dp(4));
             card.addView(empty);
-        } else {
+        } else if (!pending.isEmpty()) {
+            card.addView(pickerSectionLabel("今日任务"));
             int shown = Math.min(pending.size(), MAX_PICKER_ROWS);
             for (int i = 0; i < shown; i++) {
                 if (i > 0) card.addView(rowDivider());
@@ -591,6 +608,45 @@ public final class FocusActivity extends Activity {
 
         row.setOnClickListener(v -> {
             FocusStore.setCurrent(this, task.title, task.id);
+            pickerOpen = false;
+            doneBanner = "";
+            render();
+        });
+        return row;
+    }
+
+    private View pickerSectionLabel(String name) {
+        TextView label = text(name, 11, UiPalette.MUTED, true);
+        label.setPadding(dp(2), dp(10), dp(2), dp(4));
+        return label;
+    }
+
+    /** 微习惯那一行：点一下就当成现在这件事。 */
+    private View buildHabitPickerRow(final Habits.Habit habit, long dayStart) {
+        final boolean done = Habits.isCompletedToday(this, habit.id, dayStart);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(46));
+        row.setPadding(dp(2), dp(10), dp(2), dp(10));
+
+        row.addView(dotView(done ? UiPalette.ACCENT : UiPalette.SOFT),
+                new LinearLayout.LayoutParams(dp(6), dp(6)));
+
+        TextView name = text(habit.title, 15, done ? UiPalette.MUTED : UiPalette.INK, false);
+        name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(10);
+        row.addView(name, nameParams);
+
+        TextView act = text(done ? "已打卡" : "开始", 12,
+                done ? UiPalette.MUTED : UiPalette.ACCENT, true);
+        act.setPadding(dp(8), dp(4), dp(2), dp(4));
+        row.addView(act);
+
+        row.setOnClickListener(v -> {
+            FocusStore.setCurrent(this, habit.title, Habits.parentId(habit.id));
             pickerOpen = false;
             doneBanner = "";
             render();
