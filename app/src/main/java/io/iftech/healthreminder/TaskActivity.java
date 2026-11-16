@@ -340,11 +340,11 @@ public final class TaskActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(14));
+        bg.setCornerRadius(dp(16));
         bg.setColor(UiPalette.SURFACE);
-        bg.setStroke(dp(1), UiPalette.hairline());
         card.setBackground(bg);
         card.setClipToOutline(true);
+        card.setElevation(dp(2));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.bottomMargin = dp(6);
         card.setLayoutParams(params);
@@ -368,11 +368,26 @@ public final class TaskActivity extends Activity {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(6), dp(14), dp(6), dp(8));
 
+        // 色点：给分组头一个落点
+        View dot = new View(this);
+        GradientDrawable dotBg = new GradientDrawable();
+        dotBg.setShape(GradientDrawable.OVAL);
+        dotBg.setColor(UiPalette.ACCENT);
+        dot.setBackground(dotBg);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(6), dp(6));
+        dotParams.rightMargin = dp(8);
+        header.addView(dot, dotParams);
+
         header.addView(text(name, 13, UiPalette.INK, true),
                 new LinearLayout.LayoutParams(-2, -2));
 
         if (count != null && !count.isEmpty()) {
-            TextView countView = text(count, 12, UiPalette.MUTED, true);
+            TextView countView = text(count, 11, UiPalette.MUTED, true);
+            GradientDrawable chipBg = new GradientDrawable();
+            chipBg.setCornerRadius(dp(8));
+            chipBg.setColor(UiPalette.PALE);
+            countView.setBackground(chipBg);
+            countView.setPadding(dp(7), dp(1), dp(7), dp(1));
             LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, -2);
             countParams.leftMargin = dp(8);
             header.addView(countView, countParams);
@@ -477,11 +492,11 @@ public final class TaskActivity extends Activity {
         GradientDrawable cbShape = new GradientDrawable();
         cbShape.setShape(GradientDrawable.OVAL);
         cbShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) cbShape.setStroke(dp(1), UiPalette.DISABLED);
-        TextView cb = text(done ? "✓" : "", 11, done ? Color.WHITE : UiPalette.DISABLED, true);
+        if (!done) cbShape.setStroke(dp(2), UiPalette.DISABLED);
+        TextView cb = text(done ? "✓" : "", 12, done ? Color.WHITE : UiPalette.DISABLED, true);
         cb.setGravity(Gravity.CENTER);
         cb.setBackground(cbShape);
-        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(22), dp(22));
+        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         row.addView(cb, cbParams);
         cb.setOnClickListener(v -> {
             Habits.toggleCompletion(this, habit.id, dayStart, !done);
@@ -860,12 +875,12 @@ public final class TaskActivity extends Activity {
         GradientDrawable boxShape = new GradientDrawable();
         boxShape.setShape(GradientDrawable.OVAL);
         boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) boxShape.setStroke(dp(1), UiPalette.DISABLED);
-        TextView box = text(done ? "✓" : "", 11, done ? Color.WHITE : UiPalette.DISABLED, true);
+        if (!done) boxShape.setStroke(dp(2), UiPalette.DISABLED);
+        TextView box = text(done ? "✓" : "", 12, done ? Color.WHITE : UiPalette.DISABLED, true);
         box.setGravity(Gravity.CENTER);
         box.setBackground(boxShape);
         box.setContentDescription(done ? "取消完成" : "标记完成");
-        LinearLayout.LayoutParams boxParams = new LinearLayout.LayoutParams(dp(22), dp(22));
+        LinearLayout.LayoutParams boxParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         row.addView(box, boxParams);
         box.setOnClickListener(v -> toggleDone(task, done, dayStart, allSubDone));
 
