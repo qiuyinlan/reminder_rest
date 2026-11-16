@@ -39,11 +39,15 @@ final class CategoryPicker {
         list.setOrientation(LinearLayout.VERTICAL);
 
         final AlertDialog[] holder = new AlertDialog[1];
+        final Runnable refresh = () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            show(activity, selectedId, onPick);
+        };
         for (TaskCategories.Category cat : cats) {
             list.addView(row(activity, cat, cat.id == selectedId, v -> {
                 if (holder[0] != null) holder[0].dismiss();
                 onPick.onPick(cat);
-            }));
+            }, v -> categoryMenu(activity, cat, refresh)));
         }
 
         ScrollView scroll = new ScrollView(activity);
@@ -82,7 +86,8 @@ final class CategoryPicker {
     }
 
     private static View row(final Activity activity, final TaskCategories.Category cat,
-                           boolean selected, View.OnClickListener onClick) {
+                           boolean selected, View.OnClickListener onClick,
+                           View.OnClickListener onMore) {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -114,11 +119,68 @@ final class CategoryPicker {
             row.addView(check);
         }
 
+        if (cat.id > 0) {
+            TextView more = FormKit.text(activity, "⋯", 18, UiPalette.MUTED, true);
+            more.setGravity(Gravity.CENTER);
+            more.setPadding(FormKit.dp(activity, 12), FormKit.dp(activity, 4),
+                    FormKit.dp(activity, 4), FormKit.dp(activity, 4));
+            more.setContentDescription("分类操作");
+            more.setOnClickListener(onMore);
+            row.addView(more);
+        }
+
         row.setOnClickListener(onClick);
         if (!selected) {
             row.setForeground(ripple(activity));
         }
         return row;
+    }
+
+    /** 分类操作菜单：重命名 / 删除（默认分类不可改）。 */
+    static void categoryMenu(final Activity activity, final TaskCategories.Category cat,
+                             final Runnable onChanged) {
+        if (cat.id <= 0) return;
+        FormKit.options(activity, cat.name, new String[]{"重命名", "删除"}, 1, which -> {
+            if (which == 0) rename(activity, cat, onChanged);
+            else remove(activity, cat, onChanged);
+        });
+    }
+
+    private static void rename(final Activity activity, final TaskCategories.Category cat,
+                               final Runnable onChanged) {
+        final EditText input = FormKit.textInput(activity, "分类名字", cat.name);
+        final AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle("重命名分类")
+                .setView(input)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String name = input.getText().toString().trim();
+                    if (name.isEmpty()) {
+                        Toast.makeText(activity, "先写个名字", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    TaskCategories.rename(activity, cat.id, name);
+                    dialog.dismiss();
+                    if (onChanged != null) onChanged.run();
+                }));
+        FormKit.showStyled(activity, dialog);
+    }
+
+    private static void remove(final Activity activity, final TaskCategories.Category cat,
+                               final Runnable onChanged) {
+        final AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle("删除「" + cat.name + "」？")
+                .setMessage("分类里的任务会退回默认分类")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (d, w) -> {
+                    TaskCategories.delete(activity, cat.id);
+                    if (onChanged != null) onChanged.run();
+                })
+                .create();
+        FormKit.showStyled(activity, dialog);
     }
 
     /** 编辑页里的分类胶囊按钮，点开选择器。 */

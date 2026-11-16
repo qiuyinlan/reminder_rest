@@ -66,6 +66,34 @@ final class TaskCategories {
         save(context, toSave);
     }
 
+    /** 改名（默认分类不允许改）。 */
+    static void rename(Context context, int categoryId, String name) {
+        if (categoryId <= 0) return;
+        List<Category> cats = all(context);
+        for (Category c : cats) {
+            if (c.id == categoryId) {
+                c.name = name;
+                break;
+            }
+        }
+        update(context, cats);
+    }
+
+    /** 删除分类，分类下的任务退回默认分类。 */
+    static void delete(Context context, int categoryId) {
+        if (categoryId <= 0) return;
+        List<Category> keep = new ArrayList<>();
+        for (Category c : all(context)) {
+            if (c.id != categoryId) keep.add(c);
+        }
+        update(context, keep);
+        for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
+            if (rule.categoryId == categoryId) {
+                ReminderSettings.upsertRule(context, rule.withCategory(0));
+            }
+        }
+    }
+
     static void toggleExpanded(Context context, int categoryId) {
         if (categoryId <= 0) {
             // 默认分类不在分类数组里，单独存一个开关
@@ -107,7 +135,7 @@ final class TaskCategories {
 
     static final class Category {
         final int id;
-        final String name;
+        String name;
         boolean expanded;
 
         Category(int id, String name, boolean expanded) {

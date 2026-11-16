@@ -607,6 +607,11 @@ public final class TaskActivity extends Activity {
             TaskCategories.toggleExpanded(this, cat.id);
             reload();
         });
+        // 长按分类头：改名 / 删除
+        header.setOnLongClickListener(v -> {
+            CategoryPicker.categoryMenu(this, cat, this::reload);
+            return true;
+        });
         return header;
     }
 
