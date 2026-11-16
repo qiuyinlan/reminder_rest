@@ -37,6 +37,7 @@ public final class TaskActivity extends Activity {
     private static final String MODE_INTERVAL = "interval";
 
     private LinearLayout listContainer;
+    private LinearLayout headerHost;
     private boolean completedExpanded;
     private boolean futureExpanded;
     private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
@@ -54,7 +55,9 @@ public final class TaskActivity extends Activity {
         root.setBackground(UiPalette.page());
         shell.addView(root, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
-        root.addView(buildHeader(), new LinearLayout.LayoutParams(-1, -2));
+        headerHost = new LinearLayout(this);
+        headerHost.setOrientation(LinearLayout.VERTICAL);
+        root.addView(headerHost, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -168,15 +171,22 @@ public final class TaskActivity extends Activity {
 
     // ---------------------------------------------------------------- 顶部
 
-    private View buildHeader() {
+    /** 头部跟着完成度重画：标题下面一行日期 + 今日进度条。 */
+    private void refreshHeader(int done, int total) {
+        if (headerHost == null) return;
+        headerHost.removeAllViews();
+        headerHost.addView(buildHeader(done, total));
+    }
+
+    private View buildHeader(int done, int total) {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(16), dp(20), dp(8));
+        header.setPadding(dp(20), dp(12), dp(20), dp(0));
 
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text("任务", 25, UiPalette.INK, true);
+        TextView title = text("任务", 26, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         TextView more = text("⋯", 20, UiPalette.MUTED, true);
@@ -186,7 +196,50 @@ public final class TaskActivity extends Activity {
         more.setOnClickListener(v -> showMoreMenu());
         row.addView(more);
         header.addView(row);
+
+        LinearLayout meta = new LinearLayout(this);
+        meta.setGravity(Gravity.CENTER_VERTICAL);
+        meta.addView(text(todayLabel(), 12, UiPalette.MUTED, false),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        if (total > 0) {
+            meta.addView(text(done + " / " + total, 12,
+                    done >= total ? UiPalette.ACCENT : UiPalette.MUTED, true));
+        }
+        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(-1, -2);
+        metaParams.topMargin = dp(4);
+        header.addView(meta, metaParams);
+
+        if (total > 0) {
+            int filled = Math.max(0, Math.min(done, total));
+            LinearLayout bar = new LinearLayout(this);
+            bar.setOrientation(LinearLayout.HORIZONTAL);
+            GradientDrawable track = new GradientDrawable();
+            track.setCornerRadius(dp(3));
+            track.setColor(UiPalette.SOFT);
+            bar.setBackground(track);
+            if (filled > 0) {
+                View fill = new View(this);
+                GradientDrawable fillBg = new GradientDrawable();
+                fillBg.setCornerRadius(dp(3));
+                fillBg.setColor(UiPalette.ACCENT);
+                fill.setBackground(fillBg);
+                bar.addView(fill, new LinearLayout.LayoutParams(0, -1, filled));
+            }
+            if (total - filled > 0) {
+                View rest = new View(this);
+                bar.addView(rest, new LinearLayout.LayoutParams(0, -1, total - filled));
+            }
+            LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(6));
+            barParams.topMargin = dp(10);
+            header.addView(bar, barParams);
+        }
         return header;
+    }
+
+    private String todayLabel() {
+        java.text.SimpleDateFormat format =
+                new java.text.SimpleDateFormat("M月d日 EEEE", Locale.CHINA);
+        return format.format(new java.util.Date());
     }
 
     private void showMoreMenu() {
@@ -227,28 +280,36 @@ public final class TaskActivity extends Activity {
             }
         }
         
-        listContainer.removeAllViews();
-        listContainer.addView(buildOverviewCard());
-
-        if (tasks.isEmpty()) {
-            listContainer.addView(buildHabitSection(dayStart));
-            return;
+        int doneToday = 0;
+        for (ReminderSettings.Rule task : tasks) {
+            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
+                doneToday++;
+            }
         }
+        refreshHeader(doneToday, tasks.size());
+
+        listContainer.removeAllViews();
+        // 微习惯置顶
+        listContainer.addView(buildHabitSection(dayStart));
+        listContainer.addView(buildOverviewCard());
         
         // 按分类渲染（只有一个分类时不显示分组标题）
         boolean showHeaders = cats.size() > 1;
         for (TaskCategories.Category cat : cats) {
             List<ReminderSettings.Rule> pending = byCat.get(cat.id);
             List<ReminderSettings.Rule> done = doneByCat.get(cat.id);
-            if (pending != null && !pending.isEmpty()) {
-                if (showHeaders) {
-                    listContainer.addView(buildCategoryHeader(cat, pending.size() + (done != null ? done.size() : 0)));
+            if (pending == null || pending.isEmpty()) continue;
+            int totalCount = pending.size() + (done != null ? done.size() : 0);
+            if (showHeaders) {
+                listContainer.addView(buildCategoryHeader(cat, totalCount));
+            }
+            if (!showHeaders || cat.expanded) {
+                LinearLayout card = groupCard();
+                for (int i = 0; i < pending.size(); i++) {
+                    if (i > 0) addDivider(card);
+                    card.addView(buildRow(pending.get(i), dayStart));
                 }
-                if (!showHeaders || cat.expanded) {
-                    for (ReminderSettings.Rule task : pending) {
-                        listContainer.addView(buildRow(task, dayStart));
-                    }
-                }
+                listContainer.addView(card);
             }
         }
         
@@ -270,9 +331,67 @@ public final class TaskActivity extends Activity {
         if (!allDone.isEmpty()) {
             listContainer.addView(buildCompletedSection(allDone, dayStart));
         }
+    }
 
-        // 微习惯板块：固定放在页面最下面
-        listContainer.addView(buildHabitSection(dayStart));
+    // ------------------------------------------------------------ 卡片与分组
+
+    /** 分组容器：一张白底大圆角卡片包住整组行，行间靠内凹细线分隔。 */
+    private LinearLayout groupCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(14));
+        bg.setColor(UiPalette.SURFACE);
+        bg.setStroke(dp(1), UiPalette.hairline());
+        card.setBackground(bg);
+        card.setClipToOutline(true);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(6);
+        card.setLayoutParams(params);
+        return card;
+    }
+
+    /** 行间分隔线：从文字起始位置开始，不顶到卡片边缘。 */
+    private void addDivider(LinearLayout card) {
+        View line = new View(this);
+        line.setBackgroundColor(UiPalette.hairline());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(1));
+        params.leftMargin = dp(50);
+        card.addView(line, params);
+    }
+
+    /** 分组头：小标题 + 计数 + 细线 + 右侧操作。 */
+    private View buildSectionHeader(String name, String count, String action,
+                                    View.OnClickListener onAction) {
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(6), dp(14), dp(6), dp(8));
+
+        header.addView(text(name, 13, UiPalette.INK, true),
+                new LinearLayout.LayoutParams(-2, -2));
+
+        if (count != null && !count.isEmpty()) {
+            TextView countView = text(count, 12, UiPalette.MUTED, true);
+            LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, -2);
+            countParams.leftMargin = dp(8);
+            header.addView(countView, countParams);
+        }
+
+        View line = new View(this);
+        line.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
+        lineParams.leftMargin = dp(12);
+        lineParams.rightMargin = dp(12);
+        header.addView(line, lineParams);
+
+        if (action != null) {
+            TextView actionView = text(action, 12, UiPalette.ACCENT, true);
+            actionView.setPadding(dp(4), dp(2), dp(2), dp(2));
+            if (onAction != null) actionView.setOnClickListener(onAction);
+            header.addView(actionView, new LinearLayout.LayoutParams(-2, -2));
+        }
+        return header;
     }
 
     // ------------------------------------------------------------ 微习惯
@@ -280,51 +399,27 @@ public final class TaskActivity extends Activity {
     private View buildHabitSection(long dayStart) {
         LinearLayout section = new LinearLayout(this);
         section.setOrientation(LinearLayout.VERTICAL);
-        section.setPadding(0, dp(14), 0, dp(6));
+        section.setPadding(0, dp(6), 0, dp(6));
 
         int completed = Habits.countCompletedToday(this, dayStart);
         List<Habits.Habit> todayHabits = Habits.todayScheduled(this);
         int total = todayHabits.size();
 
-        // 分组头：和「默认」那一行同款
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setMinimumHeight(dp(44));
-        header.setPadding(dp(6), dp(12), dp(6), dp(6));
+        section.addView(buildSectionHeader("微习惯", completed + "/" + total, "+ 添加",
+                v -> addHabit()));
 
-        TextView label = text("微习惯", 12, UiPalette.MUTED, true);
-        header.addView(label, new LinearLayout.LayoutParams(-2, -2));
-
-        View line = new View(this);
-        line.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
-        lineParams.leftMargin = dp(10);
-        lineParams.rightMargin = dp(10);
-        header.addView(line, lineParams);
-
-        TextView count = text(completed + "/" + total, 12, UiPalette.MUTED, true);
-        header.addView(count);
-
-        TextView addBtn = text("+ 添加", 12, UiPalette.ACCENT, true);
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
-        addParams.leftMargin = dp(10);
-        addBtn.setLayoutParams(addParams);
-        addBtn.setPadding(dp(4), dp(2), dp(4), dp(2));
-        addBtn.setOnClickListener(v -> addHabit());
-        header.addView(addBtn);
-
-        section.addView(header);
-
+        LinearLayout card = groupCard();
         if (todayHabits.isEmpty()) {
-            TextView empty = text("今天没有要做的习惯", 12, UiPalette.MUTED, false);
-            empty.setPadding(dp(8), dp(2), dp(4), dp(10));
-            section.addView(empty);
+            TextView empty = text("今天没有要做的习惯，点右上角添加", 13, UiPalette.MUTED, false);
+            empty.setPadding(dp(16), dp(16), dp(16), dp(18));
+            card.addView(empty);
         } else {
-            for (Habits.Habit habit : todayHabits) {
-                section.addView(buildHabitRow(habit, dayStart));
+            for (int i = 0; i < todayHabits.size(); i++) {
+                if (i > 0) addDivider(card);
+                card.addView(buildHabitRow(todayHabits.get(i), dayStart));
             }
         }
+        section.addView(card);
         return section;
     }
 
@@ -375,24 +470,18 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(48));
-        row.setPadding(dp(14), dp(10), dp(14), dp(10));
-        GradientDrawable rowBg = new GradientDrawable();
-        rowBg.setCornerRadius(dp(12));
-        rowBg.setColor(Color.WHITE);
-        rowBg.setStroke(dp(1), UiPalette.BORDER);
-        row.setBackground(rowBg);
-        row.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        row.setMinimumHeight(dp(52));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
 
-        // Checkbox
+        // Checkbox：圆形，勾上变实心
         GradientDrawable cbShape = new GradientDrawable();
-        cbShape.setCornerRadius(dp(6));
+        cbShape.setShape(GradientDrawable.OVAL);
         cbShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) cbShape.setStroke(dp(1), 0xff9ca3af);
-        TextView cb = text(done ? "✓" : "", 12, done ? Color.WHITE : 0xff9ca3af, true);
+        if (!done) cbShape.setStroke(dp(1), UiPalette.DISABLED);
+        TextView cb = text(done ? "✓" : "", 11, done ? Color.WHITE : UiPalette.DISABLED, true);
         cb.setGravity(Gravity.CENTER);
         cb.setBackground(cbShape);
-        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(24), dp(24));
+        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(22), dp(22));
         row.addView(cb, cbParams);
         cb.setOnClickListener(v -> {
             Habits.toggleCompletion(this, habit.id, dayStart, !done);
@@ -408,24 +497,26 @@ public final class TaskActivity extends Activity {
         titleParams.leftMargin = dp(12);
         row.addView(title, titleParams);
 
-        // 7 个圆点
-        int[] bits = {1, 2, 4, 8, 16, 32, 64};
-        LinearLayout dotsRow = new LinearLayout(this);
-        dotsRow.setOrientation(LinearLayout.HORIZONTAL);
-        for (int bit : bits) {
-            TextView dot = new TextView(this);
-            dot.setText(Habits.getDayLabel(bit));
-            dot.setTextSize(10);
-            dot.setGravity(Gravity.CENTER);
-            boolean selected = (habit.frequencyMask & bit) != 0;
-            dot.setTextColor(selected ? UiPalette.ACCENT : UiPalette.DISABLED);
-            dot.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
-            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(18), dp(18));
-            dotParams.leftMargin = dp(3);
-            dotsRow.addView(dot, dotParams);
+        // 周频率点阵：每天都做的习惯不显示，省得每行拖一串字母
+        if ((habit.frequencyMask & 127) != 127) {
+            int[] bits = {1, 2, 4, 8, 16, 32, 64};
+            LinearLayout dotsRow = new LinearLayout(this);
+            dotsRow.setOrientation(LinearLayout.HORIZONTAL);
+            for (int bit : bits) {
+                TextView dot = new TextView(this);
+                dot.setText(Habits.getDayLabel(bit));
+                dot.setTextSize(10);
+                dot.setGravity(Gravity.CENTER);
+                boolean selected = (habit.frequencyMask & bit) != 0;
+                dot.setTextColor(selected ? UiPalette.ACCENT : UiPalette.DISABLED);
+                dot.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+                LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(17), dp(18));
+                dotParams.leftMargin = dp(2);
+                dotsRow.addView(dot, dotParams);
+            }
+            dotsRow.setOnClickListener(v -> openHabitEditor(habit));
+            row.addView(dotsRow);
         }
-        dotsRow.setOnClickListener(v -> openHabitEditor(habit));
-        row.addView(dotsRow);
 
         // 和普通任务一致：点一下进子任务
         final int habitParentId = Habits.parentId(habit.id);
@@ -439,8 +530,6 @@ public final class TaskActivity extends Activity {
 
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(-1, -2);
-        wrapperParams.bottomMargin = dp(8);
         wrapper.addView(row);
         if (!habitSubs.isEmpty()) {
             wrapper.addView(buildSubtaskFlow(habitParentId, habitSubs, dayStart));
@@ -473,28 +562,8 @@ public final class TaskActivity extends Activity {
     // ------------------------------------------------------------ 分类
 
     private View buildCategoryHeader(TaskCategories.Category cat, int totalCount) {
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setMinimumHeight(dp(44));
-        header.setPadding(dp(6), dp(12), dp(6), dp(6));
-
-        // 分类名
-        TextView label = text(cat.name, 12, UiPalette.MUTED, true);
-        header.addView(label, new LinearLayout.LayoutParams(-2, -2));
-
-        // 右侧细线，把分类名和右边空白隔开
-        View line = new View(this);
-        line.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
-        lineParams.leftMargin = dp(10);
-        lineParams.rightMargin = dp(10);
-        header.addView(line, lineParams);
-
-        // 展开／收起箭头
-        TextView arrow = text(cat.expanded ? "⌄" : "›", 13, UiPalette.ACCENT, true);
-        header.addView(arrow, new LinearLayout.LayoutParams(-2, -2));
-
+        View header = buildSectionHeader(cat.name, String.valueOf(totalCount),
+                cat.expanded ? "⌃" : "⌄", null);
         header.setOnClickListener(v -> {
             TaskCategories.toggleExpanded(this, cat.id);
             reload();
@@ -507,19 +576,8 @@ public final class TaskActivity extends Activity {
         LinearLayout section = new LinearLayout(this);
         section.setOrientation(LinearLayout.VERTICAL);
 
-        View hairline = new View(this);
-        hairline.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams hairlineParams = new LinearLayout.LayoutParams(-1, dp(1));
-        hairlineParams.topMargin = dp(10);
-        section.addView(hairline, hairlineParams);
-
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(6), dp(12), dp(6), dp(6));
-        header.addView(text("之后 " + future.size(), 12, UiPalette.MUTED, true),
-                new LinearLayout.LayoutParams(0, -2, 1f));
-        header.addView(text(futureExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true));
+        View header = buildSectionHeader("之后", String.valueOf(future.size()),
+                futureExpanded ? "⌃" : "⌄", null);
         header.setOnClickListener(v -> {
             futureExpanded = !futureExpanded;
             reload();
@@ -527,9 +585,12 @@ public final class TaskActivity extends Activity {
         section.addView(header);
 
         if (futureExpanded) {
-            for (ReminderSettings.Rule task : future) {
-                section.addView(buildFutureRow(task));
+            LinearLayout card = groupCard();
+            for (int i = 0; i < future.size(); i++) {
+                if (i > 0) addDivider(card);
+                card.addView(buildFutureRow(future.get(i)));
             }
+            section.addView(card);
         }
         return section;
     }
@@ -565,20 +626,8 @@ public final class TaskActivity extends Activity {
         LinearLayout section = new LinearLayout(this);
         section.setOrientation(LinearLayout.VERTICAL);
 
-        View hairline = new View(this);
-        hairline.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams hairlineParams = new LinearLayout.LayoutParams(-1, dp(1));
-        hairlineParams.topMargin = dp(10);
-        section.addView(hairline, hairlineParams);
-
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(6), dp(12), dp(6), dp(6));
-        TextView label = text("已完成 " + finished.size(), 12, UiPalette.MUTED, true);
-        header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView arrow = text(completedExpanded ? "⌃" : "⌄", 13, UiPalette.ACCENT, true);
-        header.addView(arrow);
+        View header = buildSectionHeader("已完成", String.valueOf(finished.size()),
+                completedExpanded ? "⌃" : "⌄", null);
         header.setOnClickListener(v -> {
             completedExpanded = !completedExpanded;
             reload();
@@ -586,9 +635,12 @@ public final class TaskActivity extends Activity {
         section.addView(header);
 
         if (completedExpanded) {
-            for (ReminderSettings.Rule task : finished) {
-                section.addView(buildRow(task, dayStart));
+            LinearLayout card = groupCard();
+            for (int i = 0; i < finished.size(); i++) {
+                if (i > 0) addDivider(card);
+                card.addView(buildRow(finished.get(i), dayStart));
             }
+            section.addView(card);
         }
         return section;
     }
@@ -596,21 +648,36 @@ public final class TaskActivity extends Activity {
     /** 顶部「总览提醒」：每 N 分钟弹一页，列出全部任务。 */
     private View buildOverviewCard() {
         ReminderSettings.Rule rule = overviewRule();
+        boolean on = rule != null && rule.enabled;
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackground(FormKit.round(this, Color.WHITE, 12));
+        card.setPadding(dp(14), dp(12), dp(10), dp(12));
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(14));
+        bg.setColor(UiPalette.PALE);
+        card.setBackground(bg);
+
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.bottomMargin = dp(12);
+        cardParams.topMargin = dp(10);
+        cardParams.bottomMargin = dp(4);
         card.setLayoutParams(cardParams);
 
-        String detail = rule == null ? "总览提醒" : "每 " + overviewIntervalText(rule);
-        card.addView(text(detail, 15, rule != null && rule.enabled ? UiPalette.INK : UiPalette.MUTED, true),
-                new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.addView(text("总览提醒", 14, on ? UiPalette.INK : UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(-1, -2));
+        TextView sub = text(rule == null ? "点一下设置整点播报" : "每 " + overviewIntervalText(rule),
+                12, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(2);
+        texts.addView(sub, subParams);
+        card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
 
         Switch toggle = new Switch(this);
-        toggle.setChecked(rule != null && rule.enabled);
+        toggle.setChecked(on);
         toggle.setOnCheckedChangeListener((button, checked) -> setOverviewEnabled(checked));
         card.addView(toggle);
 
@@ -782,26 +849,19 @@ public final class TaskActivity extends Activity {
 
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.setPadding(0, dp(4), 0, dp(4));
 
-        // 主任务行：框框 + 标题
+        // 主任务行：圆形勾选框 + 标题 + 右侧时间
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(48));
-        row.setPadding(dp(14), dp(10), dp(14), dp(10));
-
-        GradientDrawable rowBg = new GradientDrawable();
-        rowBg.setCornerRadius(dp(12));
-        rowBg.setColor(Color.WHITE);
-        rowBg.setStroke(dp(1), done ? UiPalette.ACCENT : UiPalette.BORDER);
-        row.setBackground(rowBg);
+        row.setMinimumHeight(dp(52));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
 
         GradientDrawable boxShape = new GradientDrawable();
-        boxShape.setCornerRadius(dp(6));
+        boxShape.setShape(GradientDrawable.OVAL);
         boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) boxShape.setStroke(dp(1), UiPalette.BORDER);
-        TextView box = text(done ? "✓" : "", 12, Color.WHITE, true);
+        if (!done) boxShape.setStroke(dp(1), UiPalette.DISABLED);
+        TextView box = text(done ? "✓" : "", 11, done ? Color.WHITE : UiPalette.DISABLED, true);
         box.setGravity(Gravity.CENTER);
         box.setBackground(boxShape);
         box.setContentDescription(done ? "取消完成" : "标记完成");
@@ -817,6 +877,14 @@ public final class TaskActivity extends Activity {
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
         titleParams.leftMargin = dp(12);
         row.addView(title, titleParams);
+
+        String time = taskTimeText(task);
+        if (!time.isEmpty()) {
+            TextView meta = text(time, 12, done ? UiPalette.DISABLED : UiPalette.MUTED, false);
+            LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(-2, -2);
+            metaParams.leftMargin = dp(10);
+            row.addView(meta, metaParams);
+        }
 
         row.setOnClickListener(v -> openSubtasks(task));
         row.setOnLongClickListener(v -> {
@@ -1573,6 +1641,16 @@ public final class TaskActivity extends Activity {
 
     private TextView text(String value, int size, int color, boolean bold) {
         return FormKit.text(this, value, size, color, bold);
+    }
+
+    /** 任务行右侧的时间标记：只有设了固定时间的任务才显示。 */
+    private String taskTimeText(ReminderSettings.Rule task) {
+        if (task.specificTimeMode && task.timePointsSeconds != null
+                && !task.timePointsSeconds.isEmpty()) {
+            int seconds = task.timePointsSeconds.get(0);
+            return String.format(Locale.getDefault(), "%02d:%02d", seconds / 3600, (seconds % 3600) / 60);
+        }
+        return "";
     }
 
     private int dp(float value) {
