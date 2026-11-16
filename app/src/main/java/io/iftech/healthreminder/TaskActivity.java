@@ -64,7 +64,7 @@ public final class TaskActivity extends Activity {
         scroll.setClipToPadding(false);
         listContainer = new LinearLayout(this);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        listContainer.setPadding(dp(16), dp(4), dp(16), dp(96));
+        listContainer.setPadding(dp(16), dp(8), dp(16), dp(96));
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -181,7 +181,14 @@ public final class TaskActivity extends Activity {
     private View buildHeader(int done, int total) {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(12), dp(20), dp(0));
+        header.setPadding(dp(20), dp(14), dp(20), dp(18));
+
+        // 头部用一层极淡的渐变，把标题从页面背景里托起来
+        GradientDrawable headBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                UiPalette.headGradient());
+        float r = dp(24);
+        headBg.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
+        header.setBackground(headBg);
 
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -214,13 +221,13 @@ public final class TaskActivity extends Activity {
             LinearLayout bar = new LinearLayout(this);
             bar.setOrientation(LinearLayout.HORIZONTAL);
             GradientDrawable track = new GradientDrawable();
-            track.setCornerRadius(dp(3));
+            track.setCornerRadius(dp(4));
             track.setColor(UiPalette.SOFT);
             bar.setBackground(track);
             if (filled > 0) {
                 View fill = new View(this);
                 GradientDrawable fillBg = new GradientDrawable();
-                fillBg.setCornerRadius(dp(3));
+                fillBg.setCornerRadius(dp(4));
                 fillBg.setColor(UiPalette.ACCENT);
                 fill.setBackground(fillBg);
                 bar.addView(fill, new LinearLayout.LayoutParams(0, -1, filled));
@@ -229,8 +236,8 @@ public final class TaskActivity extends Activity {
                 View rest = new View(this);
                 bar.addView(rest, new LinearLayout.LayoutParams(0, -1, total - filled));
             }
-            LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(6));
-            barParams.topMargin = dp(10);
+            LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(8));
+            barParams.topMargin = dp(12);
             header.addView(bar, barParams);
         }
         return header;
@@ -295,10 +302,12 @@ public final class TaskActivity extends Activity {
         
         // 按分类渲染（只有一个分类时不显示分组标题）
         boolean showHeaders = cats.size() > 1;
+        boolean anyPending = false;
         for (TaskCategories.Category cat : cats) {
             List<ReminderSettings.Rule> pending = byCat.get(cat.id);
             List<ReminderSettings.Rule> done = doneByCat.get(cat.id);
             if (pending == null || pending.isEmpty()) continue;
+            anyPending = true;
             int totalCount = pending.size() + (done != null ? done.size() : 0);
             if (showHeaders) {
                 listContainer.addView(buildCategoryHeader(cat, totalCount));
@@ -311,6 +320,15 @@ public final class TaskActivity extends Activity {
                 }
                 listContainer.addView(card);
             }
+        }
+
+        if (!anyPending) {
+            LinearLayout card = groupCard();
+            TextView hint = text("今天没有任务，点右下角 + 新建一个", 13, UiPalette.MUTED, false);
+            hint.setGravity(Gravity.CENTER);
+            hint.setPadding(dp(16), dp(20), dp(16), dp(22));
+            card.addView(hint);
+            listContainer.addView(card);
         }
         
         // 未分类的其他任务（之后/已完成）
@@ -425,9 +443,15 @@ public final class TaskActivity extends Activity {
 
         LinearLayout card = groupCard();
         if (todayHabits.isEmpty()) {
-            TextView empty = text("今天没有要做的习惯，点右上角添加", 13, UiPalette.MUTED, false);
-            empty.setPadding(dp(16), dp(16), dp(16), dp(18));
-            card.addView(empty);
+            LinearLayout emptyBox = new LinearLayout(this);
+            emptyBox.setOrientation(LinearLayout.VERTICAL);
+            emptyBox.setPadding(dp(16), dp(16), dp(16), dp(18));
+            emptyBox.addView(text("今天没有要做的习惯", 13, UiPalette.INK, true));
+            TextView emptySub = text("点右上角 + 添加，比如八段锦、颈椎训练", 12, UiPalette.MUTED, false);
+            LinearLayout.LayoutParams emptySubParams = new LinearLayout.LayoutParams(-1, -2);
+            emptySubParams.topMargin = dp(3);
+            emptyBox.addView(emptySub, emptySubParams);
+            card.addView(emptyBox);
         } else {
             for (int i = 0; i < todayHabits.size(); i++) {
                 if (i > 0) addDivider(card);
@@ -898,6 +922,12 @@ public final class TaskActivity extends Activity {
             showTaskMenu(task);
             return true;
         });
+        if (!subtasks.isEmpty()) {
+            TextView chevron = text("›", 18, UiPalette.DISABLED, true);
+            LinearLayout.LayoutParams chevronParams = new LinearLayout.LayoutParams(-2, -2);
+            chevronParams.leftMargin = dp(8);
+            row.addView(chevron, chevronParams);
+        }
         wrapper.addView(row);
 
         // 子任务流程视图（横向）
