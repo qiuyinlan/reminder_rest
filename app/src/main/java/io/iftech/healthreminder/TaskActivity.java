@@ -39,6 +39,7 @@ public final class TaskActivity extends Activity {
     private LinearLayout listContainer;
     private LinearLayout headerHost;
     private boolean completedExpanded;
+    private boolean habitDoneExpanded;
     private boolean futureExpanded;
     private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
 
@@ -498,6 +499,14 @@ public final class TaskActivity extends Activity {
         section.addView(buildSectionHeader("微习惯", completed + "/" + total, "+ 添加",
                 v -> addHabit()));
 
+        // 做过的习惯收进「已完成」，不占主列表位置
+        List<Habits.Habit> pendingHabits = new ArrayList<>();
+        List<Habits.Habit> doneHabits = new ArrayList<>();
+        for (Habits.Habit habit : todayHabits) {
+            if (Habits.isCompletedToday(this, habit.id, dayStart)) doneHabits.add(habit);
+            else pendingHabits.add(habit);
+        }
+
         LinearLayout card = groupCard();
         if (todayHabits.isEmpty()) {
             LinearLayout emptyBox = new LinearLayout(this);
@@ -509,13 +518,42 @@ public final class TaskActivity extends Activity {
             emptySubParams.topMargin = dp(3);
             emptyBox.addView(emptySub, emptySubParams);
             card.addView(emptyBox);
+        } else if (pendingHabits.isEmpty()) {
+            LinearLayout allDoneBox = new LinearLayout(this);
+            allDoneBox.setOrientation(LinearLayout.VERTICAL);
+            allDoneBox.setPadding(dp(16), dp(16), dp(16), dp(18));
+            allDoneBox.addView(text("今天的习惯都做完了", 13, UiPalette.INK, true));
+            TextView allDoneSub = text("想再来一次，点下面的「已完成」展开", 12, UiPalette.MUTED, false);
+            LinearLayout.LayoutParams allDoneSubParams = new LinearLayout.LayoutParams(-1, -2);
+            allDoneSubParams.topMargin = dp(3);
+            allDoneBox.addView(allDoneSub, allDoneSubParams);
+            card.addView(allDoneBox);
         } else {
-            for (int i = 0; i < todayHabits.size(); i++) {
+            for (int i = 0; i < pendingHabits.size(); i++) {
                 if (i > 0) addDivider(card);
-                card.addView(buildHabitRow(todayHabits.get(i), dayStart));
+                card.addView(buildHabitRow(pendingHabits.get(i), dayStart));
             }
         }
         section.addView(card);
+
+        if (!doneHabits.isEmpty()) {
+            View doneHeader = buildSectionHeader("已完成", String.valueOf(doneHabits.size()),
+                    habitDoneExpanded ? "⌃" : "⌄", null);
+            doneHeader.setOnClickListener(v -> {
+                habitDoneExpanded = !habitDoneExpanded;
+                reload();
+            });
+            section.addView(doneHeader);
+
+            if (habitDoneExpanded) {
+                LinearLayout doneCard = groupCard();
+                for (int i = 0; i < doneHabits.size(); i++) {
+                    if (i > 0) addDivider(doneCard);
+                    doneCard.addView(buildHabitRow(doneHabits.get(i), dayStart));
+                }
+                section.addView(doneCard);
+            }
+        }
         return section;
     }
 
