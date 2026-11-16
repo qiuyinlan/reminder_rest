@@ -947,8 +947,8 @@ public final class TaskActivity extends Activity {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(false);
-        scroll.setPadding(dp(14), dp(2), dp(4), dp(10));
-        scroll.setMinimumHeight(dp(38));
+        scroll.setPadding(dp(10), dp(2), dp(6), dp(3));
+        scroll.setMinimumHeight(dp(36));
         
         // 恢复之前保存的滚动位置
         int savedScroll = subtaskScrollPositions.get(parentId, 0);
@@ -1065,15 +1065,19 @@ public final class TaskActivity extends Activity {
             }
         });
         
-        // 左侧竖向引导线：表明这些是上一级任务的子项
+        // 子任务区域：用一条淡主题色底带代替竖线，层级更软，同时也把他们主任务分开
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.HORIZONTAL);
-        View guide = new View(this);
-        guide.setBackgroundColor(UiPalette.hairline());
-        LinearLayout.LayoutParams guideParams = new LinearLayout.LayoutParams(dp(1), dp(28));
-        guideParams.leftMargin = dp(28);
-        guideParams.topMargin = dp(4);
-        wrap.addView(guide, guideParams);
+        GradientDrawable band = new GradientDrawable();
+        band.setCornerRadius(dp(12));
+        band.setColor(UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.07f));
+        wrap.setBackground(band);
+        LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(-1, -2);
+        wrapParams.leftMargin = dp(38);
+        wrapParams.rightMargin = dp(2);
+        wrapParams.topMargin = dp(2);
+        wrapParams.bottomMargin = dp(6);
+        wrap.setLayoutParams(wrapParams);
         wrap.addView(scroll, new LinearLayout.LayoutParams(0, -2, 1f));
         return wrap;
     }
