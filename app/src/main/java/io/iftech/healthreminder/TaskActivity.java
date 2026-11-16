@@ -940,10 +940,10 @@ public final class TaskActivity extends Activity {
     /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
     private View buildSubtaskFlow(final int parentId, List<ReminderSettings.Rule> subtasks, long dayStart) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(true);
+        scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(false);
-        scroll.setPadding(dp(38), dp(4), dp(4), dp(8));
-        scroll.setMinimumHeight(dp(44));
+        scroll.setPadding(dp(14), dp(2), dp(4), dp(10));
+        scroll.setMinimumHeight(dp(38));
         
         // 恢复之前保存的滚动位置
         int savedScroll = subtaskScrollPositions.get(parentId, 0);
@@ -962,35 +962,28 @@ public final class TaskActivity extends Activity {
             ReminderSettings.Rule sub = subtasks.get(i);
             boolean subDone = Subtasks.doneToday(this, parentId, sub.title, dayStart);
 
-            // 子任务胶囊：和主任务同一套语言，未完成是白底细描边，完成才是淡主题色
+            // 子任务：不画底色，只靠缩进 + 左侧引导线表明层级
             LinearLayout subBox = new LinearLayout(this);
             subBox.setOrientation(LinearLayout.HORIZONTAL);
             subBox.setGravity(Gravity.CENTER_VERTICAL);
-            subBox.setMinimumHeight(dp(34));
-            GradientDrawable subBg = new GradientDrawable();
-            subBg.setCornerRadius(dp(9));
-            subBg.setColor(subDone
-                    ? UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.10f)
-                    : UiPalette.SURFACE);
-            subBg.setStroke(dp(1), subDone ? UiPalette.hairline() : UiPalette.BORDER);
-            subBox.setBackground(subBg);
-            subBox.setPadding(dp(9), dp(4), dp(10), dp(4));
+            subBox.setMinimumHeight(dp(32));
+            subBox.setPadding(dp(2), dp(2), dp(6), dp(2));
 
             GradientDrawable cbShape = new GradientDrawable();
-            cbShape.setShape(GradientDrawable.OVAL);
+            cbShape.setCornerRadius(dp(3));
             cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
             cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : UiPalette.DISABLED);
             TextView cb = text(subDone ? "✓" : "", 9, subDone ? Color.WHITE : UiPalette.DISABLED, true);
             cb.setGravity(Gravity.CENTER);
             cb.setBackground(cbShape);
-            LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+            LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(15), dp(15));
             subBox.addView(cb, cbParams);
             cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
 
             TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
             if (subDone) subTitle.setPaintFlags(subTitle.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
             LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-2, -2);
-            subParams.leftMargin = dp(6);
+            subParams.leftMargin = dp(7);
             subBox.addView(subTitle, subParams);
 
             subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
@@ -1031,10 +1024,10 @@ public final class TaskActivity extends Activity {
 
             // 箭头 →
             if (i < subtasks.size() - 1) {
-                TextView arrow = text("→", 12, UiPalette.DISABLED, false);
+                TextView arrow = text("→", 11, UiPalette.DISABLED, false);
                 LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
-                arrowParams.leftMargin = dp(8);
-                arrowParams.rightMargin = dp(8);
+                arrowParams.leftMargin = dp(7);
+                arrowParams.rightMargin = dp(7);
                 flow.addView(arrow, arrowParams);
             }
         }
@@ -1067,7 +1060,17 @@ public final class TaskActivity extends Activity {
             }
         });
         
-        return scroll;
+        // 左侧竖向引导线：表明这些是上一级任务的子项
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.HORIZONTAL);
+        View guide = new View(this);
+        guide.setBackgroundColor(UiPalette.hairline());
+        LinearLayout.LayoutParams guideParams = new LinearLayout.LayoutParams(dp(1), dp(28));
+        guideParams.leftMargin = dp(28);
+        guideParams.topMargin = dp(4);
+        wrap.addView(guide, guideParams);
+        wrap.addView(scroll, new LinearLayout.LayoutParams(0, -2, 1f));
+        return wrap;
     }
 
     private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart, boolean allSubDone) {
