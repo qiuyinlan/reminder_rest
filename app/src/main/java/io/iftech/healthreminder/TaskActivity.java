@@ -17,7 +17,6 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -196,6 +195,17 @@ public final class TaskActivity extends Activity {
         TextView title = text("任务", 26, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
+        // 「现在」入口：一眼看到此刻该做哪一件，点进去就不容易跑偏
+        TextView now = text("现在", 13, UiPalette.ACCENT, true);
+        now.setGravity(Gravity.CENTER);
+        now.setPadding(dp(13), dp(7), dp(13), dp(7));
+        now.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+        now.setContentDescription("现在在做的事");
+        now.setOnClickListener(v -> startActivity(new Intent(this, FocusActivity.class)));
+        LinearLayout.LayoutParams nowParams = new LinearLayout.LayoutParams(-2, -2);
+        nowParams.rightMargin = dp(4);
+        row.addView(now, nowParams);
+
         TextView more = text("⋯", 20, UiPalette.MUTED, true);
         more.setGravity(Gravity.CENTER);
         more.setPadding(dp(12), dp(2), dp(4), dp(2));
@@ -250,14 +260,54 @@ public final class TaskActivity extends Activity {
     }
 
     private void showMoreMenu() {
-        FormKit.options(this, null, new String[]{"总览提醒", "重置今日", "清空全部任务"}, 2, which -> {
-            if (which == 0) showOverviewEditor();
-            else if (which == 1) confirmResetToday();
+        ReminderSettings.Rule overview = overviewRule();
+        final boolean overviewOn = overview != null && overview.enabled;
+        String[] labels = {
+                overviewOn ? "总览提醒 · 已开" : "总览提醒 · 已关",
+                "总览提醒设置",
+                "重置今日",
+                "清空全部任务"};
+        FormKit.options(this, null, labels, 3, which -> {
+            if (which == 0) setOverviewEnabled(!overviewOn);
+            else if (which == 1) showOverviewEditor();
+            else if (which == 2) confirmResetToday();
             else confirmClearAll();
         });
     }
 
     // ---------------------------------------------------------------- 列表
+
+    /** 顶部「正在做」条：显示当前主任务，点一下回「现在」页。 */
+    private View buildFocusBar() {
+        String title = FocusStore.currentTitle(this);
+        if (title.isEmpty()) return null;
+
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(14), dp(11), dp(14), dp(11));
+        bar.setBackground(FormKit.round(this, UiPalette.PALE, 14));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(8);
+        bar.setLayoutParams(params);
+
+        bar.addView(text("●", 11, UiPalette.ACCENT, false));
+
+        TextView label = text("正在做", 11, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
+        labelParams.leftMargin = dp(6);
+        bar.addView(label, labelParams);
+
+        TextView name = text(title, 14, UiPalette.ACCENT, true);
+        name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(10);
+        bar.addView(name, nameParams);
+
+        bar.addView(text("›", 16, UiPalette.ACCENT, true));
+        bar.setOnClickListener(v -> startActivity(new Intent(this, FocusActivity.class)));
+        return bar;
+    }
 
     private void reload() {
         // 清除子任务滚动位置，让每次都能自动滚动到第一个未完成
@@ -296,8 +346,9 @@ public final class TaskActivity extends Activity {
         refreshHeader(doneToday, tasks.size());
 
         listContainer.removeAllViews();
-        // 总览提醒置顶，微习惯紧跟在后
-        listContainer.addView(buildOverviewCard());
+        // 顶部只保留「正在做」锚点；总览提醒的设置入口收进右上角 ⋯
+        View focusBar = buildFocusBar();
+        if (focusBar != null) listContainer.addView(focusBar);
         listContainer.addView(buildHabitSection(dayStart));
         
         // 按分类渲染（只有一个分类时不显示分组标题）
@@ -689,46 +740,7 @@ public final class TaskActivity extends Activity {
         return section;
     }
 
-    /** 顶部「总览提醒」：每 N 分钟弹一页，列出全部任务。 */
-    private View buildOverviewCard() {
-        ReminderSettings.Rule rule = overviewRule();
-        boolean on = rule != null && rule.enabled;
-
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(10), dp(12));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(14));
-        bg.setColor(UiPalette.PALE);
-        card.setBackground(bg);
-
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.topMargin = dp(10);
-        cardParams.bottomMargin = dp(4);
-        card.setLayoutParams(cardParams);
-
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text("总览提醒", 14, on ? UiPalette.INK : UiPalette.MUTED, true),
-                new LinearLayout.LayoutParams(-1, -2));
-        TextView sub = text(rule == null ? "点一下设置整点播报" : "每 " + overviewIntervalText(rule),
-                12, UiPalette.MUTED, false);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
-        subParams.topMargin = dp(2);
-        texts.addView(sub, subParams);
-        card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        Switch toggle = new Switch(this);
-        toggle.setChecked(on);
-        toggle.setOnCheckedChangeListener((button, checked) -> setOverviewEnabled(checked));
-        card.addView(toggle);
-
-        card.setOnClickListener(v -> showOverviewEditor());
-        return card;
-    }
-
+    // 总览提醒的开关与设置都收进右上角 ⋯，页面上不再占一张卡
     private ReminderSettings.Rule overviewRule() {
         for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(this)) {
             if (rule.isTaskAllModule()) return rule;
