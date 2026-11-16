@@ -254,7 +254,7 @@ public final class FocusActivity extends Activity {
 
         TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
         done.setOnClickListener(v -> completeCurrent());
-        actions.addView(done, new LinearLayout.LayoutParams(0, dp(46), 1f));
+        actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView swap = pill("换一个", UiPalette.PALE, UiPalette.ACCENT);
         swap.setOnClickListener(v -> {
@@ -262,7 +262,7 @@ public final class FocusActivity extends Activity {
             doneBanner = "";
             render();
         });
-        LinearLayout.LayoutParams swapParams = new LinearLayout.LayoutParams(0, dp(46), 1f);
+        LinearLayout.LayoutParams swapParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
         swapParams.leftMargin = dp(8);
         actions.addView(swap, swapParams);
 
@@ -271,7 +271,7 @@ public final class FocusActivity extends Activity {
         more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
         more.setContentDescription("更多");
         more.setOnClickListener(v -> showCurrentMenu());
-        LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         moreParams.leftMargin = dp(8);
         actions.addView(more, moreParams);
 
@@ -335,13 +335,13 @@ public final class FocusActivity extends Activity {
         subInput.setSingleLine(true);
         subInput.setHint("再拆一步（可选）");
         subInput.setText(subDraft);
-        inputRow.addView(subInput, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        inputRow.addView(subInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView add = text("＋", 18, UiPalette.ACCENT, true);
         add.setGravity(Gravity.CENTER);
         add.setBackground(FormKit.round(this, Color.WHITE, 10));
         add.setOnClickListener(v -> addSubtask(ruleId));
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         addParams.leftMargin = dp(8);
         inputRow.addView(add, addParams);
 
@@ -395,6 +395,7 @@ public final class FocusActivity extends Activity {
         int step = existing.isEmpty() ? 0 : (existing.get(existing.size() - 1).step + 1);
         Subtasks.add(this, ruleId, title, step);
         subDraft = "";
+        if (subInput != null) subInput.setText("");
         render();
     }
 
@@ -541,11 +542,11 @@ public final class FocusActivity extends Activity {
         customInput.setSingleLine(true);
         customInput.setHint("或者，自己写一件");
         customInput.setText(customDraft);
-        customRow.addView(customInput, new LinearLayout.LayoutParams(0, dp(46), 1f));
+        customRow.addView(customInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView start = pill("开始", UiPalette.ACCENT, Color.WHITE);
         start.setOnClickListener(v -> startCustom());
-        LinearLayout.LayoutParams startParams = new LinearLayout.LayoutParams(dp(66), dp(46));
+        LinearLayout.LayoutParams startParams = new LinearLayout.LayoutParams(dp(70), dp(48));
         startParams.leftMargin = dp(8);
         customRow.addView(start, startParams);
         card.addView(customRow);
@@ -589,6 +590,7 @@ public final class FocusActivity extends Activity {
         }
         ReminderSettings.Rule rule = createTask(title);
         customDraft = "";
+        if (customInput != null) customInput.setText("");
         FocusStore.setCurrent(this, title, rule != null ? rule.id : -1);
         pickerOpen = false;
         doneBanner = "";
@@ -642,11 +644,11 @@ public final class FocusActivity extends Activity {
         ideaInput.setSingleLine(true);
         ideaInput.setHint("突然想做的事…");
         ideaInput.setText(ideaDraft);
-        inputRow.addView(ideaInput, new LinearLayout.LayoutParams(0, dp(46), 1f));
+        inputRow.addView(ideaInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView add = pill("记下", UiPalette.ACCENT, Color.WHITE);
         add.setOnClickListener(v -> addIdea());
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(66), dp(46));
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(70), dp(48));
         addParams.leftMargin = dp(8);
         inputRow.addView(add, addParams);
         section.addView(inputRow);
@@ -696,6 +698,8 @@ public final class FocusActivity extends Activity {
         }
         FocusStore.addIdea(this, title);
         ideaDraft = "";
+        // 输入框本身也要清空，否则 render 时 captureDrafts 会把旧文字抓回来
+        if (ideaInput != null) ideaInput.setText("");
         render();
     }
 
@@ -786,6 +790,7 @@ public final class FocusActivity extends Activity {
         view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         view.setTextColor(ink);
         view.setGravity(Gravity.CENTER);
+        view.setMaxLines(1);
         view.setBackground(FormKit.round(this, fill, 12));
         return view;
     }
