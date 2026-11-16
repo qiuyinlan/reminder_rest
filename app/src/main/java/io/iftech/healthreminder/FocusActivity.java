@@ -765,7 +765,8 @@ public final class FocusActivity extends Activity {
             subBox.addView(subTitle, subParams);
 
             subBox.setOnClickListener(v -> {
-                Subtasks.toggle(this, ruleId, sub.title, subDone, dayStart);
+                boolean now = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
+                Subtasks.toggle(this, ruleId, sub.title, now, dayStart);
                 render();
             });
             subBox.setOnLongClickListener(v -> {

@@ -25,6 +25,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,6 +54,8 @@ public final class FocusBubbleService extends Service {
     private LinearLayout headerBox;
     private LinearLayout expandBox;
     private LinearLayout ideaContainer;
+    private LinearLayout stepBox;
+    private TextView modeView;
     private TextView titleView;
     private TextView elapsedView;
     private TextView countView;
@@ -61,6 +64,8 @@ public final class FocusBubbleService extends Service {
 
     private boolean expanded;
     private boolean attached;
+    /** 0 = 记想法，1 = 给当前这件事加步骤。 */
+    private int inputMode;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
@@ -213,6 +218,10 @@ public final class FocusBubbleService extends Service {
         lineParams.bottomMargin = dp(8);
         expandBox.addView(line, lineParams);
 
+        stepBox = new LinearLayout(this);
+        stepBox.setOrientation(LinearLayout.VERTICAL);
+        expandBox.addView(stepBox, new LinearLayout.LayoutParams(-1, -2));
+
         LinearLayout ideaHead = new LinearLayout(this);
         ideaHead.setGravity(Gravity.CENTER_VERTICAL);
         ideaHead.addView(FormKit.text(this, "刚想到的", 11, UiPalette.MUTED, true),
@@ -228,6 +237,11 @@ public final class FocusBubbleService extends Service {
         expandBox.addView(ideaContainer, ideasParams);
 
         expandBox.addView(buildInputRow(), new LinearLayout.LayoutParams(-1, -2));
+        // 展开后手指按在列表/步骤上也应该能长按进 App
+        expandBox.setOnLongClickListener(v -> {
+            openFocus();
+            return true;
+        });
 
         params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -257,6 +271,23 @@ public final class FocusBubbleService extends Service {
         rowParams.topMargin = dp(8);
         row.setLayoutParams(rowParams);
 
+        // 模式标签：记想法 / 加步骤
+        modeView = FormKit.text(this, "想法", 10, UiPalette.MUTED, true);
+        modeView.setGravity(Gravity.CENTER);
+        modeView.setPadding(dp(6), dp(5), dp(6), dp(5));
+        modeView.setBackground(FormKit.round(this, UiPalette.SOFT, 8));
+        modeView.setOnClickListener(v -> {
+            if (!FocusStore.hasCurrent(this)) {
+                Toast.makeText(this, "先挑一件现在做的事", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            inputMode = inputMode == 1 ? 0 : 1;
+            applyInputMode();
+        });
+        LinearLayout.LayoutParams modeParams = new LinearLayout.LayoutParams(-2, -2);
+        modeParams.rightMargin = dp(6);
+        row.addView(modeView, modeParams);
+
         ideaInput = new EditText(this);
         ideaInput.setHint("记一件，别现在做");
         ideaInput.setTextSize(12);
@@ -274,7 +305,7 @@ public final class FocusBubbleService extends Service {
         });
         ideaInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                addIdea();
+                submitInput();
                 return true;
             }
             return false;
@@ -284,7 +315,7 @@ public final class FocusBubbleService extends Service {
         TextView plus = FormKit.text(this, "＋", 16, Color.WHITE, true);
         plus.setGravity(Gravity.CENTER);
         plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 10));
-        plus.setOnClickListener(v -> addIdea());
+        plus.setOnClickListener(v -> submitInput());
         LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(36), dp(36));
         plusParams.leftMargin = dp(6);
         row.addView(plus, plusParams);
@@ -318,7 +349,7 @@ public final class FocusBubbleService extends Service {
                     case MotionEvent.ACTION_MOVE: {
                         int dx = (int) (event.getRawX() - downX);
                         int dy = (int) (event.getRawY() - downY);
-                        if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) moved = true;
+                        if (Math.abs(dx) > dp(12) || Math.abs(dy) > dp(12)) moved = true;
                         if (!moved) return true;
                         params.x = startX + dx;
                         params.y = startY + dy;
@@ -366,7 +397,9 @@ public final class FocusBubbleService extends Service {
         expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
+            fillSteps();
             fillIdeas();
+            applyInputMode();
         }
 
         params.width = expanded ? dp(238) : WindowManager.LayoutParams.WRAP_CONTENT;
@@ -427,18 +460,138 @@ public final class FocusBubbleService extends Service {
         return row;
     }
 
-    private void addIdea() {
+    private void submitInput() {
         String text = ideaInput == null ? "" : ideaInput.getText().toString().trim();
         if (text.isEmpty()) {
             dropWindowFocus();
             return;
         }
-        ReminderSettings.Rule rule = FocusStore.createTaskRule(this, text);
-        FocusStore.addIdea(this, text, rule != null ? rule.id : -1);
+        if (inputMode == 1) {
+            addStep(text);
+        } else {
+            ReminderSettings.Rule rule = FocusStore.createTaskRule(this, text);
+            FocusStore.addIdea(this, text, rule != null ? rule.id : -1);
+            Toast.makeText(this, "记下了", Toast.LENGTH_SHORT).show();
+        }
         ideaInput.setText("");
         dropWindowFocus();
         render();
-        Toast.makeText(this, "记下了", Toast.LENGTH_SHORT).show();
+    }
+
+    /** 给「正在做」这件事加一步，和 App 里的步骤是同一份数据。 */
+    private void addStep(String text) {
+        int ruleId = FocusStore.currentRuleId(this);
+        if (ruleId < 0) {
+            Toast.makeText(this, "先挑一件现在做的事", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<ReminderSettings.Rule> subs = Subtasks.of(this, ruleId);
+        int step = subs.isEmpty() ? 0 : subs.get(subs.size() - 1).step + 1;
+        Subtasks.add(this, ruleId, text, step);
+        Toast.makeText(this, "加了这一步", Toast.LENGTH_SHORT).show();
+    }
+
+    private void applyInputMode() {
+        if (ideaInput == null || modeView == null) return;
+        boolean stepMode = inputMode == 1 && FocusStore.hasCurrent(this);
+        if (!FocusStore.hasCurrent(this)) inputMode = 0;
+        modeView.setText(stepMode ? "步骤" : "想法");
+        modeView.setTextColor(stepMode ? UiPalette.ACCENT : UiPalette.MUTED);
+        modeView.setBackground(FormKit.round(this,
+                stepMode ? UiPalette.PALE : UiPalette.SOFT, 8));
+        ideaInput.setHint(stepMode ? "给现在这件事加一步" : "记一件，别现在做");
+    }
+
+    /** 展开时的那一小条步骤：能勾，和主任务是同一份数据。 */
+    private void fillSteps() {
+        if (stepBox == null) return;
+        stepBox.removeAllViews();
+
+        int ruleId = FocusStore.currentRuleId(this);
+        boolean has = FocusStore.hasCurrent(this) && ruleId >= 0;
+        stepBox.setVisibility(has ? View.VISIBLE : View.GONE);
+        if (!has) return;
+
+        final long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        List<ReminderSettings.Rule> subs = Subtasks.of(this, ruleId);
+        int done = 0;
+        for (ReminderSettings.Rule sub : subs) {
+            if (Subtasks.doneToday(this, ruleId, sub.title, dayStart)) done++;
+        }
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(FormKit.text(this, "步骤", 11, UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        if (!subs.isEmpty()) {
+            head.addView(FormKit.text(this, done + " / " + subs.size(), 11,
+                    done >= subs.size() ? UiPalette.ACCENT : UiPalette.MUTED, true));
+        }
+        LinearLayout.LayoutParams headParams = new LinearLayout.LayoutParams(-1, -2);
+        headParams.bottomMargin = dp(3);
+        stepBox.addView(head, headParams);
+
+        if (subs.isEmpty()) {
+            TextView empty = FormKit.text(this, "还没拆步骤 · 点下面的「想法」切成「步骤」就能加",
+                    10, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(2), 0, dp(2));
+            stepBox.addView(empty);
+            return;
+        }
+
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setFillViewport(false);
+        LinearLayout flow = new LinearLayout(this);
+        flow.setOrientation(LinearLayout.HORIZONTAL);
+        flow.setGravity(Gravity.CENTER_VERTICAL);
+
+        for (int i = 0; i < subs.size(); i++) {
+            final ReminderSettings.Rule sub = subs.get(i);
+            final boolean subDone = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
+
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.HORIZONTAL);
+            box.setGravity(Gravity.CENTER_VERTICAL);
+            box.setMinimumHeight(dp(28));
+            box.setPadding(dp(2), dp(2), dp(4), dp(2));
+
+            GradientDrawable cbShape = new GradientDrawable();
+            cbShape.setCornerRadius(dp(3));
+            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
+            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : UiPalette.DISABLED);
+            TextView cb = FormKit.text(this, subDone ? "✓" : "", 9,
+                    subDone ? Color.WHITE : UiPalette.DISABLED, true);
+            cb.setGravity(Gravity.CENTER);
+            cb.setBackground(cbShape);
+            box.addView(cb, new LinearLayout.LayoutParams(dp(14), dp(14)));
+
+            TextView name = FormKit.text(this, sub.title, 12,
+                    subDone ? UiPalette.MUTED : UiPalette.INK, false);
+            name.setMaxLines(1);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-2, -2);
+            nameParams.leftMargin = dp(6);
+            box.addView(name, nameParams);
+
+            box.setOnClickListener(v -> {
+                // 实时取状态，不用渲染时的旧值，避免连点时状态错乱
+                boolean now = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
+                Subtasks.toggle(this, ruleId, sub.title, now, dayStart);
+                render();
+            });
+            flow.addView(box, new LinearLayout.LayoutParams(-2, -2));
+
+            if (i < subs.size() - 1) {
+                TextView arrow = FormKit.text(this, "→", 10, UiPalette.DISABLED, false);
+                LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
+                arrowParams.leftMargin = dp(5);
+                arrowParams.rightMargin = dp(5);
+                flow.addView(arrow, arrowParams);
+            }
+        }
+        scroll.addView(flow, new HorizontalScrollView.LayoutParams(-2, -2));
+        stepBox.addView(scroll, new LinearLayout.LayoutParams(-1, -2));
     }
 
     /** 想法变当前主任务：和 App 里一样，搬过去就不再留在想法表。 */
@@ -483,7 +636,13 @@ public final class FocusBubbleService extends Service {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         try {
             startActivity(intent);
-        } catch (RuntimeException ignored) { }
+        } catch (RuntimeException e) {
+            // 部分系统拦后台启动，退到 PendingIntent
+            try {
+                PendingIntent.getActivity(this, 2, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE).send();
+            } catch (Exception ignored) { }
+        }
     }
 
     private void detach() {

@@ -223,7 +223,9 @@ public final class SubtaskActivity extends Activity {
         card.addView(name, nameParams);
 
         card.setOnClickListener(v -> {
-            Subtasks.toggle(this, parentId, item.title, done, dayStart);
+            // 实时取状态，避免渲染时的旧值让勾选错位
+            boolean now = Subtasks.doneToday(this, parentId, item.title, dayStart);
+            Subtasks.toggle(this, parentId, item.title, now, dayStart);
             render();
         });
         card.setOnLongClickListener(v -> {
