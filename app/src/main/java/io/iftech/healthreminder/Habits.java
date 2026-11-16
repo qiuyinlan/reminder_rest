@@ -84,6 +84,16 @@ final class Habits {
         return 100000 + habitId;
     }
 
+    /** 反查：从子任务的父 id 找回习惯。 */
+    static Habit byParentId(Context context, int parentId) {
+        if (parentId < 100000) return null;
+        int habitId = parentId - 100000;
+        for (Habit h : all(context)) {
+            if (h.id == habitId) return h;
+        }
+        return null;
+    }
+
     static Habit add(Context context, String title) {
         List<Habit> habits = all(context);
         int nextId = 1;

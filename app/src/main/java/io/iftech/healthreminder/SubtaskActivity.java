@@ -124,17 +124,19 @@ public final class SubtaskActivity extends Activity {
         return bar;
     }
 
-    /** 点标题改名字：任务名改了，完成记录按新名字算。 */
+    /** 点标题改名字：任务改名走规则，习惯改名走习惯表。 */
     private void editTitle() {
-        ReminderSettings.Rule parent = ReminderSettings.ruleById(this, parentId);
-        if (parent == null) return;
-        final EditText input = FormKit.textInput(this, "任务名字", parent.title);
+        final ReminderSettings.Rule parent = ReminderSettings.ruleById(this, parentId);
+        final Habits.Habit habit = parent == null ? Habits.byParentId(this, parentId) : null;
+        if (parent == null && habit == null) return;
+        String current = parent != null ? parent.title : habit.title;
+        final EditText input = FormKit.textInput(this, "名字", current);
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(10), dp(18), dp(0));
         form.addView(input, new LinearLayout.LayoutParams(-1, -2));
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("改名字")
+                .setTitle(habit != null ? "改习惯名字" : "改名字")
                 .setView(form)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("保存", null)
@@ -145,7 +147,13 @@ public final class SubtaskActivity extends Activity {
                 Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
                 return;
             }
-            ReminderSettings.upsertRule(this, parent.withTitle(title));
+            if (parent != null) {
+                ReminderSettings.upsertRule(this, parent.withTitle(title));
+            } else {
+                habit.title = title;
+                Habits.update(this, habit);
+                fallbackTitle = title;
+            }
             dialog.dismiss();
             render();
         }));
@@ -167,7 +175,12 @@ public final class SubtaskActivity extends Activity {
         if (parent != null && !parent.title.isEmpty()) {
             parentTitle.setText(parent.title);
         } else {
-            parentTitle.setText(fallbackTitle.isEmpty() ? "任务" : fallbackTitle);
+            Habits.Habit habit = Habits.byParentId(this, parentId);
+            if (habit != null) {
+                parentTitle.setText(habit.title);
+            } else {
+                parentTitle.setText(fallbackTitle.isEmpty() ? "任务" : fallbackTitle);
+            }
         }
 
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
