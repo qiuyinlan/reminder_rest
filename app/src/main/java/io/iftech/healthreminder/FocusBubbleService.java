@@ -56,6 +56,7 @@ public final class FocusBubbleService extends Service {
     private TextView titleView;
     private TextView elapsedView;
     private TextView countView;
+    private TextView collapseView;
     private EditText ideaInput;
 
     private boolean expanded;
@@ -179,6 +180,18 @@ public final class FocusBubbleService extends Service {
 
         elapsedView = FormKit.text(this, "", 10, UiPalette.MUTED, false);
         head.addView(elapsedView);
+
+        // 展开态的收起按钮（只在展开时出现，避免误触）
+        collapseView = FormKit.text(this, "－", 14, UiPalette.ACCENT, true);
+        collapseView.setGravity(Gravity.CENTER);
+        collapseView.setContentDescription("收起");
+        collapseView.setPadding(dp(8), dp(1), dp(2), dp(1));
+        LinearLayout.LayoutParams collapseParams = new LinearLayout.LayoutParams(-2, -2);
+        collapseParams.leftMargin = dp(4);
+        head.addView(collapseView, collapseParams);
+        collapseView.setOnClickListener(v -> {
+            if (expanded) toggleExpand();
+        });
         headerBox.addView(head);
 
         titleView = FormKit.text(this, "", 13, UiPalette.INK, true);
@@ -314,8 +327,12 @@ public final class FocusBubbleService extends Service {
                     }
                     case MotionEvent.ACTION_UP:
                         if (!moved) {
-                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) openFocus();
-                            else toggleExpand();
+                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) {
+                                openFocus();
+                            } else if (!expanded) {
+                                // 展开态点空白不再收起，收起只走右上角 －，防止误触
+                                toggleExpand();
+                            }
                         }
                         return true;
                     default:
@@ -347,6 +364,7 @@ public final class FocusBubbleService extends Service {
         elapsedView.setText(has ? elapsedText(FocusStore.currentStartedAt(this)) : "");
 
         expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
             fillIdeas();
         }
