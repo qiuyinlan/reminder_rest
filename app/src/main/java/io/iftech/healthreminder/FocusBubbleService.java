@@ -433,31 +433,85 @@ public final class FocusBubbleService extends Service {
     }
 
     private View buildIdeaRow(final FocusStore.Idea idea) {
+        final int ruleId = idea.ruleId >= 0 ? idea.ruleId : FocusStore.ensureIdeaRule(this, idea);
+        final long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        final String title = ideaTitle(idea);
+        final boolean done = ReminderRecord.completedOn(this,
+                ReminderSettings.MODULE_TASK, title, dayStart);
+
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(5), 0, dp(5));
+        row.setPadding(0, dp(4), 0, dp(4));
 
-        View dot = new View(this);
-        GradientDrawable dotShape = new GradientDrawable();
-        dotShape.setShape(GradientDrawable.OVAL);
-        dotShape.setColor(UiPalette.SOFT);
-        dot.setBackground(dotShape);
-        row.addView(dot, new LinearLayout.LayoutParams(dp(5), dp(5)));
+        // 圆形勾选框：在悬浮窗里也能直接勾掉一条
+        GradientDrawable boxShape = new GradientDrawable();
+        boxShape.setShape(GradientDrawable.OVAL);
+        boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) boxShape.setStroke(dp(1), UiPalette.DISABLED);
+        TextView box = FormKit.text(this, done ? "✓" : "", 8,
+                done ? Color.WHITE : UiPalette.DISABLED, true);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(boxShape);
+        box.setContentDescription(done ? "取消完成" : "标记完成");
+        row.addView(box, new LinearLayout.LayoutParams(dp(15), dp(15)));
+        box.setOnClickListener(v -> toggleIdeaDone(idea, ruleId, title, dayStart));
 
-        TextView name = FormKit.text(this, idea.title, 12, UiPalette.INK, false);
+        TextView name = FormKit.text(this, title, 12,
+                done ? UiPalette.MUTED : UiPalette.INK, false);
         name.setMaxLines(1);
         name.setEllipsize(TextUtils.TruncateAt.END);
+        if (done) {
+            name.setPaintFlags(name.getPaintFlags()
+                    | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        }
         LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        nameParams.leftMargin = dp(8);
+        nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
 
-        TextView take = FormKit.text(this, "↗", 13, UiPalette.ACCENT, true);
-        take.setPadding(dp(8), 0, dp(2), 0);
-        take.setContentDescription("设为现在");
-        take.setOnClickListener(v -> takeIdea(idea));
-        row.addView(take);
+        if (!done) {
+            TextView take = FormKit.text(this, "↗", 13, UiPalette.ACCENT, true);
+            take.setPadding(dp(8), 0, dp(2), 0);
+            take.setContentDescription("设为现在");
+            take.setOnClickListener(v -> takeIdea(idea));
+            row.addView(take);
+        }
         return row;
+    }
+
+    private String ideaTitle(FocusStore.Idea idea) {
+        if (idea.ruleId >= 0) {
+            ReminderSettings.Rule rule = ReminderSettings.ruleById(this, idea.ruleId);
+            if (rule != null && !rule.title.isEmpty()) return rule.title;
+        }
+        return idea.title;
+    }
+
+    /** 在悬浮窗里勾掉一条想法：写和 App 内同一套完成记录。 */
+    private void toggleIdeaDone(FocusStore.Idea idea, int ruleId, String title, long dayStart) {
+        boolean done = ReminderRecord.completedOn(this,
+                ReminderSettings.MODULE_TASK, title, dayStart);
+        if (done) {
+            ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, title, dayStart);
+            if (ruleId >= 0) ReminderSettings.unmarkCompleted(this, ruleId);
+        } else {
+            if (ruleId >= 0) {
+                for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
+                    if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
+                        Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
+                    }
+                }
+            }
+            long now = System.currentTimeMillis();
+            ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), title,
+                    ReminderRecord.KIND_DONE, now, now, "悬浮条勾选", ReminderSettings.MODULE_TASK);
+            if (ruleId >= 0) {
+                ReminderSettings.Rule rule = ReminderSettings.ruleById(this, ruleId);
+                ReminderSettings.markCompleted(this, ruleId,
+                        rule != null ? Math.max(1, rule.dailyTarget) : 1);
+            }
+        }
+        render();
     }
 
     private void submitInput() {
