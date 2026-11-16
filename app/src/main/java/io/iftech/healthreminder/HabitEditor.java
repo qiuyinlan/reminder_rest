@@ -64,14 +64,14 @@ public final class HabitEditor extends Activity {
         scroll.setPadding(dp(16), dp(4), dp(16), dp(96));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        // 名字编辑
+        // 名字编辑：用 FormKit.input，保证文字颜色跟主题一致（不要再手搓 EditText）
         scroll.addView(text("习惯名称", 13, UiPalette.MUTED, true));
-        EditText nameInput = new EditText(this);
-        nameInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        EditText nameInput = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
+        nameInput.setHint("习惯名称");
         nameInput.setText(habit.title);
-        nameInput.setBackground(UiPalette.inputBackground(this, Color.WHITE, 10));
-        nameInput.setPadding(dp(14), dp(12), dp(14), dp(12));
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
+        nameInput.setTextSize(15);
+        nameInput.setSingleLine(true);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, dp(48));
         nameParams.topMargin = dp(8);
         nameParams.bottomMargin = dp(20);
         scroll.addView(nameInput, nameParams);
@@ -105,8 +105,7 @@ public final class HabitEditor extends Activity {
             dot.setTextSize(14);
             dot.setTypeface(null, Typeface.BOLD);
             dot.setGravity(Gravity.CENTER);
-            dot.setBackground(FormKit.round(this, Color.WHITE, 20));
-            dot.setElevation(dp(2));
+            dot.setTextColor(UiPalette.MUTED);
             dot.setMinimumWidth(dp(40));
             dot.setMinimumHeight(dp(40));
             dot.setPadding(dp(10), dp(8), dp(10), dp(8));
@@ -193,7 +192,7 @@ public final class HabitEditor extends Activity {
         } else {
             dot.setTextColor(UiPalette.MUTED);
             GradientDrawable bg = new GradientDrawable();
-            bg.setColor(Color.WHITE);
+            bg.setColor(UiPalette.SURFACE);
             bg.setStroke(dp(1), UiPalette.BORDER);
             bg.setCornerRadius(dp(20));
             dot.setBackground(bg);
