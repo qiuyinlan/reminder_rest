@@ -912,7 +912,7 @@ public final class TaskActivity extends Activity {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(true);
         scroll.setFillViewport(false);
-        scroll.setPadding(dp(38), dp(6), dp(4), dp(6));
+        scroll.setPadding(dp(38), dp(4), dp(4), dp(8));
         scroll.setMinimumHeight(dp(44));
         
         // 恢复之前保存的滚动位置
@@ -932,27 +932,28 @@ public final class TaskActivity extends Activity {
             ReminderSettings.Rule sub = subtasks.get(i);
             boolean subDone = Subtasks.doneToday(this, parentId, sub.title, dayStart);
 
-            // 子任务框：checkbox + 标题
+            // 子任务胶囊：和主任务同一套语言，未完成是白底细描边，完成才是淡主题色
             LinearLayout subBox = new LinearLayout(this);
             subBox.setOrientation(LinearLayout.HORIZONTAL);
             subBox.setGravity(Gravity.CENTER_VERTICAL);
-            subBox.setMinimumHeight(dp(36));
+            subBox.setMinimumHeight(dp(34));
             GradientDrawable subBg = new GradientDrawable();
-            subBg.setCornerRadius(dp(10));
-            subBg.setColor(subDone ? UiPalette.PALE : UiPalette.SOFT);
-            subBg.setStroke(dp(1), UiPalette.BORDER);
+            subBg.setCornerRadius(dp(9));
+            subBg.setColor(subDone
+                    ? UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.10f)
+                    : UiPalette.SURFACE);
+            subBg.setStroke(dp(1), subDone ? UiPalette.hairline() : UiPalette.BORDER);
             subBox.setBackground(subBg);
-            subBox.setPadding(dp(8), dp(4), dp(8), dp(4));
+            subBox.setPadding(dp(9), dp(4), dp(10), dp(4));
 
             GradientDrawable cbShape = new GradientDrawable();
-            cbShape.setCornerRadius(dp(4));
+            cbShape.setShape(GradientDrawable.OVAL);
             cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
-            // 未勾选时用灰色边框
-            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : 0xff9ca3af);
-            TextView cb = text(subDone ? "✓" : "", 10, subDone ? Color.WHITE : 0xff9ca3af, true);
+            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : UiPalette.DISABLED);
+            TextView cb = text(subDone ? "✓" : "", 9, subDone ? Color.WHITE : UiPalette.DISABLED, true);
             cb.setGravity(Gravity.CENTER);
             cb.setBackground(cbShape);
-            LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(18), dp(18));
+            LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(16), dp(16));
             subBox.addView(cb, cbParams);
             cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
 
@@ -1000,7 +1001,7 @@ public final class TaskActivity extends Activity {
 
             // 箭头 →
             if (i < subtasks.size() - 1) {
-                TextView arrow = text("→", 14, UiPalette.MUTED, false);
+                TextView arrow = text("→", 12, UiPalette.DISABLED, false);
                 LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
                 arrowParams.leftMargin = dp(8);
                 arrowParams.rightMargin = dp(8);
