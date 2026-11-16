@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -325,9 +324,7 @@ public final class FocusActivity extends Activity {
             headParams.bottomMargin = dp(4);
             block.addView(head, headParams);
 
-            for (ReminderSettings.Rule sub : subs) {
-                block.addView(buildSubtaskRow(ruleId, sub, dayStart));
-            }
+            block.addView(buildStepsStrip(ruleId, subs, dayStart, 0));
         }
 
         LinearLayout inputRow = new LinearLayout(this);
@@ -350,40 +347,6 @@ public final class FocusActivity extends Activity {
         inputParams.topMargin = dp(8);
         block.addView(inputRow, inputParams);
         return block;
-    }
-
-    private View buildSubtaskRow(final int ruleId, final ReminderSettings.Rule sub, final long dayStart) {
-        final boolean done = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
-
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(2), dp(8), dp(2), dp(8));
-
-        TextView box = text(done ? "✓" : "", 11, done ? Color.WHITE : UiPalette.DISABLED, true);
-        box.setGravity(Gravity.CENTER);
-        GradientDrawable shape = new GradientDrawable();
-        shape.setCornerRadius(dp(5));
-        shape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) shape.setStroke(dp(1), UiPalette.DISABLED);
-        box.setBackground(shape);
-        row.addView(box, new LinearLayout.LayoutParams(dp(18), dp(18)));
-
-        TextView name = text(sub.title, 14, done ? UiPalette.MUTED : UiPalette.INK, false);
-        name.setMaxLines(2);
-        if (done) name.setPaintFlags(name.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        nameParams.leftMargin = dp(10);
-        row.addView(name, nameParams);
-
-        row.setOnClickListener(v -> {
-            Subtasks.toggle(this, ruleId, sub.title, done, dayStart);
-            render();
-        });
-        row.setOnLongClickListener(v -> {
-            confirmDeleteSubtask(sub);
-            return true;
-        });
-        return row;
     }
 
     private void addSubtask(int ruleId) {
@@ -417,7 +380,8 @@ public final class FocusActivity extends Activity {
         FormKit.options(this, null,
                 new String[]{"放回「刚想到的」", "先放下，不记录"}, -1, which -> {
                     String title = FocusStore.currentTitle(this);
-                    if (which == 0 && !title.isEmpty()) FocusStore.addIdea(this, title);
+                    int ruleId = FocusStore.currentRuleId(this);
+                    if (which == 0 && !title.isEmpty()) FocusStore.addIdea(this, title, ruleId);
                     FocusStore.clearCurrent(this);
                     doneBanner = "";
                     pickerOpen = true;
@@ -716,20 +680,21 @@ public final class FocusActivity extends Activity {
         wrapper.addView(row);
 
         if (!subs.isEmpty()) {
-            wrapper.addView(buildIdeaSteps(ruleId, subs, dayStart));
+            wrapper.addView(buildStepsStrip(ruleId, subs, dayStart, 14));
         }
         return wrapper;
     }
 
-    /** 想法下的步骤：横向滑动，点一下就勾。 */
-    private View buildIdeaSteps(final int ruleId, List<ReminderSettings.Rule> subs, long dayStart) {
+    /** 步骤条：横向滑动，点一下勾，长按删。主任务卡和想法条目共用。 */
+    private View buildStepsStrip(final int ruleId, List<ReminderSettings.Rule> subs,
+                                 long dayStart, int leftPadDp) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(false);
 
         LinearLayout strip = new LinearLayout(this);
         strip.setOrientation(LinearLayout.HORIZONTAL);
-        strip.setPadding(dp(14), 0, dp(14), dp(12));
+        strip.setPadding(dp(leftPadDp), 0, dp(leftPadDp), dp(10));
 
         for (final ReminderSettings.Rule sub : subs) {
             final boolean done = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
@@ -746,6 +711,10 @@ public final class FocusActivity extends Activity {
             chip.setOnClickListener(v -> {
                 Subtasks.toggle(this, ruleId, sub.title, done, dayStart);
                 render();
+            });
+            chip.setOnLongClickListener(v -> {
+                confirmDeleteSubtask(sub);
+                return true;
             });
         }
         scroll.addView(strip);
