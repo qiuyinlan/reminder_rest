@@ -324,7 +324,7 @@ public final class FocusActivity extends Activity {
             headParams.bottomMargin = dp(4);
             block.addView(head, headParams);
 
-            block.addView(buildStepsStrip(ruleId, subs, dayStart, 0));
+            block.addView(buildStepsStrip(ruleId, subs, dayStart, 10));
         }
 
         LinearLayout inputRow = new LinearLayout(this);
@@ -639,6 +639,9 @@ public final class FocusActivity extends Activity {
         final long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         final List<ReminderSettings.Rule> subs = ruleId >= 0
                 ? Subtasks.of(this, ruleId) : new ArrayList<ReminderSettings.Rule>();
+        final String title = ideaTitle(idea);
+        final boolean done = ReminderRecord.completedOn(this,
+                ReminderSettings.MODULE_TASK, title, dayStart);
 
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
@@ -648,10 +651,28 @@ public final class FocusActivity extends Activity {
         row.setMinimumHeight(dp(54));
         row.setPadding(dp(14), dp(11), dp(10), dp(11));
 
-        TextView name = text(ideaTitle(idea), 15, UiPalette.INK, false);
+        // 圆形勾选框，和任务页主任务完全一致
+        GradientDrawable boxShape = new GradientDrawable();
+        boxShape.setShape(GradientDrawable.OVAL);
+        boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) boxShape.setStroke(dp(2), UiPalette.DISABLED);
+        TextView box = text(done ? "✓" : "", 12, done ? Color.WHITE : UiPalette.DISABLED, true);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(boxShape);
+        box.setContentDescription(done ? "取消完成" : "标记完成");
+        row.addView(box, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        box.setOnClickListener(v -> toggleIdeaDone(idea, ruleId, done, dayStart));
+
+        TextView name = text(title, 15, done ? UiPalette.MUTED : UiPalette.INK, false);
         name.setMaxLines(1);
         name.setEllipsize(TextUtils.TruncateAt.END);
-        row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+        if (done) {
+            name.setPaintFlags(name.getPaintFlags()
+                    | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        }
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(12);
+        row.addView(name, nameParams);
 
         if (!subs.isEmpty()) {
             TextView steps = text(subs.size() + " 步", 11, UiPalette.MUTED, false);
@@ -660,19 +681,21 @@ public final class FocusActivity extends Activity {
             row.addView(steps, stepsParams);
         }
 
-        TextView take = text("设为现在", 12, UiPalette.ACCENT, true);
-        take.setPadding(dp(10), dp(6), dp(4), dp(6));
-        LinearLayout.LayoutParams takeParams = new LinearLayout.LayoutParams(-2, -2);
-        takeParams.leftMargin = dp(6);
-        row.addView(take, takeParams);
+        if (!done) {
+            TextView take = text("设为现在", 12, UiPalette.ACCENT, true);
+            take.setPadding(dp(10), dp(6), dp(4), dp(6));
+            LinearLayout.LayoutParams takeParams = new LinearLayout.LayoutParams(-2, -2);
+            takeParams.leftMargin = dp(6);
+            row.addView(take, takeParams);
+            take.setOnClickListener(v -> confirmTakeIdea(idea));
+        }
 
         TextView chevron = text("›", 17, UiPalette.DISABLED, true);
         LinearLayout.LayoutParams chevronParams = new LinearLayout.LayoutParams(-2, -2);
         chevronParams.leftMargin = dp(4);
         row.addView(chevron, chevronParams);
 
-        row.setOnClickListener(v -> openIdeaDetail(ruleId, ideaTitle(idea)));
-        take.setOnClickListener(v -> confirmTakeIdea(idea));
+        row.setOnClickListener(v -> openIdeaDetail(ruleId, title));
         row.setOnLongClickListener(v -> {
             confirmDeleteIdea(idea);
             return true;
@@ -680,45 +703,112 @@ public final class FocusActivity extends Activity {
         wrapper.addView(row);
 
         if (!subs.isEmpty()) {
-            wrapper.addView(buildStepsStrip(ruleId, subs, dayStart, 14));
+            wrapper.addView(buildStepsStrip(ruleId, subs, dayStart, 38));
         }
         return wrapper;
     }
 
-    /** 步骤条：横向滑动，点一下勾，长按删。主任务卡和想法条目共用。 */
+    /** 步骤条：和任务页一样，15dp 方框 + 文字 + →，横向滑动，点一下勾。 */
     private View buildStepsStrip(final int ruleId, List<ReminderSettings.Rule> subs,
-                                 long dayStart, int leftPadDp) {
+                                 long dayStart, int leftMarginDp) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(false);
+        scroll.setPadding(dp(10), dp(2), dp(6), dp(3));
+        scroll.setMinimumHeight(dp(36));
 
-        LinearLayout strip = new LinearLayout(this);
-        strip.setOrientation(LinearLayout.HORIZONTAL);
-        strip.setPadding(dp(leftPadDp), 0, dp(leftPadDp), dp(10));
+        LinearLayout flow = new LinearLayout(this);
+        flow.setOrientation(LinearLayout.HORIZONTAL);
+        flow.setGravity(Gravity.CENTER_VERTICAL);
 
-        for (final ReminderSettings.Rule sub : subs) {
-            final boolean done = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
-            TextView chip = text((done ? "✓ " : "") + sub.title, 12,
-                    done ? Color.WHITE : UiPalette.INK, false);
-            chip.setMaxLines(1);
-            chip.setEllipsize(TextUtils.TruncateAt.END);
-            chip.setPadding(dp(10), dp(6), dp(10), dp(6));
-            chip.setBackground(FormKit.round(this, done ? UiPalette.ACCENT : UiPalette.PALE, 10));
-            LinearLayout.LayoutParams chipParams =
-                    new LinearLayout.LayoutParams(-2, -2);
-            chipParams.rightMargin = dp(6);
-            strip.addView(chip, chipParams);
-            chip.setOnClickListener(v -> {
-                Subtasks.toggle(this, ruleId, sub.title, done, dayStart);
+        for (int i = 0; i < subs.size(); i++) {
+            final ReminderSettings.Rule sub = subs.get(i);
+            final boolean subDone = Subtasks.doneToday(this, ruleId, sub.title, dayStart);
+
+            LinearLayout subBox = new LinearLayout(this);
+            subBox.setOrientation(LinearLayout.HORIZONTAL);
+            subBox.setGravity(Gravity.CENTER_VERTICAL);
+            subBox.setMinimumHeight(dp(32));
+            subBox.setPadding(dp(2), dp(2), dp(6), dp(2));
+
+            GradientDrawable cbShape = new GradientDrawable();
+            cbShape.setCornerRadius(dp(3));
+            cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
+            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : UiPalette.DISABLED);
+            TextView cb = text(subDone ? "✓" : "", 9, subDone ? Color.WHITE : UiPalette.DISABLED, true);
+            cb.setGravity(Gravity.CENTER);
+            cb.setBackground(cbShape);
+            subBox.addView(cb, new LinearLayout.LayoutParams(dp(15), dp(15)));
+
+            TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
+            if (subDone) {
+                subTitle.setPaintFlags(subTitle.getPaintFlags()
+                        | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+            }
+            LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-2, -2);
+            subParams.leftMargin = dp(7);
+            subBox.addView(subTitle, subParams);
+
+            subBox.setOnClickListener(v -> {
+                Subtasks.toggle(this, ruleId, sub.title, subDone, dayStart);
                 render();
             });
-            chip.setOnLongClickListener(v -> {
+            subBox.setOnLongClickListener(v -> {
                 confirmDeleteSubtask(sub);
                 return true;
             });
+            flow.addView(subBox, new LinearLayout.LayoutParams(-2, -2));
+
+            if (i < subs.size() - 1) {
+                TextView arrow = text("→", 11, UiPalette.DISABLED, false);
+                LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
+                arrowParams.leftMargin = dp(7);
+                arrowParams.rightMargin = dp(7);
+                flow.addView(arrow, arrowParams);
+            }
         }
-        scroll.addView(strip);
-        return scroll;
+        scroll.addView(flow, new HorizontalScrollView.LayoutParams(-2, -2));
+
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.HORIZONTAL);
+        GradientDrawable band = new GradientDrawable();
+        band.setCornerRadius(dp(12));
+        band.setColor(UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.07f));
+        wrap.setBackground(band);
+        LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(-1, -2);
+        wrapParams.leftMargin = dp(leftMarginDp);
+        wrapParams.rightMargin = dp(2);
+        wrapParams.topMargin = dp(4);
+        wrapParams.bottomMargin = dp(6);
+        wrap.setLayoutParams(wrapParams);
+        wrap.addView(scroll, new LinearLayout.LayoutParams(0, -2, 1f));
+        return wrap;
+    }
+
+    /** 勾「刚想到的」条目：跟任务页勾任务同一套记录，勾完顺手把步骤也带上。 */
+    private void toggleIdeaDone(final FocusStore.Idea idea, int ruleId, boolean done, long dayStart) {
+        String title = ideaTitle(idea);
+        if (done) {
+            ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, title, dayStart);
+            if (ruleId >= 0) ReminderSettings.unmarkCompleted(this, ruleId);
+        } else {
+            if (ruleId >= 0) {
+                for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
+                    if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
+                        Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
+                    }
+                }
+            }
+            long now = System.currentTimeMillis();
+            ReminderRecord.finish(this, UUID.randomUUID().toString(), title,
+                    ReminderRecord.KIND_DONE, now, now, "刚想到的勾选", ReminderSettings.MODULE_TASK);
+            if (ruleId >= 0) {
+                ReminderSettings.Rule rule = ReminderSettings.ruleById(this, ruleId);
+                ReminderSettings.markCompleted(this, ruleId,
+                        rule != null ? Math.max(1, rule.dailyTarget) : 1);
+            }
+        }
+        render();
     }
 
     private String ideaTitle(FocusStore.Idea idea) {
