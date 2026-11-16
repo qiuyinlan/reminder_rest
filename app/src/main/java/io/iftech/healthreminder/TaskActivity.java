@@ -289,9 +289,9 @@ public final class TaskActivity extends Activity {
         refreshHeader(doneToday, tasks.size());
 
         listContainer.removeAllViews();
-        // 微习惯置顶
-        listContainer.addView(buildHabitSection(dayStart));
+        // 总览提醒置顶，微习惯紧跟在后
         listContainer.addView(buildOverviewCard());
+        listContainer.addView(buildHabitSection(dayStart));
         
         // 按分类渲染（只有一个分类时不显示分组标题）
         boolean showHeaders = cats.size() > 1;
@@ -892,14 +892,6 @@ public final class TaskActivity extends Activity {
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
         titleParams.leftMargin = dp(12);
         row.addView(title, titleParams);
-
-        String time = taskTimeText(task);
-        if (!time.isEmpty()) {
-            TextView meta = text(time, 12, done ? UiPalette.DISABLED : UiPalette.MUTED, false);
-            LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(-2, -2);
-            metaParams.leftMargin = dp(10);
-            row.addView(meta, metaParams);
-        }
 
         row.setOnClickListener(v -> openSubtasks(task));
         row.setOnLongClickListener(v -> {
@@ -1656,16 +1648,6 @@ public final class TaskActivity extends Activity {
 
     private TextView text(String value, int size, int color, boolean bold) {
         return FormKit.text(this, value, size, color, bold);
-    }
-
-    /** 任务行右侧的时间标记：只有设了固定时间的任务才显示。 */
-    private String taskTimeText(ReminderSettings.Rule task) {
-        if (task.specificTimeMode && task.timePointsSeconds != null
-                && !task.timePointsSeconds.isEmpty()) {
-            int seconds = task.timePointsSeconds.get(0);
-            return String.format(Locale.getDefault(), "%02d:%02d", seconds / 3600, (seconds % 3600) / 60);
-        }
-        return "";
     }
 
     private int dp(float value) {
