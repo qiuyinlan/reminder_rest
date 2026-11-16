@@ -14,9 +14,10 @@ import java.util.UUID;
 /**
  * 「现在」页的轻量状态：当前主任务 + 突然冒出来的想法。
  *
- * 刻意存在独立 SharedPreferences 里，不写成任务规则：
- * 想法只是捕捉，还没承诺去做，塞进任务表会把统计页灌得很乱。
- * 只有真正被设成主任务、并且做完的那一刻，才写一条 ReminderRecord 进时间线。
+ * 想法虽然是临时捕捉，但背后是一条真任务规则（enabled=false，不会弹提醒），
+ * 这样它才能改名、加步骤，跟任务页的小任务完全同构。
+ * 任务页会把这些 id 过滤掉，免得清单被灵感灌满；
+ * 一旦它被设为「现在」，就从灵感表里移出，变成普通任务。
  */
 final class FocusStore {
     private static final String PREFS = "focus_state";
@@ -42,7 +43,7 @@ final class FocusStore {
         return !currentTitle(context).isEmpty();
     }
 
-    /** 来自任务清单时是任务 id；自己手写/从想法升上来的主任务为 -1。 */
+    /** 来自任务清单时是任务 id；旧数据缺 id 时为 -1。 */
     static int currentRuleId(Context context) {
         return prefs(context).getInt(KEY_RULE, -1);
     }
@@ -74,11 +75,14 @@ final class FocusStore {
         final String id;
         final String title;
         final long createdAt;
+        /** 背后的任务规则 id；-1 表示旧数据还没补。 */
+        final int ruleId;
 
-        Idea(String id, String title, long createdAt) {
+        Idea(String id, String title, long createdAt, int ruleId) {
             this.id = id;
             this.title = title;
             this.createdAt = createdAt;
+            this.ruleId = ruleId;
         }
     }
 
@@ -89,7 +93,7 @@ final class FocusStore {
             for (int i = 0; i < array.length(); i++) {
                 JSONObject item = array.getJSONObject(i);
                 result.add(new Idea(item.getString("id"), item.getString("title"),
-                        item.optLong("createdAt", 0L)));
+                        item.optLong("createdAt", 0L), item.optInt("ruleId", -1)));
             }
         } catch (JSONException ignored) { }
         return result;
@@ -99,21 +103,60 @@ final class FocusStore {
         return ideas(context).size();
     }
 
-    static void addIdea(Context context, String title) {
+    /** 任务页用它把灵感条目从清单里排除。 */
+    static List<Integer> ideaRuleIds(Context context) {
+        List<Integer> ids = new ArrayList<>();
+        for (Idea idea : ideas(context)) {
+            if (idea.ruleId >= 0) ids.add(idea.ruleId);
+        }
+        return ids;
+    }
+
+    static void addIdea(Context context, String title, int ruleId) {
         String value = title == null ? "" : title.trim();
         if (value.isEmpty()) return;
         List<Idea> list = ideas(context);
-        list.add(new Idea(UUID.randomUUID().toString(), value, System.currentTimeMillis()));
+        list.add(new Idea(UUID.randomUUID().toString(), value, System.currentTimeMillis(), ruleId));
         save(context, list);
     }
 
     static void removeIdea(Context context, String id) {
-        List<Idea> list = ideas(context);
         List<Idea> kept = new ArrayList<>();
-        for (Idea idea : list) {
+        for (Idea idea : ideas(context)) {
             if (!idea.id.equals(id)) kept.add(idea);
         }
         save(context, kept);
+    }
+
+    /** 旧数据（没有 ruleId）在第一次打开时补建任务，返回可用 id。 */
+    static int ensureIdeaRule(Context context, Idea idea) {
+        if (idea.ruleId >= 0) return idea.ruleId;
+        ReminderSettings.Rule rule = createTaskRule(context, idea.title);
+        int ruleId = rule != null ? rule.id : -1;
+        if (ruleId < 0) return -1;
+        List<Idea> updated = new ArrayList<>();
+        for (Idea item : ideas(context)) {
+            if (item.id.equals(idea.id)) {
+                updated.add(new Idea(item.id, item.title, item.createdAt, ruleId));
+            } else {
+                updated.add(item);
+            }
+        }
+        save(context, updated);
+        return ruleId;
+    }
+
+    /** 建一条「不提醒」的任务：只占清单一行，靠手动勾。 */
+    static ReminderSettings.Rule createTaskRule(Context context, String title) {
+        ArrayList<Integer> points = new ArrayList<>();
+        points.add(9 * 3600);
+        ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                        ReminderSettings.nextRuleId(context), title, 9 * 60, 21 * 60, 24 * 3600,
+                        points, 1, true, false)
+                .withModule(ReminderSettings.MODULE_TASK)
+                .withCategory(0);
+        ReminderSettings.upsertRule(context, rule);
+        return ReminderSettings.ruleById(context, rule.id);
     }
 
     private static void save(Context context, List<Idea> list) {
@@ -124,6 +167,7 @@ final class FocusStore {
                 item.put("id", idea.id);
                 item.put("title", idea.title);
                 item.put("createdAt", idea.createdAt);
+                item.put("ruleId", idea.ruleId);
             } catch (JSONException ignored) { }
             array.put(item);
         }
