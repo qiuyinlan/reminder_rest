@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 
 public final class ReminderApplication extends Application {
@@ -21,6 +22,15 @@ public final class ReminderApplication extends Application {
         super.onCreate();
         UiPalette.load(this);
         CrashLog.install(this);
+
+        // 上次开着悬浮条就恢复它；没权限就顺手把开关关掉，避免状态对不上
+        if (FocusBubbleService.isOn(this)) {
+            if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) {
+                FocusBubbleService.start(this);
+            } else {
+                FocusBubbleService.setOn(this, false);
+            }
+        }
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(Activity activity, android.os.Bundle state) { }
             @Override public void onActivityStarted(Activity activity) { startedActivities++; }

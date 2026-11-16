@@ -6,9 +6,12 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -46,6 +49,8 @@ public final class FocusActivity extends Activity {
     private EditText subInput;
 
     private boolean pickerOpen;
+    /** 刚从系统设置里授权回来，落地就自动把悬浮条打开。 */
+    private boolean pendingBubble;
     private String doneBanner = "";
     private String ideaDraft = "";
     private String customDraft = "";
@@ -91,6 +96,13 @@ public final class FocusActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (pendingBubble) {
+            pendingBubble = false;
+            if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) {
+                FocusBubbleService.setOn(this, true);
+                FocusBubbleService.start(this);
+            }
+        }
         pickerOpen = !FocusStore.hasCurrent(this);
         render();
         ticker.removeCallbacks(tick);
@@ -125,8 +137,11 @@ public final class FocusActivity extends Activity {
             container.addView(buildPicker());
         }
         container.addView(buildIdeaSection());
+        container.addView(buildBubbleCard());
         container.addView(buildFooter());
         refreshLiveTexts();
+        // 主任务变了就让悬浮条马上跟着改，不用等它自己轮询
+        FocusBubbleService.refreshNow(this);
     }
 
     private View buildHeader() {
@@ -879,6 +894,60 @@ public final class FocusActivity extends Activity {
                 })
                 .create();
         FormKit.showStyled(this, dialog);
+    }
+
+    /** 悬浮条开关：退出 App 后仍浮在屏幕上，只显示当前这一件。 */
+    private View buildBubbleCard() {
+        final boolean on = FocusBubbleService.isOn(this);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(FormKit.round(this, Color.WHITE, 16));
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setElevation(dp(2));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(18);
+        card.setLayoutParams(params);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(text("悬浮条", 14, UiPalette.INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(text(on ? "已开" : "已关", 12,
+                on ? UiPalette.ACCENT : UiPalette.MUTED, true));
+        card.addView(row);
+
+        TextView hint = text(on
+                ? "退出 App 后也浮在屏幕上，点它回到这一页，长按收起"
+                : "打开后退出 App 也能看到正在做的事", 11, UiPalette.MUTED, false);
+        hint.setPadding(0, dp(4), 0, 0);
+        card.addView(hint);
+
+        card.setOnClickListener(v -> toggleBubble());
+        return card;
+    }
+
+    private void toggleBubble() {
+        if (FocusBubbleService.isOn(this)) {
+            FocusBubbleService.setOn(this, false);
+            FocusBubbleService.stop(this);
+            render();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "要先允许「显示在其他应用上层」", Toast.LENGTH_SHORT).show();
+            pendingBubble = true;
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (RuntimeException e) {
+                pendingBubble = false;
+            }
+            return;
+        }
+        FocusBubbleService.setOn(this, true);
+        FocusBubbleService.start(this);
+        render();
     }
 
     private View buildFooter() {
