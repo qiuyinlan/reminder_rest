@@ -120,6 +120,18 @@ final class FocusStore {
         save(context, list);
     }
 
+    static void renameIdea(Context context, String id, String title) {
+        String value = title == null ? "" : title.trim();
+        if (value.isEmpty()) return;
+        List<Idea> updated = new ArrayList<>();
+        for (Idea item : ideas(context)) {
+            updated.add(item.id.equals(id)
+                    ? new Idea(item.id, value, item.createdAt, item.ruleId)
+                    : item);
+        }
+        save(context, updated);
+    }
+
     static void removeIdea(Context context, String id) {
         List<Idea> kept = new ArrayList<>();
         for (Idea idea : ideas(context)) {

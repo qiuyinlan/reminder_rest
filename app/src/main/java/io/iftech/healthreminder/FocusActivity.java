@@ -378,6 +378,40 @@ public final class FocusActivity extends Activity {
         render();
     }
 
+    private void showStepMenu(final ReminderSettings.Rule sub) {
+        FormKit.options(this, sub.title, new String[]{"改名字", "删掉"}, 1, which -> {
+            if (which == 0) renameStep(sub);
+            else confirmDeleteSubtask(sub);
+        });
+    }
+
+    private void renameStep(final ReminderSettings.Rule sub) {
+        final EditText input = FormKit.textInput(this, "步骤名字", sub.title);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改名字")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String title = input.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReminderSettings.upsertRule(this, sub.withTitle(title));
+                    dialog.dismiss();
+                    render();
+                }));
+        FormKit.showStyled(this, dialog);
+    }
+
     private void confirmDeleteSubtask(final ReminderSettings.Rule sub) {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("删掉这一步？")
@@ -712,7 +746,7 @@ public final class FocusActivity extends Activity {
 
         row.setOnClickListener(v -> openIdeaDetail(ruleId, title));
         row.setOnLongClickListener(v -> {
-            confirmDeleteIdea(idea);
+            showIdeaMenu(idea);
             return true;
         });
         wrapper.addView(row);
@@ -770,7 +804,7 @@ public final class FocusActivity extends Activity {
                 render();
             });
             subBox.setOnLongClickListener(v -> {
-                confirmDeleteSubtask(sub);
+                showStepMenu(sub);
                 return true;
             });
             flow.addView(subBox, new LinearLayout.LayoutParams(-2, -2));
@@ -882,6 +916,47 @@ public final class FocusActivity extends Activity {
         if (had) {
             Toast.makeText(this, "现在做：「" + idea.title + "」", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /** 长按条目：改名字 / 删掉。 */
+    private void showIdeaMenu(final FocusStore.Idea idea) {
+        FormKit.options(this, ideaTitle(idea), new String[]{"改名字", "删掉"}, 1, which -> {
+            if (which == 0) renameIdea(idea);
+            else confirmDeleteIdea(idea);
+        });
+    }
+
+    private void renameIdea(final FocusStore.Idea idea) {
+        final int ruleId = idea.ruleId >= 0 ? idea.ruleId : FocusStore.ensureIdeaRule(this, idea);
+        final ReminderSettings.Rule rule = ruleId >= 0
+                ? ReminderSettings.ruleById(this, ruleId) : null;
+
+        final EditText input = FormKit.textInput(this, "名字",
+                rule != null ? rule.title : idea.title);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改名字")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String title = input.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (rule != null) ReminderSettings.upsertRule(this, rule.withTitle(title));
+                    FocusStore.renameIdea(this, idea.id, title);
+                    dialog.dismiss();
+                    render();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     private void confirmDeleteIdea(final FocusStore.Idea idea) {

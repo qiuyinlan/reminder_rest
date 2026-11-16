@@ -1163,16 +1163,46 @@ public final class TaskActivity extends Activity {
                 .putExtra(SubtaskActivity.EXTRA_PARENT_ID, task.id));
     }
 
-    private void showTaskMenu(ReminderSettings.Rule task) {
+    private void showTaskMenu(final ReminderSettings.Rule task) {
         String toggleLabel = task.enabled ? "关闭单独提醒" : "开启单独提醒";
         FormKit.options(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                new String[]{"分类 · " + getCategoryName(task.categoryId), toggleLabel, "删除任务"}, 2, which -> {
-                    if (which == 0) changeCategory(task);
-                    else if (which == 1) {
+                new String[]{"改名字", "分类 · " + getCategoryName(task.categoryId), toggleLabel, "删除任务"},
+                3, which -> {
+                    if (which == 0) renameTask(task);
+                    else if (which == 1) changeCategory(task);
+                    else if (which == 2) {
                         ReminderSettings.upsertRule(this, task.withEnabled(!task.enabled));
                         reload();
                     } else confirmDelete(task);
                 });
+    }
+
+    /** 长按菜单改名字：只改规则标题，其他属性原样保留。 */
+    private void renameTask(final ReminderSettings.Rule task) {
+        final EditText input = FormKit.textInput(this, "任务名字", task.title);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改名字")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String title = input.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReminderSettings.upsertRule(this, task.withTitle(title));
+                    dialog.dismiss();
+                    reload();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     private void changeCategory(ReminderSettings.Rule task) {

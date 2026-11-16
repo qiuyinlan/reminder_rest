@@ -229,10 +229,44 @@ public final class SubtaskActivity extends Activity {
             render();
         });
         card.setOnLongClickListener(v -> {
-            confirmDelete(item);
+            showItemMenu(item);
             return true;
         });
         return card;
+    }
+
+    private void showItemMenu(final ReminderSettings.Rule item) {
+        FormKit.options(this, item.title, new String[]{"改名字", "删掉"}, 1, which -> {
+            if (which == 0) renameSubtask(item);
+            else confirmDelete(item);
+        });
+    }
+
+    private void renameSubtask(final ReminderSettings.Rule item) {
+        final EditText input = FormKit.textInput(this, "步骤名字", item.title);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(10), dp(18), dp(0));
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改名字")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String title = input.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        Toast.makeText(this, "名字不能是空的", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReminderSettings.upsertRule(this, item.withTitle(title));
+                    dialog.dismiss();
+                    render();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     private void confirmDelete(ReminderSettings.Rule item) {
