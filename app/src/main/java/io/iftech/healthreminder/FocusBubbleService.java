@@ -70,6 +70,13 @@ public final class FocusBubbleService extends Service {
     private TextView collapseView;
     private EditText ideaInput;
 
+    /** 收起态的 3 个任务行（主线 + 支线）。 */
+    private LinearLayout miniBox;
+    /** 收起态主线右侧的勾。 */
+    private TextView mainTick;
+    /** 展开态的槽位状态区（跟步骤分开放，以前被步骤覆盖掉了）。 */
+    private LinearLayout slotBox;
+
     /** 展开态的陪伴音乐按钮。 */
     private LinearLayout musicRowView;
     private TextView musicLabel;
@@ -207,6 +214,13 @@ public final class FocusBubbleService extends Service {
         elapsedView = FormKit.text(this, "", 10, UiPalette.MUTED, false);
         head.addView(elapsedView);
 
+        mainTick = FormKit.text(this, "✓", 12, UiPalette.ACCENT, true);
+        mainTick.setGravity(Gravity.CENTER);
+        mainTick.setPadding(dp(7), dp(1), dp(1), dp(1));
+        mainTick.setContentDescription("完成主线任务");
+        mainTick.setOnClickListener(v -> completeSlot(FocusStore.KEY_MAIN));
+        head.addView(mainTick);
+
         // 展开态的收起按钮（只在展开时出现，避免误触）
         collapseView = FormKit.text(this, "－", 14, UiPalette.ACCENT, true);
         collapseView.setGravity(Gravity.CENTER);
@@ -227,6 +241,10 @@ public final class FocusBubbleService extends Service {
         titleParams.topMargin = dp(3);
         headerBox.addView(titleView, titleParams);
 
+        miniBox = new LinearLayout(this);
+        miniBox.setOrientation(LinearLayout.VERTICAL);
+        headerBox.addView(miniBox, new LinearLayout.LayoutParams(-1, -2));
+
         expandBox = new LinearLayout(this);
         expandBox.setOrientation(LinearLayout.VERTICAL);
         expandBox.setVisibility(View.GONE);
@@ -240,6 +258,10 @@ public final class FocusBubbleService extends Service {
         expandBox.addView(line, lineParams);
 
         expandBox.addView(buildMusicRow());
+
+        slotBox = new LinearLayout(this);
+        slotBox.setOrientation(LinearLayout.VERTICAL);
+        expandBox.addView(slotBox, new LinearLayout.LayoutParams(-1, -2));
 
         stepBox = new LinearLayout(this);
         stepBox.setOrientation(LinearLayout.VERTICAL);
@@ -720,10 +742,14 @@ public final class FocusBubbleService extends Service {
         FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
         FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
 
-        // 收起态：只显示主线任务（保持向后兼容）
+        // 收起态：主线 + 支线都列出来，小屏也能看全
         String title = main.isEmpty() ? "无主线任务" : main.title;
         titleView.setText(title);
         elapsedView.setText(main.isRunning() ? elapsedText(main.startedAt) : "");
+
+        miniBox.setVisibility(expanded ? View.GONE : View.VISIBLE);
+        if (!expanded) fillMiniBox(sub1, sub2);
+        mainTick.setVisibility((!expanded && !main.isEmpty()) ? View.VISIBLE : View.GONE);
 
         expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
@@ -740,10 +766,94 @@ public final class FocusBubbleService extends Service {
         updatePeek();
     }
 
+    /** 收起态的支线行（主线就是上面那行标题，不重复）；每行能直接勾。 */
+    private void fillMiniBox(FocusStore.TaskSlot sub1, FocusStore.TaskSlot sub2) {
+        if (miniBox == null) return;
+        miniBox.removeAllViews();
+        if (!sub1.isEmpty()) miniBox.addView(buildMiniRow("支线 1", sub1));
+        if (!sub2.isEmpty()) miniBox.addView(buildMiniRow("支线 2", sub2));
+    }
+
+    private View buildMiniRow(String label, final FocusStore.TaskSlot slot) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(2), 0, 0);
+
+        View dot = new View(this);
+        GradientDrawable dotShape = new GradientDrawable();
+        dotShape.setShape(GradientDrawable.OVAL);
+        dotShape.setColor(slot.isEmpty() ? UiPalette.MUTED :
+                slot.isRunning() ? UiPalette.ACCENT : UiPalette.SOFT);
+        dot.setBackground(dotShape);
+        row.addView(dot, new LinearLayout.LayoutParams(dp(5), dp(5)));
+
+        TextView labelView = FormKit.text(this, label, 9, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
+        labelParams.leftMargin = dp(5);
+        row.addView(labelView, labelParams);
+
+        TextView name = FormKit.text(this, slot.isEmpty() ? "未设定" : slot.title, 11,
+                slot.isEmpty() ? UiPalette.MUTED : UiPalette.INK, true);
+        name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(5);
+        row.addView(name, nameParams);
+
+        TextView elapsed = FormKit.text(this,
+                slot.isRunning() ? elapsedText(slot.startedAt) : "", 9, UiPalette.MUTED, false);
+        row.addView(elapsed);
+
+        if (!slot.isEmpty()) {
+            TextView tick = FormKit.text(this, "✓", 10, UiPalette.ACCENT, true);
+            tick.setGravity(Gravity.CENTER);
+            tick.setPadding(dp(7), dp(1), dp(1), dp(1));
+            tick.setContentDescription("完成 " + slot.title);
+            tick.setOnClickListener(v -> completeSlot(slot.slotKey));
+            row.addView(tick);
+        }
+        return row;
+    }
+
+    /** 在悬浮窗里直接勾掉一个槽位。 */
+    private void completeSlot(String slotKey) {
+        FocusStore.TaskSlot slot = slotOf(slotKey);
+        if (slot == null || slot.isEmpty()) return;
+
+        long now = System.currentTimeMillis();
+        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), slot.title,
+                ReminderRecord.KIND_DONE, slot.startedAt > 0 ? slot.startedAt : now, now,
+                "悬浮窗完成", ReminderSettings.MODULE_TASK);
+
+        if (slot.ruleId >= 0) {
+            long dayStart = ReminderRecord.dayStart(now);
+            ReminderSettings.Rule rule = ReminderSettings.ruleById(this, slot.ruleId);
+            if (rule != null) {
+                for (ReminderSettings.Rule sub : Subtasks.of(this, slot.ruleId)) {
+                    if (!Subtasks.doneToday(this, slot.ruleId, sub.title, dayStart)) {
+                        Subtasks.toggleQuiet(this, slot.ruleId, sub.title, false, dayStart);
+                    }
+                }
+                ReminderSettings.markCompleted(this, slot.ruleId, Math.max(1, rule.dailyTarget));
+            }
+        }
+
+        FocusStore.clearSlot(this, slotKey);
+        Toast.makeText(this, "「" + slot.title + "」做完了", Toast.LENGTH_SHORT).show();
+        render();
+    }
+
+    private FocusStore.TaskSlot slotOf(String slotKey) {
+        if (FocusStore.KEY_MAIN.equals(slotKey)) return FocusStore.getMain(this);
+        if (FocusStore.KEY_SUB1.equals(slotKey)) return FocusStore.getSub1(this);
+        return FocusStore.getSub2(this);
+    }
+
     /** 显示 3 个槽位的状态（展开态，添加到 stepBox 前面） */
     private void fillSlotStatus() {
-        if (stepBox == null) return;
-        stepBox.removeAllViews();
+        if (slotBox == null) return;
+        slotBox.removeAllViews();
 
         FocusStore.TaskSlot main = FocusStore.getMain(this);
         FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
@@ -753,17 +863,17 @@ public final class FocusBubbleService extends Service {
         TextView slotTitle = FormKit.text(this, "任务槽位", 11, UiPalette.MUTED, true);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.bottomMargin = dp(4);
-        stepBox.addView(slotTitle, titleParams);
+        slotBox.addView(slotTitle, titleParams);
 
         // 主线
-        stepBox.addView(buildSlotStatusRow("主线", main));
+        slotBox.addView(buildSlotStatusRow("主线", main));
         // 支线 1
-        if (!sub1.isEmpty()) stepBox.addView(buildSlotStatusRow("支线 1", sub1));
+        slotBox.addView(buildSlotStatusRow("支线 1", sub1));
         // 支线 2
-        if (!sub2.isEmpty()) stepBox.addView(buildSlotStatusRow("支线 2", sub2));
+        slotBox.addView(buildSlotStatusRow("支线 2", sub2));
     }
 
-    private View buildSlotStatusRow(String label, FocusStore.TaskSlot slot) {
+    private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -794,6 +904,15 @@ public final class FocusBubbleService extends Service {
                                             slot.isRunning() ? elapsedText(slot.startedAt) : "",
                                             9, UiPalette.MUTED, false);
         row.addView(elapsedView);
+
+        if (!slot.isEmpty()) {
+            TextView tick = FormKit.text(this, "✓", 11, UiPalette.ACCENT, true);
+            tick.setGravity(Gravity.CENTER);
+            tick.setPadding(dp(8), 0, dp(1), 0);
+            tick.setContentDescription("完成 " + slot.title);
+            tick.setOnClickListener(v -> completeSlot(slot.slotKey));
+            row.addView(tick);
+        }
 
         return row;
     }

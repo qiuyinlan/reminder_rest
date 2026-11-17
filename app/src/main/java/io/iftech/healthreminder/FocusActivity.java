@@ -45,7 +45,6 @@ public final class FocusActivity extends Activity {
     private TextView headerMeta;
     private EditText ideaInput;
     private EditText customInput;
-    private EditText subInput;
 
     // 三个任务槽位的 UI 引用
     private TextView mainElapsed;
@@ -61,7 +60,8 @@ public final class FocusActivity extends Activity {
     private String doneBanner = "";
     private String ideaDraft = "";
     private String customDraft = "";
-    private String subDraft = "";
+    /** 每个槽位自己的子任务草稿，互不串（以前共用一份，写支线会跑到主线去）。 */
+    private final java.util.Map<String, String> subDrafts = new java.util.HashMap<>();
 
     private final Handler ticker = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
@@ -431,14 +431,15 @@ public final class FocusActivity extends Activity {
 
             // 显示步骤（如果有）
             if (slot.ruleId >= 0) {
-                card.addView(buildSubtaskBlock(slot.ruleId));
+                card.addView(buildSubtaskBlock(slot));
             }
         }
         return card;
     }
 
-    /** 主任务下的步骤：直接在这里勾、也能现场加一条。 */
-    private View buildSubtaskBlock(final int ruleId) {
+    /** 槽位下的步骤：直接在这里勾、也能现场加一条。 */
+    private View buildSubtaskBlock(final FocusStore.TaskSlot slot) {
+        final int ruleId = slot.ruleId;
         LinearLayout block = new LinearLayout(this);
         block.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams blockParams = new LinearLayout.LayoutParams(-1, -2);
@@ -468,16 +469,24 @@ public final class FocusActivity extends Activity {
 
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
-        subInput = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
-        subInput.setSingleLine(true);
-        subInput.setHint("再拆一步（可选）");
-        subInput.setText(subDraft);
-        inputRow.addView(subInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        final EditText stepInput = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
+        stepInput.setSingleLine(true);
+        stepInput.setHint("再拆一步（可选）");
+        String draft = subDrafts.get(slot.slotKey);
+        stepInput.setText(draft == null ? "" : draft);
+        stepInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(android.text.Editable s) {
+                subDrafts.put(slot.slotKey, s == null ? "" : s.toString());
+            }
+        });
+        inputRow.addView(stepInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         TextView add = text("＋", 18, UiPalette.ACCENT, true);
         add.setGravity(Gravity.CENTER);
         add.setBackground(FormKit.round(this, Color.WHITE, 10));
-        add.setOnClickListener(v -> addSubtask(ruleId));
+        add.setOnClickListener(v -> addSubtask(slot, stepInput));
         LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         addParams.leftMargin = dp(8);
         inputRow.addView(add, addParams);
@@ -488,17 +497,18 @@ public final class FocusActivity extends Activity {
         return block;
     }
 
-    private void addSubtask(int ruleId) {
-        String title = subInput == null ? "" : subInput.getText().toString().trim();
+    private void addSubtask(FocusStore.TaskSlot slot, EditText input) {
+        String title = input == null ? "" : input.getText().toString().trim();
         if (title.isEmpty()) {
             Toast.makeText(this, "先写这一步做什么", Toast.LENGTH_SHORT).show();
             return;
         }
+        int ruleId = slot.ruleId;
         List<ReminderSettings.Rule> existing = Subtasks.of(this, ruleId);
         int step = existing.isEmpty() ? 0 : (existing.get(existing.size() - 1).step + 1);
         Subtasks.add(this, ruleId, title, step);
-        subDraft = "";
-        if (subInput != null) subInput.setText("");
+        subDrafts.put(slot.slotKey, "");
+        if (input != null) input.setText("");
         render();
     }
 
@@ -1275,7 +1285,6 @@ public final class FocusActivity extends Activity {
     private void captureDrafts() {
         if (ideaInput != null) ideaDraft = ideaInput.getText().toString();
         if (customInput != null) customDraft = customInput.getText().toString();
-        if (subInput != null) subDraft = subInput.getText().toString();
     }
 
     private String elapsedText(long startedAt) {
