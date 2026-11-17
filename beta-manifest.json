@@ -1,7 +1,7 @@
 {
-    "versionCode": 98,
-    "versionName": "0.3.0-beta80",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta80/rest-bean.apk",
-    "sha256": "885ae43a44d42755819d7137a014e85af58eb3f4c3352d3d3e833b3d35113667",
-    "notes": "版本 0.3.0-beta80 更新。"
+    "versionCode": 99,
+    "versionName": "0.3.0-beta81",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta81/rest-bean.apk",
+    "sha256": "265f39d1ebbd5fac16bda141bbe5ca5d94319045a0aa5c6fa5285c6001660d4e",
+    "notes": "子任务全部勾完，大任务会自动打勾，不用再点一次"
 }
