@@ -226,7 +226,43 @@ public final class DoneActivity extends Activity {
             render();
         });
         row.addView(del);
+
+        // 长按整行：改这一句
+        row.setOnLongClickListener(v -> {
+            showEditDialog(index, line);
+            return true;
+        });
         return row;
+    }
+
+    /** 长按改一句。 */
+    private void showEditDialog(final int index, final String line) {
+        final EditText input = FormKit.textInput(this, "做成的事", line);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(6), dp(20), 0);
+        box.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("改一下这句")
+                .setView(box)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String value = input.getText() == null
+                            ? "" : input.getText().toString().trim();
+                    if (value.isEmpty()) {
+                        Toast.makeText(this, "不能是空的", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (index >= 0 && index < lines.size()) lines.set(index, value);
+                    persist();
+                    dialog.dismiss();
+                    render();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     private View divider() {
@@ -237,7 +273,8 @@ public final class DoneActivity extends Activity {
     }
 
     private View footerText() {
-        TextView tip = text("这一页每天清空一次，复制后想留就贴到别处。", 11, UiPalette.MUTED, false);
+        TextView tip = text("长按一行可以改；这一页每天清空一次，复制后想留就贴到别处。",
+                11, UiPalette.MUTED, false);
         tip.setPadding(dp(4), dp(14), dp(4), 0);
         return tip;
     }
