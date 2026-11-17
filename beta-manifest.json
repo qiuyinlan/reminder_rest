@@ -1,7 +1,7 @@
 {
-    "versionCode": 91,
+    "versionCode": 92,
     "versionName": "0.3.0-beta73",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta73/rest-bean.apk",
-    "sha256": "",
-    "notes": "版本 0.3.0-beta73 更新：支持 3 个并行任务（1 主线 +2 支线）+ 倒计时功能。"
+    "sha256": "8b8dcbdb5445771571b0c8dabfde0683f991ca3c0ec3a0a150e6e3c7dc52e09b",
+    "notes": "版本 0.3.0-beta73 更新。"
 }
