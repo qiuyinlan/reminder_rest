@@ -21,9 +21,9 @@ import java.util.UUID;
  */
 final class FocusStore {
     private static final String PREFS = "focus_state";
-    private static final String KEY_MAIN = "main_task";
-    private static final String KEY_SUB1 = "sub_task_1";
-    private static final String KEY_SUB2 = "sub_task_2";
+    static final String KEY_MAIN = "main_task";
+    static final String KEY_SUB1 = "sub_task_1";
+    static final String KEY_SUB2 = "sub_task_2";
     private static final String KEY_IDEAS = "ideas";
 
     private FocusStore() { }
@@ -87,13 +87,13 @@ final class FocusStore {
     }
 
     /** 清空主线 */
-    static void clearMain(Context context) { removeSlot(context, KEY_MAIN); }
+    static void clearMain(Context context) { clearSlot(context, KEY_MAIN); }
     /** 清空支线 1 */
-    static void clearSub1(Context context) { removeSlot(context, KEY_SUB1); }
+    static void clearSub1(Context context) { clearSlot(context, KEY_SUB1); }
     /** 清空支线 2 */
-    static void clearSub2(Context context) { removeSlot(context, KEY_SUB2); }
+    static void clearSub2(Context context) { clearSlot(context, KEY_SUB2); }
     /** 清空指定槽位（公开方法，供 FocusActivity 使用） */
-    static void clearSlot(Context context, String key) { removeSlot(context, key); }
+    static void clearSlot(Context context, String key) { prefs(context).edit().remove(key).apply(); }
 
     private static TaskSlot getSlot(Context context, String key) {
         try {
