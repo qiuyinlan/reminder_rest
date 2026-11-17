@@ -1,7 +1,7 @@
 {
-    "versionCode": 101,
-    "versionName": "0.3.0-beta83",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta83/rest-bean.apk",
-    "sha256": "49d975f5beef563d8794a39c1c51cf94fc30218ea8688d86bd977e4f83fa62c3",
-    "notes": "悬浮窗的任务前面改成 checkbox（左边），不再是右边那个错位的勾"
+    "versionCode": 102,
+    "versionName": "0.3.0-beta84",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta84/rest-bean.apk",
+    "sha256": "b4b470e877f462a0e6d1900c331f7dce40d4d457c9d85ce558b53d3821c1ec8c",
+    "notes": "「现在」页卡片改版：标题更大，主线/支线都用同一套干净布局"
 }
