@@ -1,7 +1,7 @@
 {
-    "versionCode": 100,
-    "versionName": "0.3.0-beta82",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta82/rest-bean.apk",
-    "sha256": "91eeb7ad6a284624c186291d9159b6cbe8a102f71eda230bdd769b763cdd2288",
-    "notes": "修好子任务串槽位：给支线加步骤不会再跑到主线去（三个卡片的输入框以前共用同一份草稿）"
+    "versionCode": 101,
+    "versionName": "0.3.0-beta83",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta83/rest-bean.apk",
+    "sha256": "49d975f5beef563d8794a39c1c51cf94fc30218ea8688d86bd977e4f83fa62c3",
+    "notes": "悬浮窗的任务前面改成 checkbox（左边），不再是右边那个错位的勾"
 }
