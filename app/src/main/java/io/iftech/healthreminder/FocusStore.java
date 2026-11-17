@@ -24,6 +24,7 @@ final class FocusStore {
     private static final String KEY_TITLE = "current_title";
     private static final String KEY_RULE = "current_rule_id";
     private static final String KEY_START = "current_started_at";
+    private static final String KEY_TARGET = "current_target_seconds";
     private static final String KEY_IDEAS = "ideas";
 
     private FocusStore() { }
@@ -53,20 +54,35 @@ final class FocusStore {
     }
 
     static void setCurrent(Context context, String title, int ruleId) {
+        setCurrent(context, title, ruleId, 0);
+    }
+
+    /** 设置主任务，可指定目标时长（秒）。0 表示不限制。 */
+    static void setCurrent(Context context, String title, int ruleId, int targetSeconds) {
         String value = title == null ? "" : title.trim();
         SharedPreferences.Editor editor = prefs(context).edit();
         if (value.isEmpty()) {
-            editor.putString(KEY_TITLE, "").putInt(KEY_RULE, -1).putLong(KEY_START, 0L);
+            editor.putString(KEY_TITLE, "").putInt(KEY_RULE, -1).putLong(KEY_START, 0L).remove(KEY_TARGET);
         } else {
             editor.putString(KEY_TITLE, value)
                     .putInt(KEY_RULE, ruleId)
                     .putLong(KEY_START, System.currentTimeMillis());
+            if (targetSeconds > 0) {
+                editor.putInt(KEY_TARGET, targetSeconds);
+            } else {
+                editor.remove(KEY_TARGET);
+            }
         }
         editor.apply();
     }
 
     static void clearCurrent(Context context) {
-        setCurrent(context, "", -1);
+        setCurrent(context, "", -1, 0);
+    }
+
+    /** 获取目标时长（秒），0 表示不限制。 */
+    static int currentTargetSeconds(Context context) {
+        return prefs(context).getInt(KEY_TARGET, 0);
     }
 
     // -------------------------------------------------------------- 想法清单

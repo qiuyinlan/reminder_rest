@@ -315,12 +315,8 @@ public final class TaskActivity extends Activity {
         // 清除子任务滚动位置，让每次都能自动滚动到第一个未完成
         subtaskScrollPositions.clear();
         
-        // 「刚想到的」那些念头有自己的页面，不在任务清单里重复出现
-        List<Integer> ideaIds = FocusStore.ideaRuleIds(this);
-        List<ReminderSettings.Rule> tasks = new ArrayList<>();
-        for (ReminderSettings.Rule task : Tasks.today(this)) {
-            if (!ideaIds.contains(task.id)) tasks.add(task);
-        }
+        // 临时添加的任务也会同步到任务页，不再过滤
+        List<ReminderSettings.Rule> tasks = Tasks.today(this);
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
         
         // 按分类分组

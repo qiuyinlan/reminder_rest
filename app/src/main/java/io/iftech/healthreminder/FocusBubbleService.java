@@ -394,6 +394,15 @@ public final class FocusBubbleService extends Service {
         titleView.setText(has ? title : "点一下挑一件事，长按进 App");
         elapsedView.setText(has ? elapsedText(FocusStore.currentStartedAt(this)) : "");
 
+        // 超时变红提醒
+        int targetSeconds = FocusStore.currentTargetSeconds(this);
+        if (has && targetSeconds > 0 && isOvertime(targetSeconds)) {
+            card.setBackground(buildOvertimeBackground());
+        } else if (card.getBackground() instanceof GradientDrawable) {
+            GradientDrawable bg = (GradientDrawable) card.getBackground();
+            bg.setColor((0xD8 << 24) | (UiPalette.SURFACE & 0x00FFFFFF));
+        }
+
         expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
@@ -404,6 +413,21 @@ public final class FocusBubbleService extends Service {
 
         params.width = expanded ? dp(238) : WindowManager.LayoutParams.WRAP_CONTENT;
         updateLayout();
+    }
+
+    private boolean isOvertime(int targetSeconds) {
+        if (targetSeconds <= 0) return false;
+        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
+        return elapsed > targetSeconds;
+    }
+
+    private GradientDrawable buildOvertimeBackground() {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(20));
+        // 警示红背景
+        bg.setColor((0xD8 << 24) | (0xffc85a4c & 0x00FFFFFF));
+        bg.setStroke(dp(1), 0xfffff0f0);
+        return bg;
     }
 
     private void fillIdeas() {

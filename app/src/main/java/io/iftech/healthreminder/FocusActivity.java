@@ -196,6 +196,38 @@ public final class FocusActivity extends Activity {
         }
     }
 
+    private String countdownText(int targetSeconds) {
+        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
+        int remaining = targetSeconds - (int) elapsed;
+        if (remaining <= 0) {
+            int over = -remaining;
+            if (over >= 60) return "超时 " + (over / 60) + " 分 " + (over % 60) + " 秒";
+            return "超时 " + over + " 秒";
+        }
+        int h = remaining / 3600;
+        int m = (remaining % 3600) / 60;
+        int s = remaining % 60;
+        if (h > 0) return "剩 " + h + " 时 " + m + " 分";
+        if (m > 0) return "剩 " + m + " 分 " + s + " 秒";
+        return "剩 " + s + " 秒";
+    }
+
+    private boolean isOvertime(int targetSeconds) {
+        if (targetSeconds <= 0) return false;
+        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
+        return elapsed > targetSeconds;
+    }
+
+    /** 开始当前任务（记录开始时间）。 */
+    private void startCurrent() {
+        String title = FocusStore.currentTitle(this);
+        if (title.isEmpty()) return;
+        int ruleId = FocusStore.currentRuleId(this);
+        int targetSeconds = FocusStore.currentTargetSeconds(this);
+        FocusStore.setCurrent(this, title, ruleId, targetSeconds);
+        render();
+    }
+
     private String metaText() {
         java.text.SimpleDateFormat format =
                 new java.text.SimpleDateFormat("M月d日 EEEE", Locale.CHINA);
@@ -227,6 +259,9 @@ public final class FocusActivity extends Activity {
     private View buildCurrentCard() {
         final String title = FocusStore.currentTitle(this);
         final int ruleId = FocusStore.currentRuleId(this);
+        final int targetSeconds = FocusStore.currentTargetSeconds(this);
+        final long startedAt = FocusStore.currentStartedAt(this);
+        final boolean isRunning = startedAt > 0;
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -245,13 +280,26 @@ public final class FocusActivity extends Activity {
         top.setGravity(Gravity.CENTER_VERTICAL);
         View dot = dotView(UiPalette.ACCENT);
         top.addView(dot, new LinearLayout.LayoutParams(dp(8), dp(8)));
-        TextView label = text("正在做", 12, UiPalette.ACCENT, true);
+        TextView label = text(isRunning ? "正在做" : "准备做", 12, UiPalette.ACCENT, true);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1f);
         labelParams.leftMargin = dp(8);
         top.addView(label, labelParams);
-        currentElapsed = text("已 " + elapsedText(FocusStore.currentStartedAt(this)),
-                12, UiPalette.MUTED, true);
-        top.addView(currentElapsed);
+        
+        if (isRunning) {
+            currentElapsed = text("已 " + elapsedText(startedAt), 12, UiPalette.MUTED, true);
+            top.addView(currentElapsed);
+            // 倒计时显示（点一下能改）
+            if (targetSeconds > 0) {
+                TextView countdown = text(countdownText(targetSeconds), 12,
+                        isOvertime(targetSeconds) ? DANGER : UiPalette.MUTED, true);
+                LinearLayout.LayoutParams countdownParams = new LinearLayout.LayoutParams(-2, -2);
+                countdownParams.leftMargin = dp(8);
+                countdown.setPadding(dp(6), dp(2), dp(6), dp(2));
+                countdown.setBackground(FormKit.round(this, UiPalette.PALE, 8));
+                countdown.setOnClickListener(v -> editDuration());
+                top.addView(countdown, countdownParams);
+            }
+        }
         card.addView(top);
 
         TextView name = text(title, 22, UiPalette.INK, true);
@@ -261,36 +309,69 @@ public final class FocusActivity extends Activity {
         nameParams.topMargin = dp(10);
         card.addView(name, nameParams);
 
+        // 没设时长时显示提示
+        if (!isRunning && targetSeconds <= 0) {
+            TextView hint = text("可以设个时长，超时悬浮窗会变红提醒你", 12, UiPalette.MUTED, false);
+            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
+            hintParams.topMargin = dp(6);
+            card.addView(hint, hintParams);
+        }
+
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
         actionsParams.topMargin = dp(14);
         card.addView(actions, actionsParams);
 
-        TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
-        done.setOnClickListener(v -> completeCurrent());
-        actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        if (isRunning) {
+            // 进行中：显示完成、换一个、更多
+            TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
+            done.setOnClickListener(v -> completeCurrent());
+            actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
-        TextView swap = pill("换一个", UiPalette.PALE, UiPalette.ACCENT);
-        swap.setOnClickListener(v -> {
-            pickerOpen = true;
-            doneBanner = "";
-            render();
-        });
-        LinearLayout.LayoutParams swapParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        swapParams.leftMargin = dp(8);
-        actions.addView(swap, swapParams);
+            TextView swap = pill("换一个", UiPalette.PALE, UiPalette.ACCENT);
+            swap.setOnClickListener(v -> {
+                pickerOpen = true;
+                doneBanner = "";
+                render();
+            });
+            LinearLayout.LayoutParams swapParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            swapParams.leftMargin = dp(8);
+            actions.addView(swap, swapParams);
 
-        TextView more = text("⋯", 18, UiPalette.ACCENT, true);
-        more.setGravity(Gravity.CENTER);
-        more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
-        more.setContentDescription("更多");
-        more.setOnClickListener(v -> showCurrentMenu());
-        LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
-        moreParams.leftMargin = dp(8);
-        actions.addView(more, moreParams);
+            TextView more = text("⋯", 18, UiPalette.ACCENT, true);
+            more.setGravity(Gravity.CENTER);
+            more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+            more.setContentDescription("更多");
+            more.setOnClickListener(v -> showCurrentMenu());
+            LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+            moreParams.leftMargin = dp(8);
+            actions.addView(more, moreParams);
+        } else {
+            // 未开始：设时长、开始做
+            TextView setTimer = pill("设时长", UiPalette.PALE, UiPalette.ACCENT);
+            setTimer.setOnClickListener(v -> editDuration());
+            actions.addView(setTimer, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
-        if (ruleId >= 0) {
+            TextView start = pill("开始做", UiPalette.ACCENT, Color.WHITE);
+            start.setOnClickListener(v -> startCurrent());
+            LinearLayout.LayoutParams startParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            startParams.leftMargin = dp(8);
+            actions.addView(start, startParams);
+
+            TextView cancel = text("取消", 14, UiPalette.MUTED, true);
+            cancel.setPadding(dp(12), dp(12), dp(12), dp(12));
+            cancel.setOnClickListener(v -> {
+                FocusStore.clearCurrent(this);
+                pickerOpen = true;
+                render();
+            });
+            LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(-2, dp(48));
+            cancelParams.leftMargin = dp(8);
+            actions.addView(cancel, cancelParams);
+        }
+
+        if (ruleId >= 0 && isRunning) {
             card.addView(buildSubtaskBlock(ruleId));
         }
         return card;
@@ -423,6 +504,68 @@ public final class FocusActivity extends Activity {
                 })
                 .create();
         FormKit.showStyled(this, dialog);
+    }
+
+    /** 时长选择器：滚轮选分钟数。 */
+    private void showDurationPicker(java.util.function.IntConsumer callback) {
+        showDurationPicker(FocusStore.currentTargetMinutes(this), callback);
+    }
+
+    /** 时长选择器：时、分、秒三个滚轮。 */
+    private void showDurationPicker(int currentSeconds, java.util.function.IntConsumer callback) {
+        int hours = currentSeconds / 3600;
+        int minutes = (currentSeconds % 3600) / 60;
+        int seconds = currentSeconds % 60;
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER);
+        layout.setPadding(dp(18), dp(10), dp(18), dp(0));
+
+        NumberPicker hourPicker = createPicker(0, 23, hours);
+        NumberPicker minPicker = createPicker(0, 59, minutes);
+        NumberPicker secPicker = createPicker(0, 59, seconds);
+
+        layout.addView(hourPicker);
+        layout.addView(text("时", 13, UiPalette.INK, false));
+        layout.addView(minPicker);
+        layout.addView(text("分", 13, UiPalette.INK, false));
+        layout.addView(secPicker);
+        layout.addView(text("秒", 13, UiPalette.INK, false));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("设时长")
+                .setView(layout)
+                .setNegativeButton("不限制", (d, w) -> callback.accept(0))
+                .setPositiveButton("确定", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    int total = hourPicker.getValue() * 3600 + minPicker.getValue() * 60 + secPicker.getValue();
+                    callback.accept(total);
+                    dialog.dismiss();
+                }));
+        FormKit.showStyled(this, dialog);
+    }
+
+    private NumberPicker createPicker(int min, int max, int value) {
+        NumberPicker picker = new NumberPicker(this);
+        picker.setMinValue(min);
+        picker.setMaxValue(max);
+        picker.setValue(value);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
+        params.leftMargin = dp(4);
+        params.rightMargin = dp(4);
+        return picker;
+    }
+
+    /** 编辑当前任务的时长。 */
+    private void editDuration() {
+        showDurationPicker(FocusStore.currentTargetSeconds(this), seconds -> {
+            FocusStore.setCurrent(this, FocusStore.currentTitle(this),
+                    FocusStore.currentRuleId(this), seconds);
+            render();
+        });
     }
 
     private void showCurrentMenu() {
@@ -607,7 +750,7 @@ public final class FocusActivity extends Activity {
         row.addView(act);
 
         row.setOnClickListener(v -> {
-            FocusStore.setCurrent(this, task.title, task.id);
+            FocusStore.setCurrent(this, task.title, task.id, 0);
             pickerOpen = false;
             doneBanner = "";
             render();
@@ -646,7 +789,7 @@ public final class FocusActivity extends Activity {
         row.addView(act);
 
         row.setOnClickListener(v -> {
-            FocusStore.setCurrent(this, habit.title, Habits.parentId(habit.id));
+            FocusStore.setCurrent(this, habit.title, Habits.parentId(habit.id), 0);
             pickerOpen = false;
             doneBanner = "";
             render();
@@ -663,7 +806,7 @@ public final class FocusActivity extends Activity {
         ReminderSettings.Rule rule = FocusStore.createTaskRule(this, title);
         customDraft = "";
         if (customInput != null) customInput.setText("");
-        FocusStore.setCurrent(this, title, rule != null ? rule.id : -1);
+        FocusStore.setCurrent(this, title, rule != null ? rule.id : -1, 0);
         pickerOpen = false;
         doneBanner = "";
         render();
@@ -964,13 +1107,13 @@ public final class FocusActivity extends Activity {
     private void takeIdea(final FocusStore.Idea idea) {
         boolean had = FocusStore.hasCurrent(this);
         int ruleId = idea.ruleId >= 0 ? idea.ruleId : FocusStore.ensureIdeaRule(this, idea);
-        FocusStore.setCurrent(this, ideaTitle(idea), ruleId);
+        FocusStore.setCurrent(this, ideaTitle(idea), ruleId, 0);
         FocusStore.removeIdea(this, idea.id);
         doneBanner = "";
         pickerOpen = false;
         render();
         if (had) {
-            Toast.makeText(this, "现在做：「" + idea.title + "」", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "选好了，点「设时长」或直接「开始做」", Toast.LENGTH_SHORT).show();
         }
     }
 
