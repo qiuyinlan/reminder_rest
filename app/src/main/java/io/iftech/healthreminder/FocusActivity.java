@@ -152,7 +152,7 @@ public final class FocusActivity extends Activity {
 
         // 如果三个槽位都为空，显示选择器
         if (main.isEmpty() && sub1.isEmpty() && sub2.isEmpty()) {
-            container.addView(buildPicker());
+            container.addView(pickerOpen ? buildPicker() : buildCollapsedPicker());
         }
         container.addView(buildIdeaSection());
         container.addView(buildBubbleCard());
@@ -732,6 +732,28 @@ public final class FocusActivity extends Activity {
         startParams.leftMargin = dp(8);
         customRow.addView(start, startParams);
         card.addView(customRow);
+        return card;
+    }
+
+    /** 收起后的选择器：只留一条，点一下再展开。 */
+    private View buildCollapsedPicker() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setBackground(FormKit.round(this, Color.WHITE, 18));
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setElevation(dp(2));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(14);
+        card.setLayoutParams(params);
+
+        card.addView(text("＋ 添加任务到槽位", 14, UiPalette.ACCENT, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        card.addView(text("展开", 12, UiPalette.MUTED, true));
+        card.setOnClickListener(v -> {
+            pickerOpen = true;
+            render();
+        });
         return card;
     }
 

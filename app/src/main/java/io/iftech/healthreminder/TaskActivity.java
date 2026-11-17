@@ -198,6 +198,17 @@ public final class TaskActivity extends Activity {
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         // 「现在」入口：一眼看到此刻该做哪一件，点进去就不容易跑偏
+        TextView board = text("白板", 13, UiPalette.MUTED, true);
+        board.setGravity(Gravity.CENTER);
+        board.setPadding(dp(13), dp(7), dp(13), dp(7));
+        board.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+        board.setContentDescription("白板：今天的随手清单");
+        board.setOnClickListener(v ->
+                startActivity(new Intent(this, BoardActivity.class)));
+        LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(-2, -2);
+        boardParams.rightMargin = dp(8);
+        row.addView(board, boardParams);
+
         TextView now = text("现在", 13, UiPalette.ACCENT, true);
         now.setGravity(Gravity.CENTER);
         now.setPadding(dp(13), dp(7), dp(13), dp(7));
