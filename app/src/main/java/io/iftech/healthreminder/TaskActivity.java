@@ -198,16 +198,16 @@ public final class TaskActivity extends Activity {
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         // 「现在」入口：一眼看到此刻该做哪一件，点进去就不容易跑偏
-        TextView done = text("done", 13, UiPalette.MUTED, true);
-        done.setGravity(Gravity.CENTER);
-        done.setPadding(dp(13), dp(7), dp(13), dp(7));
-        done.setBackground(FormKit.round(this, UiPalette.PALE, 12));
-        done.setContentDescription("今天做成的事");
-        done.setOnClickListener(v ->
+        TextView doneTab = text("done", 13, UiPalette.MUTED, true);
+        doneTab.setGravity(Gravity.CENTER);
+        doneTab.setPadding(dp(13), dp(7), dp(13), dp(7));
+        doneTab.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+        doneTab.setContentDescription("今天做成的事");
+        doneTab.setOnClickListener(v ->
                 startActivity(new Intent(this, DoneActivity.class)));
         LinearLayout.LayoutParams doneParams = new LinearLayout.LayoutParams(-2, -2);
         doneParams.rightMargin = dp(8);
-        row.addView(done, doneParams);
+        row.addView(doneTab, doneParams);
 
         TextView board = text("白板", 13, UiPalette.MUTED, true);
         board.setGravity(Gravity.CENTER);
