@@ -50,9 +50,6 @@ public final class FocusActivity extends Activity {
     private TextView mainElapsed;
     private TextView sub1Elapsed;
     private TextView sub2Elapsed;
-    private EditText mainTargetInput;
-    private EditText sub1TargetInput;
-    private EditText sub2TargetInput;
 
     private boolean pickerOpen;
     /** 刚从系统设置里授权回来，落地就自动把悬浮条打开。 */
@@ -294,6 +291,18 @@ public final class FocusActivity extends Activity {
                     12, UiPalette.MUTED, true);
         }
         top.addView(elapsedView);
+
+        // 时长：点这颗时钟用滚轮设（时/分/秒）
+        TextView targetChip = text("⏱ " + durationLabel(slot.targetSeconds), 11,
+                slot.targetSeconds > 0 ? UiPalette.ACCENT : UiPalette.MUTED, true);
+        targetChip.setGravity(Gravity.CENTER);
+        targetChip.setPadding(dp(8), dp(4), dp(8), dp(4));
+        targetChip.setBackground(FormKit.round(this, UiPalette.PALE, 10));
+        targetChip.setContentDescription("设置时长");
+        targetChip.setOnClickListener(v -> pickTarget(slot));
+        LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(-2, -2);
+        chipParams.leftMargin = dp(6);
+        top.addView(targetChip, chipParams);
         card.addView(top);
 
         // 任务标题或输入框
@@ -332,101 +341,47 @@ public final class FocusActivity extends Activity {
             card.addView(inputRow, new LinearLayout.LayoutParams(-1, -2, 1f));
         } else {
             // 有任务显示标题
-            TextView name = text(slot.title, 22, UiPalette.INK, true);
+            TextView name = text(slot.title, 19, UiPalette.INK, true);
             name.setMaxLines(2);
             name.setEllipsize(TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
-            nameParams.topMargin = dp(10);
+            nameParams.topMargin = dp(8);
             card.addView(name, nameParams);
 
-            // 时长设置（仅当未开始时显示）
-            if (!slot.isRunning()) {
-                LinearLayout timeRow = new LinearLayout(this);
-                timeRow.setGravity(Gravity.CENTER_VERTICAL);
-                timeRow.addView(text("时长:", 13, UiPalette.MUTED, false),
-                        new LinearLayout.LayoutParams(-2, -2));
-
-                EditText targetInput;
-                if (label.equals("主线任务")) {
-                    targetInput = mainTargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
-                } else if (label.equals("支线任务 1")) {
-                    targetInput = sub1TargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
-                } else {
-                    targetInput = sub2TargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
-                }
-                targetInput.setSingleLine(true);
-                targetInput.setHint((slot.targetSeconds > 0 ? slot.targetSeconds / 60 : 25) + "分钟");
-                targetInput.setMaxWidth(dp(80));
-                LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-2, dp(40));
-                inputParams.leftMargin = dp(8);
-                inputParams.rightMargin = dp(8);
-                timeRow.addView(targetInput, inputParams);
-
-                timeRow.addView(text("分钟", 13, UiPalette.MUTED, false));
-                card.addView(timeRow, new LinearLayout.LayoutParams(-1, -2, 1f));
-            }
-
-            // 操作按钮
+            // 操作按钮：主按钮一条，清空放右边当次要操作
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
-            actionsParams.topMargin = dp(14);
+            actionsParams.topMargin = dp(12);
             card.addView(actions, actionsParams);
 
-            if (!slot.isRunning()) {
-                // 未开始：显示"开始做"按钮
-                TextView start = pill("开始做", UiPalette.ACCENT, Color.WHITE);
-                start.setOnClickListener(v -> {
-                    // 获取用户设置的时长并更新槽位
-                    int targetSec = slot.targetSeconds;
-                    EditText input = label.equals("主线任务") ? mainTargetInput :
-                                     label.equals("支线任务 1") ? sub1TargetInput : sub2TargetInput;
-                    if (input != null && !input.getText().toString().isEmpty()) {
-                        try {
-                            targetSec = Integer.parseInt(input.getText().toString().trim()) * 60;
-                            // 更新槽位的 targetSeconds
-                            if (label.equals("主线任务")) {
-                                FocusStore.setMain(this, slot.title, slot.ruleId, targetSec);
-                            } else if (label.equals("支线任务 1")) {
-                                FocusStore.setSub1(this, slot.title, slot.ruleId, targetSec);
-                            } else {
-                                FocusStore.setSub2(this, slot.title, slot.ruleId, targetSec);
-                            }
-                        } catch (NumberFormatException e) {
-                            targetSec = 25 * 60;
-                        }
-                    }
-                    // 开始任务
+            TextView primary = pill(slot.isRunning() ? "做完了" : "开始做",
+                    UiPalette.ACCENT, Color.WHITE);
+            primary.setOnClickListener(v -> {
+                if (slot.isRunning()) {
+                    onComplete.run();
+                } else {
                     FocusStore.startSlot(this, slot.slotKey);
                     render();
-                });
-                actions.addView(start, new LinearLayout.LayoutParams(0, dp(48), 1f));
+                }
+            });
+            actions.addView(primary, new LinearLayout.LayoutParams(0, dp(44), 1f));
 
-                TextView clear = pill("清空", UiPalette.PALE, UiPalette.ACCENT);
-                clear.setOnClickListener(v -> onClear.run());
-                LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-                clearParams.leftMargin = dp(8);
-                actions.addView(clear, clearParams);
-            } else {
-                // 进行中：显示"做完了"、"清空"和"更多"按钮
-                TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
-                done.setOnClickListener(v -> onComplete.run());
-                actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
+            TextView clear = text("清空", 13, UiPalette.MUTED, true);
+            clear.setGravity(Gravity.CENTER);
+            clear.setPadding(dp(12), dp(6), dp(4), dp(6));
+            clear.setOnClickListener(v -> onClear.run());
+            LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(-2, -2);
+            clearParams.leftMargin = dp(6);
+            actions.addView(clear, clearParams);
 
-                TextView clear = pill("清空", UiPalette.PALE, UiPalette.ACCENT);
-                clear.setOnClickListener(v -> onClear.run());
-                LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-                clearParams.leftMargin = dp(8);
-                actions.addView(clear, clearParams);
-
-                TextView more = text("⋯", 18, UiPalette.ACCENT, true);
+            if (slot.isRunning()) {
+                TextView more = text("⋯", 16, UiPalette.MUTED, true);
                 more.setGravity(Gravity.CENTER);
-                more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+                more.setPadding(dp(10), dp(6), dp(4), dp(6));
                 more.setContentDescription("更多");
                 more.setOnClickListener(v -> showSlotMenu(slot.slotKey));
-                LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
-                moreParams.leftMargin = dp(8);
-                actions.addView(more, moreParams);
+                actions.addView(more);
             }
 
             // 显示步骤（如果有）
@@ -579,6 +534,32 @@ public final class FocusActivity extends Activity {
                     }
                     clearSlot(slotKey);
                 });
+    }
+
+    /** 时长显示：25分 / 1时20分 / 45秒 / 设时长。 */
+    private String durationLabel(int seconds) {
+        if (seconds <= 0) return "设时长";
+        if (seconds < 60) return seconds + "秒";
+        int minutes = seconds / 60;
+        int rest = seconds % 60;
+        if (minutes < 60) return rest == 0 ? minutes + "分" : minutes + "分" + rest + "秒";
+        int hours = minutes / 60;
+        int m = minutes % 60;
+        return m == 0 ? hours + "时" : hours + "时" + m + "分";
+    }
+
+    /** 时钟按钮：时/分/秒三个滚轮选时长，随时可改。 */
+    private void pickTarget(final FocusStore.TaskSlot slot) {
+        int initial = slot.targetSeconds > 0 ? slot.targetSeconds : 25 * 60;
+        AlertDialog dialog = WheelPicker.time(this, "设个时长", "好", initial, true, seconds -> {
+            if (seconds <= 0) {
+                Toast.makeText(this, "时长要大于 0", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            FocusStore.setTarget(this, slot.slotKey, seconds);
+            render();
+        });
+        dialog.show();
     }
 
     /** 完成指定槽位的任务 */

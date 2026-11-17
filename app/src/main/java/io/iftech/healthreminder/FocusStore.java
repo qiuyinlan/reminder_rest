@@ -122,6 +122,17 @@ final class FocusStore {
         } catch (JSONException ignored) { }
     }
 
+    /** 只改时长，不动标题和开始时间。 */
+    static void setTarget(Context context, String key, int targetSeconds) {
+        try {
+            String json = prefs(context).getString(key, "");
+            if (json == null || json.isEmpty()) return;
+            JSONObject obj = new JSONObject(json);
+            obj.put("targetSeconds", targetSeconds);
+            prefs(context).edit().putString(key, obj.toString()).apply();
+        } catch (JSONException ignored) { }
+    }
+
     private static void removeSlot(Context context, String key) {
         prefs(context).edit().remove(key).apply();
     }
