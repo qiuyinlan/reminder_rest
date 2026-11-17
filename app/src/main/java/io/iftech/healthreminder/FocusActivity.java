@@ -597,7 +597,7 @@ public final class FocusActivity extends Activity {
             if (rule != null) {
                 for (ReminderSettings.Rule sub : Subtasks.of(this, slot.ruleId)) {
                     if (!Subtasks.doneToday(this, slot.ruleId, sub.title, dayStart)) {
-                        Subtasks.toggle(this, slot.ruleId, sub.title, false, dayStart);
+                        Subtasks.toggleQuiet(this, slot.ruleId, sub.title, false, dayStart);
                     }
                 }
                 ReminderSettings.markCompleted(this, slot.ruleId, Math.max(1, rule.dailyTarget));
@@ -1079,7 +1079,7 @@ public final class FocusActivity extends Activity {
             if (ruleId >= 0) {
                 for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
                     if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
-                        Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
+                        Subtasks.toggleQuiet(this, ruleId, sub.title, false, dayStart);
                     }
                 }
             }

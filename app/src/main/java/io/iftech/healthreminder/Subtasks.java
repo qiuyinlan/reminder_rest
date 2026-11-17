@@ -67,14 +67,60 @@ final class Subtasks {
     }
 
     static void toggle(Context context, int parentId, String title, boolean done, long dayStart) {
+        toggle(context, parentId, title, done, dayStart, true);
+    }
+
+    /**
+     * 批量勾选场景用的安静版：只改子任务，不联动大任务。
+     * （大任务自己那边已经在写了，再联动会重复计数）
+     */
+    static void toggleQuiet(Context context, int parentId, String title, boolean done, long dayStart) {
+        toggle(context, parentId, title, done, dayStart, false);
+    }
+
+    private static void toggle(Context context, int parentId, String title, boolean done,
+                               long dayStart, boolean syncParent) {
         String key = recordKey(parentId, title);
         if (done) {
             ReminderRecord.deleteCompletion(context, ReminderSettings.MODULE_SUBTASK, key, dayStart);
+            if (syncParent && !allCompleted(context, parentId, dayStart)) {
+                // 撤了一步，大任务就不该还挂着完成
+                revertParent(context, parentId, dayStart);
+            }
         } else {
             long now = System.currentTimeMillis();
             ReminderRecord.finish(context, java.util.UUID.randomUUID().toString(), key,
                     ReminderRecord.KIND_DONE, now, now, "子任务勾选", ReminderSettings.MODULE_SUBTASK);
+            if (syncParent) autoCompleteParent(context, parentId, dayStart);
         }
+    }
+
+    /** 最后一步勾完，大任务自动跟着完成，不用再手动打一次勾。 */
+    private static void autoCompleteParent(Context context, int parentId, long dayStart) {
+        if (!allCompleted(context, parentId, dayStart)) return;
+        ReminderSettings.Rule parent = ReminderSettings.ruleById(context, parentId);
+        if (parent == null) return;
+        // 只有任务模块能这么自动勾；微习惯、卡片有自己的完成逻辑
+        if (!ReminderSettings.MODULE_TASK.equals(parent.module)) return;
+        if (ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK, parent.title, dayStart)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        ReminderRecord.finish(context, java.util.UUID.randomUUID().toString(), parent.title,
+                ReminderRecord.KIND_DONE, now, now, "子任务全部完成", ReminderSettings.MODULE_TASK);
+        ReminderSettings.markCompleted(context, parentId, Math.max(1, parent.dailyTarget));
+    }
+
+    /** 子任务又被拆开一条，把大任务的完成撤回去。 */
+    private static void revertParent(Context context, int parentId, long dayStart) {
+        ReminderSettings.Rule parent = ReminderSettings.ruleById(context, parentId);
+        if (parent == null) return;
+        if (!ReminderSettings.MODULE_TASK.equals(parent.module)) return;
+        if (!ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK, parent.title, dayStart)) {
+            return;
+        }
+        ReminderRecord.deleteCompletion(context, ReminderSettings.MODULE_TASK, parent.title, dayStart);
+        ReminderSettings.unmarkCompleted(context, parentId);
     }
 
     static void swapStep(Context context, int parentId, int step1, int step2) {

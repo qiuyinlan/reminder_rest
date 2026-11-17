@@ -890,7 +890,7 @@ public final class FocusBubbleService extends Service {
             if (ruleId >= 0) {
                 for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
                     if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
-                        Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
+                        Subtasks.toggleQuiet(this, ruleId, sub.title, false, dayStart);
                     }
                 }
             }

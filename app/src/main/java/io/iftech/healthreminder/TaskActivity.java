@@ -1169,7 +1169,7 @@ public final class TaskActivity extends Activity {
             List<ReminderSettings.Rule> subtasks = Subtasks.of(this, task.id);
             if (!subtasks.isEmpty()) {
                 for (ReminderSettings.Rule sub : subtasks) {
-                    Subtasks.toggle(this, task.id, sub.title, false, dayStart);
+                    Subtasks.toggleQuiet(this, task.id, sub.title, false, dayStart);
                 }
             }
             long now = System.currentTimeMillis();
