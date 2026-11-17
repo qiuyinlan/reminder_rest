@@ -1,7 +1,7 @@
 {
-    "versionCode": 96,
-    "versionName": "0.3.0-beta77",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta77/rest-bean.apk",
-    "sha256": "11c6b25b64a20a15532bf1d129c16bf955e07d1a939a0f825cdcc82f09b36f5e",
-    "notes": "悬浮窗展开后可以播放「轻松陪伴」的音乐，点一下开始、再点暂停"
+    "versionCode": 97,
+    "versionName": "0.3.0-beta78",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta78/rest-bean.apk",
+    "sha256": "962b6e70d78638e1481a4bb7130c7426981e2d30985f072c9fd0a1840b362f1e",
+    "notes": "任务页「现在」左边多了「白板」入口"
 }
