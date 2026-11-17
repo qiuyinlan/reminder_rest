@@ -1,7 +1,7 @@
 {
-    "versionCode": 94,
-    "versionName": "0.3.0-beta75",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta75/rest-bean.apk",
-    "sha256": "e5e527c1a697620438b752d1486fa91ffd9ce0cc2fae888f8cee9f3b4c1875fe",
-    "notes": "悬浮窗拖到屏幕左/右边缘会吸附贴边"
+    "versionCode": 95,
+    "versionName": "0.3.0-beta76",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta76/rest-bean.apk",
+    "sha256": "483949b678bdc49eec25b5ecfe14abe72ae39148e2da32016c645bb5e2363768",
+    "notes": "版本 0.3.0-beta76 更新。"
 }
