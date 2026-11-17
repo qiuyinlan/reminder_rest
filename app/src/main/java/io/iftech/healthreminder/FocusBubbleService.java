@@ -50,6 +50,8 @@ public final class FocusBubbleService extends Service {
     /** 贴边收起后的半个圆尺寸：宽度就是圆的一半，直接贴着屏幕边。 */
     private static final int PEEK_W = 28;
     private static final int PEEK_H = 56;
+    /** 超时提醒色（红）。 */
+    private static final int PEEK_OVERTIME = 0xffd9534f;
     /** 贴边状态：0 悬浮、-1 贴左、1 贴右。 */
     private static final String KEY_EDGE = "edge_side";
     private static final String KEY_EDGE_Y = "edge_y";
@@ -524,15 +526,15 @@ public final class FocusBubbleService extends Service {
         return bg;
     }
 
-    /** 在跑就是主色，超时变橙红，没任务就灰的。 */
+    /** 在跑就是绿的，超时变红，没任务淡绿（不给棕色）。 */
     private int peekColor() {
         FocusStore.TaskSlot main = FocusStore.getMain(this);
         boolean running = main != null && main.isRunning();
         if (running && main.targetSeconds > 0
                 && (System.currentTimeMillis() - main.startedAt) / 1000 >= main.targetSeconds) {
-            return (0xE6 << 24) | (UiPalette.WARN & 0x00FFFFFF);
+            return (0xE6 << 24) | (PEEK_OVERTIME & 0x00FFFFFF);
         }
-        if (!running) return (0xCC << 24) | (UiPalette.MUTED & 0x00FFFFFF);
+        if (!running) return (0x99 << 24) | (UiPalette.ACCENT & 0x00FFFFFF);
         return (0xE6 << 24) | (UiPalette.ACCENT & 0x00FFFFFF);
     }
 
