@@ -70,6 +70,11 @@ public final class FocusBubbleService extends Service {
     private TextView collapseView;
     private EditText ideaInput;
 
+    /** 展开态的陪伴音乐按钮。 */
+    private LinearLayout musicRowView;
+    private TextView musicLabel;
+    private TextView musicState;
+
     /** 贴边收起的半个圆。 */
     private LinearLayout peekView;
     private WindowManager.LayoutParams peekParams;
@@ -234,6 +239,8 @@ public final class FocusBubbleService extends Service {
         lineParams.bottomMargin = dp(8);
         expandBox.addView(line, lineParams);
 
+        expandBox.addView(buildMusicRow());
+
         stepBox = new LinearLayout(this);
         stepBox.setOrientation(LinearLayout.VERTICAL);
         expandBox.addView(stepBox, new LinearLayout.LayoutParams(-1, -2));
@@ -263,9 +270,15 @@ public final class FocusBubbleService extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
+        // 全屏/沉浸模式下也允许顶到屏幕最上面，不被状态栏压住
+        if (Build.VERSION.SDK_INT >= 28) {
+            params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
         params.x = dp(16);
         params.y = dp(150);
 
@@ -283,6 +296,63 @@ public final class FocusBubbleService extends Service {
         final int savedY = prefs(this).getInt(KEY_EDGE_Y, params.y);
         if (edgeSide != 0) {
             card.post(() -> snapToEdge(edgeSide, savedY));
+        }
+    }
+
+    /** 展开态里的陪伴音乐：点一下开/关当前选中的声音。 */
+    private View buildMusicRow() {
+        musicRowView = new LinearLayout(this);
+        musicRowView.setOrientation(LinearLayout.HORIZONTAL);
+        musicRowView.setGravity(Gravity.CENTER_VERTICAL);
+        musicRowView.setPadding(dp(10), dp(7), dp(10), dp(7));
+        musicRowView.setBackground(FormKit.round(this, UiPalette.SOFT, 10));
+
+        musicLabel = FormKit.text(this, "", 12, UiPalette.INK, true);
+        musicLabel.setSingleLine(true);
+        musicRowView.addView(musicLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        musicState = FormKit.text(this, "", 10, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams stateParams = new LinearLayout.LayoutParams(-2, -2);
+        stateParams.leftMargin = dp(6);
+        musicRowView.addView(musicState, stateParams);
+
+        musicRowView.setOnClickListener(v -> toggleMusic());
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.bottomMargin = dp(8);
+        musicRowView.setLayoutParams(rowParams);
+        updateMusicButton();
+        return musicRowView;
+    }
+
+    private void toggleMusic() {
+        boolean play = !CompanionAudioService.isMusicPlaying(this);
+        CompanionAudioService.setMusicPlaying(this, play);
+        updateMusicButton();
+        Intent intent = new Intent(this, CompanionAudioService.class)
+                .setAction(CompanionAudioService.ACTION_SET_MUSIC)
+                .putExtra(CompanionAudioService.EXTRA_MUSIC_PLAYING, play);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+            else startService(intent);
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "没开起来，回 App 里点一下", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateMusicButton() {
+        if (musicLabel == null) return;
+        boolean playing = CompanionAudioService.isMusicPlaying(this);
+        String sound = CompanionAudioService.soundName(CompanionAudioService.selectedSound(this));
+        musicLabel.setText((playing ? "♫ " + sound + " 播放中" : "♫ " + sound));
+        if (musicState != null) musicState.setText(playing ? "暂停" : "播放");
+        if (musicRowView != null) {
+            musicRowView.setBackground(FormKit.round(this,
+                    playing ? UiPalette.ACCENT : UiPalette.SOFT, 10));
+            musicLabel.setTextColor(playing ? 0xffffffff : UiPalette.INK);
+            if (musicState != null) {
+                musicState.setTextColor(playing ? 0xccffffff : UiPalette.MUTED);
+            }
         }
     }
 
@@ -447,9 +517,14 @@ public final class FocusBubbleService extends Service {
             peekParams = new WindowManager.LayoutParams(
                     w, h,
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                     PixelFormat.TRANSLUCENT);
             peekParams.gravity = Gravity.TOP | Gravity.START;
+            if (Build.VERSION.SDK_INT >= 28) {
+                peekParams.layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            }
             peekParams.x = side < 0 ? 0 : sw - w;
             peekParams.y = clampY(y, h, sh);
             try {
@@ -595,16 +670,32 @@ public final class FocusBubbleService extends Service {
     }
 
     private int clampY(int y, int viewHeight, int screenH) {
-        int min = dp(4);
-        int max = Math.max(min, screenH - viewHeight - dp(4));
+        int min = 0;
+        int max = Math.max(min, screenH - viewHeight);
         return Math.max(min, Math.min(y, max));
     }
 
     private int screenWidth() {
+        if (windowManager != null) {
+            if (Build.VERSION.SDK_INT >= 30) {
+                return windowManager.getCurrentWindowMetrics().getBounds().width();
+            }
+            android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+            windowManager.getDefaultDisplay().getRealMetrics(metrics);
+            return metrics.widthPixels;
+        }
         return getResources().getDisplayMetrics().widthPixels;
     }
 
     private int screenHeight() {
+        if (windowManager != null) {
+            if (Build.VERSION.SDK_INT >= 30) {
+                return windowManager.getCurrentWindowMetrics().getBounds().height();
+            }
+            android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+            windowManager.getDefaultDisplay().getRealMetrics(metrics);
+            return metrics.heightPixels;
+        }
         return getResources().getDisplayMetrics().heightPixels;
     }
 
@@ -641,6 +732,7 @@ public final class FocusBubbleService extends Service {
             fillSteps();
             fillIdeas();
             applyInputMode();
+            updateMusicButton();
         }
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
