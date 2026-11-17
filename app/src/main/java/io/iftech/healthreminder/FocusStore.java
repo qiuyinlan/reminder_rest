@@ -126,6 +126,33 @@ final class FocusStore {
         prefs(context).edit().remove(key).apply();
     }
 
+    // ------------------------------------------ 向后兼容旧接口（全部映射到主线槽位）
+
+    /** 任意槽位有任务就算「有当前任务」。 */
+    static boolean hasCurrent(Context context) {
+        return !getMain(context).isEmpty() || !getSub1(context).isEmpty() || !getSub2(context).isEmpty();
+    }
+
+    static String currentTitle(Context context) { return getMain(context).title; }
+
+    static int currentRuleId(Context context) { return getMain(context).ruleId; }
+
+    static long currentStartedAt(Context context) { return getMain(context).startedAt; }
+
+    static int currentTargetSeconds(Context context) { return getMain(context).targetSeconds; }
+
+    /** 旧接口：写主线并立即开始（悬浮条取用想法时用，行为与旧版一致）。 */
+    static void setCurrent(Context context, String title, int ruleId) {
+        setCurrent(context, title, ruleId, 0);
+    }
+
+    static void setCurrent(Context context, String title, int ruleId, int targetSeconds) {
+        setSlot(context, KEY_MAIN, title, ruleId, targetSeconds);
+        startSlot(context, KEY_MAIN);
+    }
+
+    static void clearCurrent(Context context) { clearSlot(context, KEY_MAIN); }
+
     // -------------------------------------------------------------- 想法清单
 
     static final class Idea {
