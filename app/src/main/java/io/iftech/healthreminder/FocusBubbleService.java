@@ -47,8 +47,9 @@ public final class FocusBubbleService extends Service {
     private static final long LONG_PRESS_MS = 600;
     /** 展开后最多列几条想法，剩下的回 App 里看。 */
     private static final int MAX_IDEAS = 4;
-    /** 贴边收起后露出的半个圆的直径。 */
-    private static final int PEEK_SIZE = 56;
+    /** 贴边收起后的半个圆尺寸：宽度就是圆的一半，直接贴着屏幕边。 */
+    private static final int PEEK_W = 28;
+    private static final int PEEK_H = 56;
     /** 贴边状态：0 悬浮、-1 贴左、1 贴右。 */
     private static final String KEY_EDGE = "edge_side";
     private static final String KEY_EDGE_Y = "edge_y";
@@ -69,8 +70,9 @@ public final class FocusBubbleService extends Service {
 
     /** 贴边收起的半个圆。 */
     private LinearLayout peekView;
-    private TextView peekLabel;
     private WindowManager.LayoutParams peekParams;
+    /** 半圆当前贴在哪边：-1 左、1 右。 */
+    private int peekSide;
     /** 0 悬浮、-1 贴左、1 贴右。 */
     private int edgeSide;
 
@@ -426,20 +428,28 @@ public final class FocusBubbleService extends Service {
         if (card == null || windowManager == null) return;
         int sw = screenWidth();
         int sh = screenHeight();
-        int size = dp(PEEK_SIZE);
-        int half = size / 2;
+        int w = dp(PEEK_W);
+        int h = dp(PEEK_H);
 
         card.setVisibility(View.GONE);
+
+        // 换边了要重建：圆角得朝屏幕内侧
+        if (peekView != null && peekSide != side) {
+            try {
+                windowManager.removeView(peekView);
+            } catch (RuntimeException ignored) { }
+            peekView = null;
+        }
         if (peekView == null) {
-            peekView = (LinearLayout) buildPeek();
+            peekView = buildPeek(side, w, h);
             peekParams = new WindowManager.LayoutParams(
-                    size, size,
+                    w, h,
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                     PixelFormat.TRANSLUCENT);
             peekParams.gravity = Gravity.TOP | Gravity.START;
-            peekParams.x = side < 0 ? -half : sw - size + half;
-            peekParams.y = clampY(y, size, sh);
+            peekParams.x = side < 0 ? 0 : sw - w;
+            peekParams.y = clampY(y, h, sh);
             try {
                 windowManager.addView(peekView, peekParams);
             } catch (RuntimeException ignored) {
@@ -449,9 +459,10 @@ public final class FocusBubbleService extends Service {
             }
         }
         edgeSide = side;
-        // 半个圆探出屏幕：左贴 x = -半径，右贴 x = 屏宽 - 半径
-        peekParams.x = side < 0 ? -half : sw - size + half;
-        peekParams.y = clampY(y, size, sh);
+        peekSide = side;
+        // 半个圆直接贴在屏幕边上，不留缝
+        peekParams.x = side < 0 ? 0 : sw - w;
+        peekParams.y = clampY(y, h, sh);
         try {
             windowManager.updateViewLayout(peekView, peekParams);
         } catch (RuntimeException ignored) { }
@@ -469,7 +480,7 @@ public final class FocusBubbleService extends Service {
             } catch (RuntimeException ignored) { }
         }
         peekView = null;
-        peekLabel = null;
+        peekSide = 0;
 
         int sw = screenWidth();
         int sh = screenHeight();
@@ -484,27 +495,48 @@ public final class FocusBubbleService extends Service {
         render();
     }
 
-    private View buildPeek() {
-        LinearLayout circle = new LinearLayout(this);
-        circle.setOrientation(LinearLayout.VERTICAL);
-        circle.setGravity(Gravity.CENTER);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setShape(GradientDrawable.OVAL);
-        bg.setColor((0xE6 << 24) | (UiPalette.ACCENT & 0x00FFFFFF));
-        bg.setStroke(dp(1), UiPalette.BORDER);
-        circle.setBackground(bg);
-        circle.setElevation(dp(8));
-        circle.setContentDescription("展开悬浮窗");
+    private LinearLayout buildPeek(int side, int w, int h) {
+        LinearLayout shape = new LinearLayout(this);
+        shape.setOrientation(LinearLayout.VERTICAL);
+        shape.setGravity(Gravity.CENTER);
+        shape.setBackground(peekBackground(side, h));
+        shape.setElevation(dp(6));
+        shape.setContentDescription("展开悬浮窗");
 
-        peekLabel = FormKit.text(this, "豆", 13, Color.WHITE, true);
-        peekLabel.setGravity(Gravity.CENTER);
-        circle.addView(peekLabel);
+        View dot = new View(this);
+        GradientDrawable dotShape = new GradientDrawable();
+        dotShape.setShape(GradientDrawable.OVAL);
+        dotShape.setColor(0xCCFFFFFF);
+        dot.setBackground(dotShape);
+        shape.addView(dot, new LinearLayout.LayoutParams(dp(5), dp(5)));
 
-        attachPeekTouch(circle);
-        return circle;
+        attachPeekTouch(shape, h);
+        return shape;
     }
 
-    private void attachPeekTouch(final View circle) {
+    /** 只有朝屏幕内侧的两个角是圆的，贴墙那面是直边 —— 这才是个半圆。 */
+    private GradientDrawable peekBackground(int side, int h) {
+        GradientDrawable bg = new GradientDrawable();
+        float r = h / 2f;
+        bg.setColor(peekColor());
+        if (side < 0) bg.setCornerRadii(new float[]{0, 0, r, r, r, r, 0, 0});
+        else bg.setCornerRadii(new float[]{r, r, 0, 0, 0, 0, r, r});
+        return bg;
+    }
+
+    /** 在跑就是主色，超时变橙红，没任务就灰的。 */
+    private int peekColor() {
+        FocusStore.TaskSlot main = FocusStore.getMain(this);
+        boolean running = main != null && main.isRunning();
+        if (running && main.targetSeconds > 0
+                && (System.currentTimeMillis() - main.startedAt) / 1000 >= main.targetSeconds) {
+            return (0xE6 << 24) | (UiPalette.WARN & 0x00FFFFFF);
+        }
+        if (!running) return (0xCC << 24) | (UiPalette.MUTED & 0x00FFFFFF);
+        return (0xE6 << 24) | (UiPalette.ACCENT & 0x00FFFFFF);
+    }
+
+    private void attachPeekTouch(final View circle, final int h) {
         circle.setOnTouchListener(new View.OnTouchListener() {
             private float downY;
             private int startY;
@@ -525,7 +557,7 @@ public final class FocusBubbleService extends Service {
                         int dy = (int) (event.getRawY() - downY);
                         if (Math.abs(dy) > dp(8)) moved = true;
                         if (!moved) return true;
-                        peekParams.y = clampY(startY + dy, dp(PEEK_SIZE), screenHeight());
+                        peekParams.y = clampY(startY + dy, h, screenHeight());
                         try {
                             windowManager.updateViewLayout(circle, peekParams);
                         } catch (RuntimeException ignored) { }
@@ -546,17 +578,12 @@ public final class FocusBubbleService extends Service {
         });
     }
 
-    /** 半个圆上显示主线已花的时间。 */
+    /** 状态变了就换颜色（在跑 / 超时 / 空闲）。 */
     private void updatePeek() {
-        if (peekLabel == null) return;
-        FocusStore.TaskSlot main = FocusStore.getMain(this);
-        String text = "豆";
-        if (main != null && main.isRunning() && main.startedAt > 0) {
-            long minutes = (System.currentTimeMillis() - main.startedAt) / 60000;
-            if (minutes >= 60) text = (minutes / 60) + "时";
-            else if (minutes >= 1) text = minutes + "分";
-        }
-        peekLabel.setText(text);
+        if (peekView == null) return;
+        try {
+            peekView.setBackground(peekBackground(peekSide, dp(PEEK_H)));
+        } catch (RuntimeException ignored) { }
     }
 
     private void persistPos() {
@@ -616,7 +643,7 @@ public final class FocusBubbleService extends Service {
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
         updateLayout();
-        if (peekLabel != null) updatePeek();
+        updatePeek();
     }
 
     /** 显示 3 个槽位的状态（展开态，添加到 stepBox 前面） */
@@ -977,7 +1004,7 @@ public final class FocusBubbleService extends Service {
             } catch (RuntimeException ignored) { }
         }
         peekView = null;
-        peekLabel = null;
+        peekSide = 0;
         if (card != null && windowManager != null && attached) {
             try {
                 windowManager.removeView(card);
