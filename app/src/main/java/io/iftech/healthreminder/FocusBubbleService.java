@@ -47,6 +47,11 @@ public final class FocusBubbleService extends Service {
     private static final long LONG_PRESS_MS = 600;
     /** 展开后最多列几条想法，剩下的回 App 里看。 */
     private static final int MAX_IDEAS = 4;
+    /** 贴边收起后露出的半个圆的直径。 */
+    private static final int PEEK_SIZE = 56;
+    /** 贴边状态：0 悬浮、-1 贴左、1 贴右。 */
+    private static final String KEY_EDGE = "edge_side";
+    private static final String KEY_EDGE_Y = "edge_y";
 
     private WindowManager windowManager;
     private WindowManager.LayoutParams params;
@@ -61,6 +66,13 @@ public final class FocusBubbleService extends Service {
     private TextView countView;
     private TextView collapseView;
     private EditText ideaInput;
+
+    /** 贴边收起的半个圆。 */
+    private LinearLayout peekView;
+    private TextView peekLabel;
+    private WindowManager.LayoutParams peekParams;
+    /** 0 悬浮、-1 贴左、1 贴右。 */
+    private int edgeSide;
 
     private boolean expanded;
     private boolean attached;
@@ -261,6 +273,13 @@ public final class FocusBubbleService extends Service {
             attached = false;
         }
         render();
+
+        // 上次是贴边收起的，回到原来的边和高度
+        edgeSide = prefs(this).getInt(KEY_EDGE, 0);
+        final int savedY = prefs(this).getInt(KEY_EDGE_Y, params.y);
+        if (edgeSide != 0) {
+            card.post(() -> snapToEdge(edgeSide, savedY));
+        }
     }
 
     private View buildInputRow() {
@@ -364,6 +383,8 @@ public final class FocusBubbleService extends Service {
                                 // 展开态点空白不再收起，收起只走右上角 －，防止误触
                                 toggleExpand();
                             }
+                        } else {
+                            settleAfterDrag();
                         }
                         return true;
                     default:
@@ -371,6 +392,191 @@ public final class FocusBubbleService extends Service {
                 }
             }
         });
+    }
+
+    // ---------------------------------------------------------- 拖拽/贴边
+
+    /** 松手后决定：贴边收起还是留在原地。 */
+    private void settleAfterDrag() {
+        if (card == null) return;
+        int sw = screenWidth();
+        int sh = screenHeight();
+        int w = card.getWidth() > 0 ? card.getWidth() : dp(160);
+        int h = card.getHeight() > 0 ? card.getHeight() : dp(56);
+
+        if (params.x <= dp(8)) {
+            if (expanded) toggleExpand();
+            snapToEdge(-1, params.y);
+            return;
+        }
+        if (params.x + w >= sw - dp(8)) {
+            if (expanded) toggleExpand();
+            snapToEdge(1, params.y);
+            return;
+        }
+        params.x = Math.max(0, Math.min(params.x, sw - w));
+        params.y = clampY(params.y, h, sh);
+        edgeSide = 0;
+        updateLayout();
+        persistPos();
+    }
+
+    /** 藏成贴在屏幕边上的半个圆。 */
+    private void snapToEdge(int side, int y) {
+        if (card == null || windowManager == null) return;
+        int sw = screenWidth();
+        int sh = screenHeight();
+        int size = dp(PEEK_SIZE);
+        int half = size / 2;
+
+        card.setVisibility(View.GONE);
+        if (peekView == null) {
+            peekView = (LinearLayout) buildPeek();
+            peekParams = new WindowManager.LayoutParams(
+                    size, size,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    PixelFormat.TRANSLUCENT);
+            peekParams.gravity = Gravity.TOP | Gravity.START;
+            peekParams.x = side < 0 ? -half : sw - size + half;
+            peekParams.y = clampY(y, size, sh);
+            try {
+                windowManager.addView(peekView, peekParams);
+            } catch (RuntimeException ignored) {
+                peekView = null;
+                card.setVisibility(View.VISIBLE);
+                return;
+            }
+        }
+        edgeSide = side;
+        // 半个圆探出屏幕：左贴 x = -半径，右贴 x = 屏宽 - 半径
+        peekParams.x = side < 0 ? -half : sw - size + half;
+        peekParams.y = clampY(y, size, sh);
+        try {
+            windowManager.updateViewLayout(peekView, peekParams);
+        } catch (RuntimeException ignored) { }
+        updatePeek();
+        persistPos();
+    }
+
+    /** 点半个圆 → 恢复成卡片，停在原来那条边上。 */
+    private void restoreFromEdge() {
+        if (card == null) return;
+        int prevY = peekParams != null ? peekParams.y : params.y;
+        if (peekView != null && windowManager != null) {
+            try {
+                windowManager.removeView(peekView);
+            } catch (RuntimeException ignored) { }
+        }
+        peekView = null;
+        peekLabel = null;
+
+        int sw = screenWidth();
+        int sh = screenHeight();
+        int w = card.getWidth() > 0 ? card.getWidth() : dp(160);
+        int h = card.getHeight() > 0 ? card.getHeight() : dp(56);
+        params.x = edgeSide < 0 ? dp(14) : Math.max(dp(14), sw - w - dp(14));
+        params.y = clampY(prevY, h, sh);
+        edgeSide = 0;
+        card.setVisibility(View.VISIBLE);
+        updateLayout();
+        persistPos();
+        render();
+    }
+
+    private View buildPeek() {
+        LinearLayout circle = new LinearLayout(this);
+        circle.setOrientation(LinearLayout.VERTICAL);
+        circle.setGravity(Gravity.CENTER);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor((0xE6 << 24) | (UiPalette.ACCENT & 0x00FFFFFF));
+        bg.setStroke(dp(1), UiPalette.BORDER);
+        circle.setBackground(bg);
+        circle.setElevation(dp(8));
+        circle.setContentDescription("展开悬浮窗");
+
+        peekLabel = FormKit.text(this, "豆", 13, Color.WHITE, true);
+        peekLabel.setGravity(Gravity.CENTER);
+        circle.addView(peekLabel);
+
+        attachPeekTouch(circle);
+        return circle;
+    }
+
+    private void attachPeekTouch(final View circle) {
+        circle.setOnTouchListener(new View.OnTouchListener() {
+            private float downY;
+            private int startY;
+            private long downAt;
+            private boolean moved;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (peekParams == null) return false;
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downY = event.getRawY();
+                        startY = peekParams.y;
+                        downAt = System.currentTimeMillis();
+                        moved = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE: {
+                        int dy = (int) (event.getRawY() - downY);
+                        if (Math.abs(dy) > dp(8)) moved = true;
+                        if (!moved) return true;
+                        peekParams.y = clampY(startY + dy, dp(PEEK_SIZE), screenHeight());
+                        try {
+                            windowManager.updateViewLayout(circle, peekParams);
+                        } catch (RuntimeException ignored) { }
+                        return true;
+                    }
+                    case MotionEvent.ACTION_UP:
+                        if (!moved) {
+                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) openFocus();
+                            else restoreFromEdge();
+                        } else {
+                            persistPos();
+                        }
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
+    }
+
+    /** 半个圆上显示主线已花的时间。 */
+    private void updatePeek() {
+        if (peekLabel == null) return;
+        FocusStore.TaskSlot main = FocusStore.getMain(this);
+        String text = "豆";
+        if (main != null && main.isRunning() && main.startedAt > 0) {
+            long minutes = (System.currentTimeMillis() - main.startedAt) / 60000;
+            if (minutes >= 60) text = (minutes / 60) + "时";
+            else if (minutes >= 1) text = minutes + "分";
+        }
+        peekLabel.setText(text);
+    }
+
+    private void persistPos() {
+        SharedPreferences.Editor editor = prefs(this).edit().putInt(KEY_EDGE, edgeSide);
+        editor.putInt(KEY_EDGE_Y, edgeSide != 0 && peekParams != null ? peekParams.y : params.y);
+        editor.apply();
+    }
+
+    private int clampY(int y, int viewHeight, int screenH) {
+        int min = dp(4);
+        int max = Math.max(min, screenH - viewHeight - dp(4));
+        return Math.max(min, Math.min(y, max));
+    }
+
+    private int screenWidth() {
+        return getResources().getDisplayMetrics().widthPixels;
+    }
+
+    private int screenHeight() {
+        return getResources().getDisplayMetrics().heightPixels;
     }
 
     private void updateLayout() {
@@ -410,6 +616,7 @@ public final class FocusBubbleService extends Service {
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
         updateLayout();
+        if (peekLabel != null) updatePeek();
     }
 
     /** 显示 3 个槽位的状态（展开态，添加到 stepBox 前面） */
@@ -764,6 +971,13 @@ public final class FocusBubbleService extends Service {
     }
 
     private void detach() {
+        if (peekView != null && windowManager != null) {
+            try {
+                windowManager.removeView(peekView);
+            } catch (RuntimeException ignored) { }
+        }
+        peekView = null;
+        peekLabel = null;
         if (card != null && windowManager != null && attached) {
             try {
                 windowManager.removeView(card);
