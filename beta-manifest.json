@@ -1,7 +1,7 @@
 {
-    "versionCode": 99,
-    "versionName": "0.3.0-beta81",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta81/rest-bean.apk",
-    "sha256": "265f39d1ebbd5fac16bda141bbe5ca5d94319045a0aa5c6fa5285c6001660d4e",
-    "notes": "子任务全部勾完，大任务会自动打勾，不用再点一次"
+    "versionCode": 100,
+    "versionName": "0.3.0-beta82",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta82/rest-bean.apk",
+    "sha256": "91eeb7ad6a284624c186291d9159b6cbe8a102f71eda230bdd769b763cdd2288",
+    "notes": "修好子任务串槽位：给支线加步骤不会再跑到主线去（三个卡片的输入框以前共用同一份草稿）"
 }
