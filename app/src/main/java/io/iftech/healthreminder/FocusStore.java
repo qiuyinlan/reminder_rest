@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 「现在」页的轻量状态：当前主任务 + 突然冒出来的想法。
+ * 「现在」页的轻量状态：1 个主线 + 2 个支线，共 3 个并行任务。
  *
  * 想法虽然是临时捕捉，但背后是一条真任务规则（enabled=false，不会弹提醒），
  * 这样它才能改名、加步骤，跟任务页的小任务完全同构。
@@ -21,10 +21,9 @@ import java.util.UUID;
  */
 final class FocusStore {
     private static final String PREFS = "focus_state";
-    private static final String KEY_TITLE = "current_title";
-    private static final String KEY_RULE = "current_rule_id";
-    private static final String KEY_START = "current_started_at";
-    private static final String KEY_TARGET = "current_target_seconds";
+    private static final String KEY_MAIN = "main_task";
+    private static final String KEY_SUB1 = "sub_task_1";
+    private static final String KEY_SUB2 = "sub_task_2";
     private static final String KEY_IDEAS = "ideas";
 
     private FocusStore() { }
@@ -33,56 +32,98 @@ final class FocusStore {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    // ------------------------------------------------------------ 当前主任务
+    // ------------------------------------------------------------ 任务槽位（1 主线 +2 支线）
 
-    static String currentTitle(Context context) {
-        String title = prefs(context).getString(KEY_TITLE, "");
-        return title == null ? "" : title;
-    }
+    static final class TaskSlot {
+        final String slotKey;
+        final String title;
+        final int ruleId;
+        final long startedAt;
+        final int targetSeconds;
 
-    static boolean hasCurrent(Context context) {
-        return !currentTitle(context).isEmpty();
-    }
-
-    /** 来自任务清单时是任务 id；旧数据缺 id 时为 -1。 */
-    static int currentRuleId(Context context) {
-        return prefs(context).getInt(KEY_RULE, -1);
-    }
-
-    static long currentStartedAt(Context context) {
-        return prefs(context).getLong(KEY_START, 0L);
-    }
-
-    static void setCurrent(Context context, String title, int ruleId) {
-        setCurrent(context, title, ruleId, 0);
-    }
-
-    /** 设置主任务，可指定目标时长（秒）。0 表示不限制。 */
-    static void setCurrent(Context context, String title, int ruleId, int targetSeconds) {
-        String value = title == null ? "" : title.trim();
-        SharedPreferences.Editor editor = prefs(context).edit();
-        if (value.isEmpty()) {
-            editor.putString(KEY_TITLE, "").putInt(KEY_RULE, -1).putLong(KEY_START, 0L).remove(KEY_TARGET);
-        } else {
-            editor.putString(KEY_TITLE, value)
-                    .putInt(KEY_RULE, ruleId)
-                    .putLong(KEY_START, System.currentTimeMillis());
-            if (targetSeconds > 0) {
-                editor.putInt(KEY_TARGET, targetSeconds);
-            } else {
-                editor.remove(KEY_TARGET);
-            }
+        TaskSlot(String slotKey, String title, int ruleId, long startedAt, int targetSeconds) {
+            this.slotKey = slotKey;
+            this.title = title;
+            this.ruleId = ruleId;
+            this.startedAt = startedAt;
+            this.targetSeconds = targetSeconds;
         }
-        editor.apply();
+
+        boolean isEmpty() { return title == null || title.isEmpty(); }
+        boolean isRunning() { return startedAt > 0; }
     }
 
-    static void clearCurrent(Context context) {
-        setCurrent(context, "", -1, 0);
+    /** 获取主线任务 */
+    static TaskSlot getMain(Context context) { return getSlot(context, KEY_MAIN); }
+    /** 获取支线 1 */
+    static TaskSlot getSub1(Context context) { return getSlot(context, KEY_SUB1); }
+    /** 获取支线 2 */
+    static TaskSlot getSub2(Context context) { return getSlot(context, KEY_SUB2); }
+
+    /** 设置主线任务 */
+    static void setMain(Context context, String title, int ruleId, int targetSeconds) {
+        setSlot(context, KEY_MAIN, title, ruleId, targetSeconds);
+    }
+    /** 设置支线 1 */
+    static void setSub1(Context context, String title, int ruleId, int targetSeconds) {
+        setSlot(context, KEY_SUB1, title, ruleId, targetSeconds);
+    }
+    /** 设置支线 2 */
+    static void setSub2(Context context, String title, int ruleId, int targetSeconds) {
+        setSlot(context, KEY_SUB2, title, ruleId, targetSeconds);
     }
 
-    /** 获取目标时长（秒），0 表示不限制。 */
-    static int currentTargetSeconds(Context context) {
-        return prefs(context).getInt(KEY_TARGET, 0);
+    /** 开始任务（记录开始时间） */
+    static void startSlot(Context context, String key) {
+        try {
+            String json = prefs(context).getString(key, "");
+            if (json == null || json.isEmpty()) return;
+            JSONObject obj = new JSONObject(json);
+            obj.put("startedAt", System.currentTimeMillis());
+            SharedPreferences.Editor editor = prefs(context).edit();
+            editor.putString(key, obj.toString());
+            editor.apply();
+        } catch (JSONException ignored) { }
+    }
+
+    /** 清空主线 */
+    static void clearMain(Context context) { removeSlot(context, KEY_MAIN); }
+    /** 清空支线 1 */
+    static void clearSub1(Context context) { removeSlot(context, KEY_SUB1); }
+    /** 清空支线 2 */
+    static void clearSub2(Context context) { removeSlot(context, KEY_SUB2); }
+    /** 清空指定槽位（公开方法，供 FocusActivity 使用） */
+    static void clearSlot(Context context, String key) { removeSlot(context, key); }
+
+    private static TaskSlot getSlot(Context context, String key) {
+        try {
+            String json = prefs(context).getString(key, "");
+            if (json == null || json.isEmpty()) return new TaskSlot(key, "", -1, 0, 0);
+            JSONObject obj = new JSONObject(json);
+            return new TaskSlot(key,
+                    obj.optString("title", ""),
+                    obj.optInt("ruleId", -1),
+                    obj.optLong("startedAt", 0L),
+                    obj.optInt("targetSeconds", 0));
+        } catch (JSONException e) {
+            return new TaskSlot(key, "", -1, 0, 0);
+        }
+    }
+
+    private static void setSlot(Context context, String key, String title, int ruleId, int targetSeconds) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("title", title == null ? "" : title.trim());
+            obj.put("ruleId", ruleId);
+            obj.put("targetSeconds", targetSeconds);
+            SharedPreferences.Editor editor = prefs(context).edit();
+            editor.putString(key, obj.toString());
+            editor.apply();
+        } catch (JSONException ignored) { }
+    }
+
+    private static void removeSlot(Context context, String key) {
+        prefs(context).edit().remove(key).apply();
     }
 
     // -------------------------------------------------------------- 想法清单
@@ -91,7 +132,6 @@ final class FocusStore {
         final String id;
         final String title;
         final long createdAt;
-        /** 背后的任务规则 id；-1 表示旧数据还没补。 */
         final int ruleId;
 
         Idea(String id, String title, long createdAt, int ruleId) {
@@ -119,7 +159,6 @@ final class FocusStore {
         return ideas(context).size();
     }
 
-    /** 任务页用它把灵感条目从清单里排除。 */
     static List<Integer> ideaRuleIds(Context context) {
         List<Integer> ids = new ArrayList<>();
         for (Idea idea : ideas(context)) {
@@ -156,7 +195,6 @@ final class FocusStore {
         save(context, kept);
     }
 
-    /** 旧数据（没有 ruleId）在第一次打开时补建任务，返回可用 id。 */
     static int ensureIdeaRule(Context context, Idea idea) {
         if (idea.ruleId >= 0) return idea.ruleId;
         ReminderSettings.Rule rule = createTaskRule(context, idea.title);
@@ -174,7 +212,6 @@ final class FocusStore {
         return ruleId;
     }
 
-    /** 建一条「不提醒」的任务：只占清单一行，靠手动勾。 */
     static ReminderSettings.Rule createTaskRule(Context context, String title) {
         ArrayList<Integer> points = new ArrayList<>();
         points.add(9 * 3600);

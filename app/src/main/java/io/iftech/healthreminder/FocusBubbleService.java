@@ -389,45 +389,85 @@ public final class FocusBubbleService extends Service {
     private void render() {
         if (card == null) return;
 
-        String title = FocusStore.currentTitle(this);
-        boolean has = title != null && !title.isEmpty();
-        titleView.setText(has ? title : "点一下挑一件事，长按进 App");
-        elapsedView.setText(has ? elapsedText(FocusStore.currentStartedAt(this)) : "");
+        // 显示 3 个槽位的状态（主线 + 支线 1 + 支线 2）
+        FocusStore.TaskSlot main = FocusStore.getMain(this);
+        FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
+        FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
 
-        // 超时变红提醒
-        int targetSeconds = FocusStore.currentTargetSeconds(this);
-        if (has && targetSeconds > 0 && isOvertime(targetSeconds)) {
-            card.setBackground(buildOvertimeBackground());
-        } else if (card.getBackground() instanceof GradientDrawable) {
-            GradientDrawable bg = (GradientDrawable) card.getBackground();
-            bg.setColor((0xD8 << 24) | (UiPalette.SURFACE & 0x00FFFFFF));
-        }
+        // 收起态：只显示主线任务（保持向后兼容）
+        String title = main.isEmpty() ? "无主线任务" : main.title;
+        titleView.setText(title);
+        elapsedView.setText(main.isRunning() ? elapsedText(main.startedAt) : "");
 
         expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
+            fillSlotStatus(); // 显示 3 个槽位的状态
             fillSteps();
             fillIdeas();
             applyInputMode();
         }
 
-        params.width = expanded ? dp(238) : WindowManager.LayoutParams.WRAP_CONTENT;
+        params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
         updateLayout();
     }
 
-    private boolean isOvertime(int targetSeconds) {
-        if (targetSeconds <= 0) return false;
-        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
-        return elapsed > targetSeconds;
+    /** 显示 3 个槽位的状态（展开态，添加到 stepBox 前面） */
+    private void fillSlotStatus() {
+        if (stepBox == null) return;
+        stepBox.removeAllViews();
+
+        FocusStore.TaskSlot main = FocusStore.getMain(this);
+        FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
+        FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
+
+        // 添加槽位状态标题
+        TextView slotTitle = FormKit.text(this, "任务槽位", 11, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+        titleParams.bottomMargin = dp(4);
+        stepBox.addView(slotTitle, titleParams);
+
+        // 主线
+        stepBox.addView(buildSlotStatusRow("主线", main));
+        // 支线 1
+        if (!sub1.isEmpty()) stepBox.addView(buildSlotStatusRow("支线 1", sub1));
+        // 支线 2
+        if (!sub2.isEmpty()) stepBox.addView(buildSlotStatusRow("支线 2", sub2));
     }
 
-    private GradientDrawable buildOvertimeBackground() {
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(20));
-        // 警示红背景
-        bg.setColor((0xD8 << 24) | (0xffc85a4c & 0x00FFFFFF));
-        bg.setStroke(dp(1), 0xfffff0f0);
-        return bg;
+    private View buildSlotStatusRow(String label, FocusStore.TaskSlot slot) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(3), 0, dp(3));
+
+        View dot = new View(this);
+        GradientDrawable dotShape = new GradientDrawable();
+        dotShape.setShape(GradientDrawable.OVAL);
+        dotShape.setColor(slot.isEmpty() ? UiPalette.MUTED :
+                          slot.isRunning() ? UiPalette.ACCENT : UiPalette.SOFT);
+        dot.setBackground(dotShape);
+        row.addView(dot, new LinearLayout.LayoutParams(dp(6), dp(6)));
+
+        TextView labelView = FormKit.text(this, label, 10, UiPalette.MUTED, true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        labelParams.leftMargin = dp(6);
+        row.addView(labelView, labelParams);
+
+        TextView titleView = FormKit.text(this, slot.isEmpty() ? "未设定" : slot.title, 11,
+                                          slot.isEmpty() ? UiPalette.MUTED : UiPalette.INK, true);
+        titleView.setMaxLines(1);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleParams.leftMargin = dp(4);
+        row.addView(titleView, titleParams);
+
+        TextView elapsedView = FormKit.text(this,
+                                            slot.isRunning() ? elapsedText(slot.startedAt) : "",
+                                            9, UiPalette.MUTED, false);
+        row.addView(elapsedView);
+
+        return row;
     }
 
     private void fillIdeas() {

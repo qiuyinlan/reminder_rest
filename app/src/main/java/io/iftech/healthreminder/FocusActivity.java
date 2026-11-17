@@ -43,10 +43,17 @@ public final class FocusActivity extends Activity {
     private LinearLayout headerHost;
     private LinearLayout container;
     private TextView headerMeta;
-    private TextView currentElapsed;
     private EditText ideaInput;
     private EditText customInput;
     private EditText subInput;
+
+    // 三个任务槽位的 UI 引用
+    private TextView mainElapsed;
+    private TextView sub1Elapsed;
+    private TextView sub2Elapsed;
+    private EditText mainTargetInput;
+    private EditText sub1TargetInput;
+    private EditText sub2TargetInput;
 
     private boolean pickerOpen;
     /** 刚从系统设置里授权回来，落地就自动把悬浮条打开。 */
@@ -128,19 +135,30 @@ public final class FocusActivity extends Activity {
 
         if (!doneBanner.isEmpty()) container.addView(buildDoneBanner());
 
-        boolean hasCurrent = FocusStore.hasCurrent(this);
-        if (hasCurrent) {
-            container.addView(buildCurrentCard());
-            if (pickerOpen) container.addView(buildPicker());
-        } else {
-            container.addView(buildEmptyCard());
+        // 渲染 3 个并行任务卡片：主线 + 支线 1 + 支线 2
+        FocusStore.TaskSlot main = FocusStore.getMain(this);
+        FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
+        FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
+
+        container.addView(buildTaskCard(main, "主线任务",
+                () -> completeSlot(FocusStore.KEY_MAIN),
+                () -> clearSlot(FocusStore.KEY_MAIN)));
+        container.addView(buildTaskCard(sub1, "支线任务 1",
+                () -> completeSlot(FocusStore.KEY_SUB1),
+                () -> clearSlot(FocusStore.KEY_SUB1)));
+        container.addView(buildTaskCard(sub2, "支线任务 2",
+                () -> completeSlot(FocusStore.KEY_SUB2),
+                () -> clearSlot(FocusStore.KEY_SUB2)));
+
+        // 如果三个槽位都为空，显示选择器
+        if (main.isEmpty() && sub1.isEmpty() && sub2.isEmpty()) {
             container.addView(buildPicker());
         }
         container.addView(buildIdeaSection());
         container.addView(buildBubbleCard());
         container.addView(buildFooter());
         refreshLiveTexts();
-        // 主任务变了就让悬浮条马上跟着改，不用等它自己轮询
+        // 任务槽位变了就让悬浮条马上跟着改，不用等它自己轮询
         FocusBubbleService.refreshNow(this);
     }
 
@@ -187,45 +205,19 @@ public final class FocusActivity extends Activity {
     /** 每 60 秒只刷这两行文字，不重建整页（否则输入框里的字会丢）。 */
     private void refreshLiveTexts() {
         if (headerMeta != null) headerMeta.setText(metaText());
-        if (currentElapsed != null) {
-            if (FocusStore.hasCurrent(this)) {
-                currentElapsed.setText("已 " + elapsedText(FocusStore.currentStartedAt(this)));
-            } else {
-                currentElapsed.setText("");
-            }
+        // 刷新三个槽位的倒计时显示
+        if (mainElapsed != null) {
+            FocusStore.TaskSlot main = FocusStore.getMain(this);
+            mainElapsed.setText(main.isRunning() ? "已 " + elapsedText(main.startedAt) : "准备开始");
         }
-    }
-
-    private String countdownText(int targetSeconds) {
-        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
-        int remaining = targetSeconds - (int) elapsed;
-        if (remaining <= 0) {
-            int over = -remaining;
-            if (over >= 60) return "超时 " + (over / 60) + " 分 " + (over % 60) + " 秒";
-            return "超时 " + over + " 秒";
+        if (sub1Elapsed != null) {
+            FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
+            sub1Elapsed.setText(sub1.isRunning() ? "已 " + elapsedText(sub1.startedAt) : "准备开始");
         }
-        int h = remaining / 3600;
-        int m = (remaining % 3600) / 60;
-        int s = remaining % 60;
-        if (h > 0) return "剩 " + h + " 时 " + m + " 分";
-        if (m > 0) return "剩 " + m + " 分 " + s + " 秒";
-        return "剩 " + s + " 秒";
-    }
-
-    private boolean isOvertime(int targetSeconds) {
-        if (targetSeconds <= 0) return false;
-        long elapsed = (System.currentTimeMillis() - FocusStore.currentStartedAt(this)) / 1000;
-        return elapsed > targetSeconds;
-    }
-
-    /** 开始当前任务（记录开始时间）。 */
-    private void startCurrent() {
-        String title = FocusStore.currentTitle(this);
-        if (title.isEmpty()) return;
-        int ruleId = FocusStore.currentRuleId(this);
-        int targetSeconds = FocusStore.currentTargetSeconds(this);
-        FocusStore.setCurrent(this, title, ruleId, targetSeconds);
-        render();
+        if (sub2Elapsed != null) {
+            FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
+            sub2Elapsed.setText(sub2.isRunning() ? "已 " + elapsedText(sub2.startedAt) : "准备开始");
+        }
     }
 
     private String metaText() {
@@ -254,15 +246,17 @@ public final class FocusActivity extends Activity {
         return new int[]{segments, (int) minutes};
     }
 
-    // ---------------------------------------------------------- 当前主任务
+    // ---------------------------------------------------------- 任务卡片（3 个并行槽位）
 
-    private View buildCurrentCard() {
-        final String title = FocusStore.currentTitle(this);
-        final int ruleId = FocusStore.currentRuleId(this);
-        final int targetSeconds = FocusStore.currentTargetSeconds(this);
-        final long startedAt = FocusStore.currentStartedAt(this);
-        final boolean isRunning = startedAt > 0;
-
+    /**
+     * 通用任务卡片构建器
+     * @param slot 任务槽位数据
+     * @param label 槽位标签（主线/支线 1/支线 2）
+     * @param onComplete 完成按钮回调
+     * @param onClear 清空按钮回调
+     */
+    private View buildTaskCard(final FocusStore.TaskSlot slot, final String label,
+                               final Runnable onComplete, final Runnable onClear) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -278,119 +272,168 @@ public final class FocusActivity extends Activity {
 
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        View dot = dotView(UiPalette.ACCENT);
+        int dotColor = slot.isEmpty() ? UiPalette.MUTED :
+                       slot.isRunning() ? UiPalette.ACCENT : UiPalette.SOFT;
+        View dot = dotView(dotColor);
         top.addView(dot, new LinearLayout.LayoutParams(dp(8), dp(8)));
-        TextView label = text(isRunning ? "正在做" : "准备做", 12, UiPalette.ACCENT, true);
+        TextView labelView = text(label, 12, dotColor, true);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1f);
         labelParams.leftMargin = dp(8);
-        top.addView(label, labelParams);
-        
-        if (isRunning) {
-            currentElapsed = text("已 " + elapsedText(startedAt), 12, UiPalette.MUTED, true);
-            top.addView(currentElapsed);
-            // 倒计时显示（点一下能改）
-            if (targetSeconds > 0) {
-                TextView countdown = text(countdownText(targetSeconds), 12,
-                        isOvertime(targetSeconds) ? DANGER : UiPalette.MUTED, true);
-                LinearLayout.LayoutParams countdownParams = new LinearLayout.LayoutParams(-2, -2);
-                countdownParams.leftMargin = dp(8);
-                countdown.setPadding(dp(6), dp(2), dp(6), dp(2));
-                countdown.setBackground(FormKit.round(this, UiPalette.PALE, 8));
-                countdown.setOnClickListener(v -> editDuration());
-                top.addView(countdown, countdownParams);
-            }
+        top.addView(labelView, labelParams);
+
+        // 根据槽位选择对应的 elapsed TextView
+        TextView elapsedView;
+        if (label.equals("主线任务")) {
+            elapsedView = mainElapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
+                    12, UiPalette.MUTED, true);
+        } else if (label.equals("支线任务 1")) {
+            elapsedView = sub1Elapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
+                    12, UiPalette.MUTED, true);
+        } else {
+            elapsedView = sub2Elapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
+                    12, UiPalette.MUTED, true);
         }
+        top.addView(elapsedView);
         card.addView(top);
 
-        TextView name = text(title, 22, UiPalette.INK, true);
-        name.setMaxLines(2);
-        name.setEllipsize(TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
-        nameParams.topMargin = dp(10);
-        card.addView(name, nameParams);
+        // 任务标题或输入框
+        if (slot.isEmpty()) {
+            // 空槽位显示输入框
+            LinearLayout inputRow = new LinearLayout(this);
+            inputRow.setGravity(Gravity.CENTER_VERTICAL);
+            EditText titleInput = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
+            titleInput.setSingleLine(true);
+            titleInput.setHint("输入任务名称");
+            inputRow.addView(titleInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
-        // 没设时长时显示提示
-        if (!isRunning && targetSeconds <= 0) {
-            TextView hint = text("可以设个时长，超时悬浮窗会变红提醒你", 12, UiPalette.MUTED, false);
-            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-            hintParams.topMargin = dp(6);
-            card.addView(hint, hintParams);
-        }
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
-        actionsParams.topMargin = dp(14);
-        card.addView(actions, actionsParams);
-
-        if (isRunning) {
-            // 进行中：显示完成、换一个、更多
-            TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
-            done.setOnClickListener(v -> completeCurrent());
-            actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
-
-            TextView swap = pill("换一个", UiPalette.PALE, UiPalette.ACCENT);
-            swap.setOnClickListener(v -> {
-                pickerOpen = true;
-                doneBanner = "";
+            TextView setBtn = pill("设定", UiPalette.ACCENT, Color.WHITE);
+            setBtn.setOnClickListener(v -> {
+                String title = titleInput.getText().toString().trim();
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "先写任务名称", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // 创建任务规则并设置到对应槽位
+                ReminderSettings.Rule rule = FocusStore.createTaskRule(this, title);
+                int ruleId = rule != null ? rule.id : -1;
+                int targetSec = 25 * 60; // 默认 25 分钟
+                if (label.equals("主线任务")) {
+                    FocusStore.setMain(this, title, ruleId, targetSec);
+                } else if (label.equals("支线任务 1")) {
+                    FocusStore.setSub1(this, title, ruleId, targetSec);
+                } else {
+                    FocusStore.setSub2(this, title, ruleId, targetSec);
+                }
                 render();
             });
-            LinearLayout.LayoutParams swapParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-            swapParams.leftMargin = dp(8);
-            actions.addView(swap, swapParams);
-
-            TextView more = text("⋯", 18, UiPalette.ACCENT, true);
-            more.setGravity(Gravity.CENTER);
-            more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
-            more.setContentDescription("更多");
-            more.setOnClickListener(v -> showCurrentMenu());
-            LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
-            moreParams.leftMargin = dp(8);
-            actions.addView(more, moreParams);
+            LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(dp(70), dp(48));
+            setParams.leftMargin = dp(8);
+            inputRow.addView(setBtn, setParams);
+            card.addView(inputRow, new LinearLayout.LayoutParams(-1, -2, 1f));
         } else {
-            // 未开始：设时长、开始做
-            TextView setTimer = pill("设时长", UiPalette.PALE, UiPalette.ACCENT);
-            setTimer.setOnClickListener(v -> editDuration());
-            actions.addView(setTimer, new LinearLayout.LayoutParams(0, dp(48), 1f));
+            // 有任务显示标题
+            TextView name = text(slot.title, 22, UiPalette.INK, true);
+            name.setMaxLines(2);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
+            nameParams.topMargin = dp(10);
+            card.addView(name, nameParams);
 
-            TextView start = pill("开始做", UiPalette.ACCENT, Color.WHITE);
-            start.setOnClickListener(v -> startCurrent());
-            LinearLayout.LayoutParams startParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-            startParams.leftMargin = dp(8);
-            actions.addView(start, startParams);
+            // 时长设置（仅当未开始时显示）
+            if (!slot.isRunning()) {
+                LinearLayout timeRow = new LinearLayout(this);
+                timeRow.setGravity(Gravity.CENTER_VERTICAL);
+                timeRow.addView(text("时长:", 13, UiPalette.MUTED, false),
+                        new LinearLayout.LayoutParams(-2, -2));
 
-            TextView cancel = text("取消", 14, UiPalette.MUTED, true);
-            cancel.setPadding(dp(12), dp(12), dp(12), dp(12));
-            cancel.setOnClickListener(v -> {
-                FocusStore.clearCurrent(this);
-                pickerOpen = true;
-                render();
-            });
-            LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(-2, dp(48));
-            cancelParams.leftMargin = dp(8);
-            actions.addView(cancel, cancelParams);
+                EditText targetInput;
+                if (label.equals("主线任务")) {
+                    targetInput = mainTargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
+                } else if (label.equals("支线任务 1")) {
+                    targetInput = sub1TargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
+                } else {
+                    targetInput = sub2TargetInput = FormKit.input(this, InputType.TYPE_CLASS_NUMBER);
+                }
+                targetInput.setSingleLine(true);
+                targetInput.setHint((slot.targetSeconds > 0 ? slot.targetSeconds / 60 : 25) + "分钟");
+                targetInput.setMaxWidth(dp(80));
+                LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-2, dp(40));
+                inputParams.leftMargin = dp(8);
+                inputParams.rightMargin = dp(8);
+                timeRow.addView(targetInput, inputParams);
+
+                timeRow.addView(text("分钟", 13, UiPalette.MUTED, false));
+                card.addView(timeRow, new LinearLayout.LayoutParams(-1, -2, 1f));
+            }
+
+            // 操作按钮
+            LinearLayout actions = new LinearLayout(this);
+            actions.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
+            actionsParams.topMargin = dp(14);
+            card.addView(actions, actionsParams);
+
+            if (!slot.isRunning()) {
+                // 未开始：显示"开始做"按钮
+                TextView start = pill("开始做", UiPalette.ACCENT, Color.WHITE);
+                start.setOnClickListener(v -> {
+                    // 获取用户设置的时长并更新槽位
+                    int targetSec = slot.targetSeconds;
+                    EditText input = label.equals("主线任务") ? mainTargetInput :
+                                     label.equals("支线任务 1") ? sub1TargetInput : sub2TargetInput;
+                    if (input != null && !input.getText().toString().isEmpty()) {
+                        try {
+                            targetSec = Integer.parseInt(input.getText().toString().trim()) * 60;
+                            // 更新槽位的 targetSeconds
+                            if (label.equals("主线任务")) {
+                                FocusStore.setMain(this, slot.title, slot.ruleId, targetSec);
+                            } else if (label.equals("支线任务 1")) {
+                                FocusStore.setSub1(this, slot.title, slot.ruleId, targetSec);
+                            } else {
+                                FocusStore.setSub2(this, slot.title, slot.ruleId, targetSec);
+                            }
+                        } catch (NumberFormatException e) {
+                            targetSec = 25 * 60;
+                        }
+                    }
+                    // 开始任务
+                    FocusStore.startSlot(this, slot.slotKey);
+                    render();
+                });
+                actions.addView(start, new LinearLayout.LayoutParams(0, dp(48), 1f));
+
+                TextView clear = pill("清空", UiPalette.PALE, UiPalette.ACCENT);
+                clear.setOnClickListener(v -> onClear.run());
+                LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+                clearParams.leftMargin = dp(8);
+                actions.addView(clear, clearParams);
+            } else {
+                // 进行中：显示"做完了"、"清空"和"更多"按钮
+                TextView done = pill("做完了", UiPalette.ACCENT, Color.WHITE);
+                done.setOnClickListener(v -> onComplete.run());
+                actions.addView(done, new LinearLayout.LayoutParams(0, dp(48), 1f));
+
+                TextView clear = pill("清空", UiPalette.PALE, UiPalette.ACCENT);
+                clear.setOnClickListener(v -> onClear.run());
+                LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+                clearParams.leftMargin = dp(8);
+                actions.addView(clear, clearParams);
+
+                TextView more = text("⋯", 18, UiPalette.ACCENT, true);
+                more.setGravity(Gravity.CENTER);
+                more.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+                more.setContentDescription("更多");
+                more.setOnClickListener(v -> showSlotMenu(slot.slotKey));
+                LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+                moreParams.leftMargin = dp(8);
+                actions.addView(more, moreParams);
+            }
+
+            // 显示步骤（如果有）
+            if (slot.ruleId >= 0) {
+                card.addView(buildSubtaskBlock(slot.ruleId));
+            }
         }
-
-        if (ruleId >= 0 && isRunning) {
-            card.addView(buildSubtaskBlock(ruleId));
-        }
-        return card;
-    }
-
-    private View buildEmptyCard() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(FormKit.round(this, Color.WHITE, 18));
-        card.setPadding(dp(20), dp(20), dp(20), dp(20));
-        card.setElevation(dp(2));
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.bottomMargin = dp(14);
-        card.setLayoutParams(cardParams);
-
-        card.addView(text("现在做什么？", 20, UiPalette.INK, true));
-        TextView hint = text("只挑一件。想到别的，先丢到最下面的「刚想到的」。", 13, UiPalette.MUTED, false);
-        hint.setPadding(0, dp(6), 0, 0);
-        card.addView(hint);
         return card;
     }
 
@@ -506,106 +549,60 @@ public final class FocusActivity extends Activity {
         FormKit.showStyled(this, dialog);
     }
 
-    /** 时长选择器：滚轮选分钟数。 */
-    private void showDurationPicker(java.util.function.IntConsumer callback) {
-        showDurationPicker(FocusStore.currentTargetMinutes(this), callback);
-    }
+    /** 显示槽位菜单（放回想法/清空） */
+    private void showSlotMenu(final String slotKey) {
+        FocusStore.TaskSlot slot;
+        if (slotKey.equals(FocusStore.KEY_MAIN)) {
+            slot = FocusStore.getMain(this);
+        } else if (slotKey.equals(FocusStore.KEY_SUB1)) {
+            slot = FocusStore.getSub1(this);
+        } else {
+            slot = FocusStore.getSub2(this);
+        }
 
-    /** 时长选择器：时、分、秒三个滚轮。 */
-    private void showDurationPicker(int currentSeconds, java.util.function.IntConsumer callback) {
-        int hours = currentSeconds / 3600;
-        int minutes = (currentSeconds % 3600) / 60;
-        int seconds = currentSeconds % 60;
+        if (slot.isEmpty()) return;
 
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.HORIZONTAL);
-        layout.setGravity(Gravity.CENTER);
-        layout.setPadding(dp(18), dp(10), dp(18), dp(0));
-
-        NumberPicker hourPicker = createPicker(0, 23, hours);
-        NumberPicker minPicker = createPicker(0, 59, minutes);
-        NumberPicker secPicker = createPicker(0, 59, seconds);
-
-        layout.addView(hourPicker);
-        layout.addView(text("时", 13, UiPalette.INK, false));
-        layout.addView(minPicker);
-        layout.addView(text("分", 13, UiPalette.INK, false));
-        layout.addView(secPicker);
-        layout.addView(text("秒", 13, UiPalette.INK, false));
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("设时长")
-                .setView(layout)
-                .setNegativeButton("不限制", (d, w) -> callback.accept(0))
-                .setPositiveButton("确定", null)
-                .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(v -> {
-                    int total = hourPicker.getValue() * 3600 + minPicker.getValue() * 60 + secPicker.getValue();
-                    callback.accept(total);
-                    dialog.dismiss();
-                }));
-        FormKit.showStyled(this, dialog);
-    }
-
-    private NumberPicker createPicker(int min, int max, int value) {
-        NumberPicker picker = new NumberPicker(this);
-        picker.setMinValue(min);
-        picker.setMaxValue(max);
-        picker.setValue(value);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
-        params.leftMargin = dp(4);
-        params.rightMargin = dp(4);
-        return picker;
-    }
-
-    /** 编辑当前任务的时长。 */
-    private void editDuration() {
-        showDurationPicker(FocusStore.currentTargetSeconds(this), seconds -> {
-            FocusStore.setCurrent(this, FocusStore.currentTitle(this),
-                    FocusStore.currentRuleId(this), seconds);
-            render();
-        });
-    }
-
-    private void showCurrentMenu() {
-        FormKit.options(this, null,
+        FormKit.options(this, slot.title,
                 new String[]{"放回「刚想到的」", "先放下，不记录"}, -1, which -> {
-                    String title = FocusStore.currentTitle(this);
-                    int ruleId = FocusStore.currentRuleId(this);
-                    if (which == 0 && !title.isEmpty()) FocusStore.addIdea(this, title, ruleId);
-                    FocusStore.clearCurrent(this);
-                    doneBanner = "";
-                    pickerOpen = true;
-                    render();
+                    if (which == 0 && !slot.title.isEmpty()) {
+                        FocusStore.addIdea(this, slot.title, slot.ruleId);
+                    }
+                    clearSlot(slotKey);
                 });
     }
 
-    /** 完成主任务：写一条带真实时长的记录，顺带把步骤全勾上。 */
-    private void completeCurrent() {
-        final String title = FocusStore.currentTitle(this);
-        if (title.isEmpty()) return;
-        final int ruleId = FocusStore.currentRuleId(this);
-        final long startedAt = FocusStore.currentStartedAt(this);
+    /** 完成指定槽位的任务 */
+    private void completeSlot(String slotKey) {
+        FocusStore.TaskSlot slot;
+        if (slotKey.equals(FocusStore.KEY_MAIN)) {
+            slot = FocusStore.getMain(this);
+        } else if (slotKey.equals(FocusStore.KEY_SUB1)) {
+            slot = FocusStore.getSub1(this);
+        } else {
+            slot = FocusStore.getSub2(this);
+        }
+
+        if (slot.isEmpty()) return;
+
+        final long startedAt = slot.startedAt;
         final long now = System.currentTimeMillis();
 
-        ReminderRecord.finish(this, UUID.randomUUID().toString(), title,
+        ReminderRecord.finish(this, UUID.randomUUID().toString(), slot.title,
                 ReminderRecord.KIND_DONE, startedAt > 0 ? startedAt : now, now,
-                "专注完成", ReminderSettings.MODULE_TASK);
+                "专注完成 (" + slot.slotKey + ")", ReminderSettings.MODULE_TASK);
 
-        if (ruleId >= 0) {
+        if (slot.ruleId >= 0) {
             final long dayStart = ReminderRecord.dayStart(now);
-            ReminderSettings.Rule rule = ReminderSettings.ruleById(this, ruleId);
+            ReminderSettings.Rule rule = ReminderSettings.ruleById(this, slot.ruleId);
             if (rule != null) {
-                for (ReminderSettings.Rule sub : Subtasks.of(this, ruleId)) {
-                    if (!Subtasks.doneToday(this, ruleId, sub.title, dayStart)) {
-                        Subtasks.toggle(this, ruleId, sub.title, false, dayStart);
+                for (ReminderSettings.Rule sub : Subtasks.of(this, slot.ruleId)) {
+                    if (!Subtasks.doneToday(this, slot.ruleId, sub.title, dayStart)) {
+                        Subtasks.toggle(this, slot.ruleId, sub.title, false, dayStart);
                     }
                 }
-                ReminderSettings.markCompleted(this, ruleId, Math.max(1, rule.dailyTarget));
+                ReminderSettings.markCompleted(this, slot.ruleId, Math.max(1, rule.dailyTarget));
             } else {
-                // 微习惯不在规则表里，走 Habits 的打卡
-                Habits.Habit habit = Habits.byParentId(this, ruleId);
+                Habits.Habit habit = Habits.byParentId(this, slot.ruleId);
                 if (habit != null && !Habits.isCompletedToday(this, habit.id, dayStart)) {
                     Habits.toggleCompletion(this, habit.id, dayStart, true);
                 }
@@ -614,11 +611,21 @@ public final class FocusActivity extends Activity {
 
         long minutes = startedAt > 0 ? Math.max(1, (now - startedAt) / 60000) : 0;
         doneBanner = minutes > 0
-                ? "「" + title + "」做完，用了 " + minutes + " 分钟"
-                : "「" + title + "」做完了";
-        FocusStore.clearCurrent(this);
-        pickerOpen = true;
+                ? "「" + slot.title + "」做完，用了 " + minutes + " 分钟"
+                : "「" + slot.title + "」做完了";
+        clearSlot(slotKey);
+    }
+
+    /** 清空指定槽位 */
+    private void clearSlot(String slotKey) {
+        FocusStore.clearSlot(this, slotKey);
         render();
+    }
+
+    /** 完成主任务：写一条带真实时长的记录，顺带把步骤全勾上。（保留向后兼容） */
+    @Deprecated
+    private void completeCurrent() {
+        completeSlot(FocusStore.KEY_MAIN);
     }
 
     private View buildDoneBanner() {
@@ -655,10 +662,9 @@ public final class FocusActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(text(FocusStore.hasCurrent(this) ? "换一件" : "现在做哪一件",
-                        14, UiPalette.INK, true),
+        head.addView(text("添加任务到槽位", 14, UiPalette.INK, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        if (FocusStore.hasCurrent(this)) {
+        if (pickerOpen) {
             TextView collapse = text("收起", 12, UiPalette.MUTED, true);
             collapse.setPadding(dp(10), dp(4), dp(2), dp(4));
             collapse.setOnClickListener(v -> {
@@ -749,13 +755,26 @@ public final class FocusActivity extends Activity {
         act.setPadding(dp(8), dp(4), dp(2), dp(4));
         row.addView(act);
 
-        row.setOnClickListener(v -> {
-            FocusStore.setCurrent(this, task.title, task.id, 0);
+        row.setOnClickListener(v -> showSlotPickerDialog(task.title, task.id));
+        return row;
+    }
+
+    /** 显示槽位选择对话框：让用户选择将任务添加到主线/支线 1/支线 2 */
+    private void showSlotPickerDialog(final String title, final int ruleId) {
+        final String[] slots = {"主线任务", "支线任务 1", "支线任务 2"};
+        FormKit.options(this, "添加到哪个槽位？", slots, -1, which -> {
+            int targetSec = 25 * 60; // 默认 25 分钟
+            if (which == 0) {
+                FocusStore.setMain(this, title, ruleId, targetSec);
+            } else if (which == 1) {
+                FocusStore.setSub1(this, title, ruleId, targetSec);
+            } else {
+                FocusStore.setSub2(this, title, ruleId, targetSec);
+            }
             pickerOpen = false;
             doneBanner = "";
             render();
         });
-        return row;
     }
 
     private View pickerSectionLabel(String name) {
@@ -789,10 +808,7 @@ public final class FocusActivity extends Activity {
         row.addView(act);
 
         row.setOnClickListener(v -> {
-            FocusStore.setCurrent(this, habit.title, Habits.parentId(habit.id), 0);
-            pickerOpen = false;
-            doneBanner = "";
-            render();
+            showSlotPickerDialog(habit.title, Habits.parentId(habit.id));
         });
         return row;
     }
@@ -806,10 +822,7 @@ public final class FocusActivity extends Activity {
         ReminderSettings.Rule rule = FocusStore.createTaskRule(this, title);
         customDraft = "";
         if (customInput != null) customInput.setText("");
-        FocusStore.setCurrent(this, title, rule != null ? rule.id : -1, 0);
-        pickerOpen = false;
-        doneBanner = "";
-        render();
+        showSlotPickerDialog(title, rule != null ? rule.id : -1);
     }
 
     // ------------------------------------------------------------ 刚想到的
@@ -1078,15 +1091,9 @@ public final class FocusActivity extends Activity {
                 .putExtra(SubtaskActivity.EXTRA_PARENT_TITLE, title));
     }
 
-    /** 切换当前主任务是个大事，别一点就跳走。 */
+    /** 将想法设为任务：直接弹出槽位选择 */
     private void confirmTakeIdea(final FocusStore.Idea idea) {
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("设为现在？")
-                .setMessage("接下来只做「" + ideaTitle(idea) + "」，别的先排在后面。")
-                .setNegativeButton("再等等", null)
-                .setPositiveButton("开始", (d, w) -> takeIdea(idea))
-                .create();
-        FormKit.showStyled(this, dialog);
+        takeIdea(idea);
     }
 
     private void addIdea() {
@@ -1103,18 +1110,27 @@ public final class FocusActivity extends Activity {
         render();
     }
 
-    /** 想法升为主任务：规则已经存在，直接搬过去。 */
+    /** 想法升为任务：让用户选择放到哪个槽位 */
     private void takeIdea(final FocusStore.Idea idea) {
-        boolean had = FocusStore.hasCurrent(this);
-        int ruleId = idea.ruleId >= 0 ? idea.ruleId : FocusStore.ensureIdeaRule(this, idea);
-        FocusStore.setCurrent(this, ideaTitle(idea), ruleId, 0);
-        FocusStore.removeIdea(this, idea.id);
-        doneBanner = "";
-        pickerOpen = false;
-        render();
-        if (had) {
-            Toast.makeText(this, "选好了，点「设时长」或直接「开始做」", Toast.LENGTH_SHORT).show();
-        }
+        final int ruleId = idea.ruleId >= 0 ? idea.ruleId : FocusStore.ensureIdeaRule(this, idea);
+        final String title = ideaTitle(idea);
+
+        final String[] slots = {"主线任务", "支线任务 1", "支线任务 2"};
+        FormKit.options(this, "放到哪个槽位？", slots, -1, which -> {
+            int targetSec = 25 * 60;
+            if (which == 0) {
+                FocusStore.setMain(this, title, ruleId, targetSec);
+            } else if (which == 1) {
+                FocusStore.setSub1(this, title, ruleId, targetSec);
+            } else {
+                FocusStore.setSub2(this, title, ruleId, targetSec);
+            }
+            FocusStore.removeIdea(this, idea.id);
+            doneBanner = "";
+            pickerOpen = false;
+            render();
+            Toast.makeText(this, "已添加：「" + title + "」", Toast.LENGTH_SHORT).show();
+        });
     }
 
     /** 长按条目：改名字 / 删掉。 */
