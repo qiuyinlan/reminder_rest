@@ -193,7 +193,7 @@ public final class FocusBubbleService extends Service {
         }
         if (windowManager == null) return;
 
-        card = new LinearLayout(this);
+        card = new BubbleCard(this);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(20));
@@ -342,7 +342,6 @@ public final class FocusBubbleService extends Service {
         params.x = dp(16);
         params.y = dp(150);
 
-        attachTouch();
         try {
             windowManager.addView(card, params);
             attached = true;
@@ -475,55 +474,75 @@ public final class FocusBubbleService extends Service {
         return row;
     }
 
-    private void attachTouch() {
-        card.setOnTouchListener(new View.OnTouchListener() {
-            private float downX;
-            private float downY;
-            private int startX;
-            private int startY;
-            private long downAt;
-            private boolean moved;
+    /**
+     * 整块都能拖：收起态任意方向拖，展开态横向拖窗口、竖向留给列表滚动。
+     * 用 onInterceptTouchEvent 才能在按钮/列表上也能拖起来。
+     */
+    private final class BubbleCard extends LinearLayout {
+        private float downX;
+        private float downY;
+        private int startX;
+        private int startY;
+        private boolean dragging;
 
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                    // 展开态里手按在列表/输入区上，交给子视图自己处理
-                    if (expanded && event.getY() > headerBox.getHeight()) return false;
-                }
-                switch (event.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        downX = event.getRawX();
-                        downY = event.getRawY();
-                        startX = params.x;
-                        startY = params.y;
-                        downAt = System.currentTimeMillis();
-                        moved = false;
-                        return true;
-                    case MotionEvent.ACTION_MOVE: {
-                        int dx = (int) (event.getRawX() - downX);
-                        int dy = (int) (event.getRawY() - downY);
-                        if (Math.abs(dx) > dp(12) || Math.abs(dy) > dp(12)) moved = true;
-                        if (!moved) return true;
-                        params.x = startX + dx;
-                        params.y = startY + dy;
-                        updateLayout();
+        BubbleCard(Context context) {
+            super(context);
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent event) {
+            if (params == null) return false;
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downX = event.getRawX();
+                    downY = event.getRawY();
+                    startX = params.x;
+                    startY = params.y;
+                    dragging = false;
+                    return false;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = Math.abs(event.getRawX() - downX);
+                    float dy = Math.abs(event.getRawY() - downY);
+                    // 展开态：横向拖窗口，竖向留给 ScrollView
+                    boolean grab = expanded
+                            ? (dx > dp(12) && dx > dy)
+                            : (dx > dp(10) || dy > dp(10));
+                    if (grab) {
+                        dragging = true;
                         return true;
                     }
-                    case MotionEvent.ACTION_UP:
-                        if (!moved) {
-                            if (!expanded) {
-                                // 展开态点空白不再收起，收起只走右上角 －，防止误触
-                                toggleExpand();
-                            }
-                        } else {
-                            settleAfterDrag();
-                        }
-                        return true;
-                    default:
-                        return false;
+                    return false;
                 }
+                default:
+                    return false;
             }
-        });
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            if (params == null) return super.onTouchEvent(event);
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_MOVE:
+                    if (dragging) {
+                        params.x = startX + (int) (event.getRawX() - downX);
+                        params.y = startY + (int) (event.getRawY() - downY);
+                        updateLayout();
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (dragging) {
+                        dragging = false;
+                        settleAfterDrag();
+                    } else if (!expanded) {
+                        // 收起态点空白：展开
+                        toggleExpand();
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        }
     }
 
     // ---------------------------------------------------------- 拖拽/贴边
@@ -934,10 +953,14 @@ public final class FocusBubbleService extends Service {
         if (slotBox == null) return;
         slotBox.removeAllViews();
         if (boardTab == 1) {
-            fillBoard();
+            fillTaskBoard();
             return;
         }
         if (boardTab == 2) {
+            fillBoard();
+            return;
+        }
+        if (boardTab == 3) {
             fillDoneList();
             return;
         }
@@ -968,7 +991,7 @@ public final class FocusBubbleService extends Service {
     private void fillTabBar() {
         if (tabBar == null) return;
         tabBar.removeAllViews();
-        String[] names = {"现在", "白板", "done"};
+        String[] names = {"现在", "任务", "白板", "done"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
             boolean active = boardTab == i;
@@ -988,6 +1011,145 @@ public final class FocusBubbleService extends Service {
             if (i > 0) params.leftMargin = dp(4);
             tabBar.addView(chip, params);
         }
+    }
+
+    /** 任务分区：任务页的今日任务 + 微习惯，能直接勾、直接加。 */
+    private void fillTaskBoard() {
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+
+        List<ReminderSettings.Rule> pending = new ArrayList<>();
+        for (ReminderSettings.Rule task : Tasks.today(this)) {
+            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) continue;
+            pending.add(task);
+        }
+        List<Habits.Habit> habits = new ArrayList<>();
+        for (Habits.Habit habit : Habits.todayScheduled(this)) {
+            if (!Habits.isCompletedToday(this, habit.id, dayStart)) habits.add(habit);
+        }
+
+        if (pending.isEmpty() && habits.isEmpty()) {
+            TextView empty = FormKit.text(this, "今天都做完了", 11, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(4), 0, dp(4));
+            slotBox.addView(empty);
+        }
+        for (final ReminderSettings.Rule task : pending) {
+            slotBox.addView(buildTaskBoardRow(task.title, v -> completeTaskRule(task)));
+        }
+        for (final Habits.Habit habit : habits) {
+            slotBox.addView(buildTaskBoardRow(habit.title, v -> completeHabit(habit)));
+        }
+
+        slotBox.addView(buildTaskInputRow(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private View buildTaskBoardRow(String title, View.OnClickListener onCheck) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(4), 0, dp(4));
+
+        row.addView(buildCheckBox("完成 " + title, onCheck),
+                new LinearLayout.LayoutParams(dp(15), dp(15)));
+
+        TextView name = FormKit.text(this, title, 11, UiPalette.INK, false);
+        name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(7);
+        row.addView(name, nameParams);
+        return row;
+    }
+
+    /** 悬浮窗勾掉一条任务，顺带把子任务和它占的槽位一起处理。 */
+    private void completeTaskRule(ReminderSettings.Rule task) {
+        long now = System.currentTimeMillis();
+        long dayStart = ReminderRecord.dayStart(now);
+        if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) return;
+
+        for (ReminderSettings.Rule sub : Subtasks.of(this, task.id)) {
+            if (!Subtasks.doneToday(this, task.id, sub.title, dayStart)) {
+                Subtasks.toggleQuiet(this, task.id, sub.title, false, dayStart);
+            }
+        }
+        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
+                ReminderRecord.KIND_DONE, now, now, "悬浮窗完成", ReminderSettings.MODULE_TASK);
+        ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
+
+        for (String key : new String[]{FocusStore.KEY_MAIN, FocusStore.KEY_SUB1, FocusStore.KEY_SUB2}) {
+            FocusStore.TaskSlot slot = slotOf(key);
+            if (!slot.isEmpty() && slot.ruleId == task.id) {
+                FocusStore.clearSlot(this, key);
+            }
+        }
+        render();
+    }
+
+    /** 悬浮窗给微习惯打卡。 */
+    private void completeHabit(Habits.Habit habit) {
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        if (Habits.isCompletedToday(this, habit.id, dayStart)) return;
+        Habits.toggleCompletion(this, habit.id, dayStart, true);
+        render();
+    }
+
+    /** 任务分区底部的一行输入，直接建一条今日任务。 */
+    private View buildTaskInputRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = dp(6);
+        row.setLayoutParams(rowParams);
+
+        taskInput = new EditText(this);
+        taskInput.setHint("加一个任务");
+        taskInput.setTextSize(12);
+        taskInput.setSingleLine(true);
+        taskInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        taskInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        taskInput.setTextColor(UiPalette.INK);
+        taskInput.setHintTextColor(UiPalette.MUTED);
+        taskInput.setPadding(dp(8), dp(6), dp(8), dp(6));
+        taskInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        taskInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) grabWindowFocus();
+            else dropWindowFocus();
+        });
+        taskInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitTaskItem();
+                return true;
+            }
+            return false;
+        });
+        row.addView(taskInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
+
+        TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
+        plus.setGravity(Gravity.CENTER);
+        plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 9));
+        plus.setOnClickListener(v -> submitTaskItem());
+        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(34), dp(34));
+        plusParams.leftMargin = dp(6);
+        row.addView(plus, plusParams);
+        return row;
+    }
+
+    private void submitTaskItem() {
+        String text = taskInput == null ? "" : taskInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            dropWindowFocus();
+            return;
+        }
+        ArrayList<Integer> points = new ArrayList<>();
+        points.add(9 * 3600);
+        ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                        ReminderSettings.nextRuleId(this), text, 9 * 60, 9 * 60, 24 * 3600,
+                        points, 1, true, false)
+                .withModule(ReminderSettings.MODULE_TASK);
+        ReminderSettings.upsertRule(this, rule);
+        taskInput.setText("");
+        dropWindowFocus();
+        render();
     }
 
     /** 白板：跟白板页同一份数据（module=board 的规则），点一下勾掉。 */
@@ -1571,6 +1733,8 @@ public final class FocusBubbleService extends Service {
     private EditText doneInput;
     /** 白板输入框的引用。 */
     private EditText boardInput;
+    /** 任务分区输入框的引用。 */
+    private EditText taskInput;
     /** 白板已完成区是否展开。 */
     private boolean boardDoneOpen;
 
@@ -1578,9 +1742,11 @@ public final class FocusBubbleService extends Service {
     private void openCurrentTab() {
         Intent intent;
         if (boardTab == 1) {
+            intent = new Intent(this, TaskActivity.class);
+        } else if (boardTab == 2) {
             intent = new Intent(this, TaskActivity.class)
                     .putExtra("module", ReminderSettings.MODULE_BOARD);
-        } else if (boardTab == 2) {
+        } else if (boardTab == 3) {
             intent = new Intent(this, DoneActivity.class);
         } else {
             intent = new Intent(this, FocusActivity.class);
