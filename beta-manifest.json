@@ -1,7 +1,7 @@
 {
-    "versionCode": 104,
-    "versionName": "0.3.0-beta85",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta85/rest-bean.apk",
-    "sha256": "36ac2c61534a299b3771a214aeac37699525f6928dd3d0958e71fa76121003ce",
-    "notes": "悬浮窗入口改成「」按钮，展开态可滑动查看所有任务；完成任务后其他任务正确消失"
+    "versionCode": 105,
+    "versionName": "0.3.0-beta87",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta87/rest-bean.apk",
+    "sha256": "ec62fa033cc42e498288d0fdbe74e437bdbba5a3df17c71604eadadfb3441087",
+    "notes": "悬浮窗：收起显示任务名、「」进 App；展开看全部待办可滑动，勾掉即消失"
 }
