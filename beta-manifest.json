@@ -1,7 +1,7 @@
 {
-    "versionCode": 112,
-    "versionName": "0.3.0-beta94",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta94/rest-bean.apk",
-    "sha256": "f208b93b6089ffbb0d3784e9d0dcff27b5b14ee01aee233cff98fc09d28ebc44",
-    "notes": "大悬浮窗顶部加切换：现在 / 白板 / done，三种列表随时切"
+    "versionCode": 113,
+    "versionName": "0.3.0-beta95",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta95/rest-bean.apk",
+    "sha256": "e43037ce6b1988d90880f9b49e6fdd8f4c44e3811fdef875ca1c768beebfbe67",
+    "notes": "白板页直接复用任务页：分类、点进拆子任务、已完成折叠全部通用，数据单独存"
 }
