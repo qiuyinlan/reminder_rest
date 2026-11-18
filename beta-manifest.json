@@ -1,7 +1,7 @@
 {
-    "versionCode": 110,
-    "versionName": "0.3.0-beta92",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta92/rest-bean.apk",
-    "sha256": "095256f1b626277d5a1ed2181235f49c9dd4558c9274a32b5b4dbd465aed5c29",
-    "notes": "修小悬浮窗宽度不回到自适应：弹性占位只在展开时生效"
+    "versionCode": 111,
+    "versionName": "0.3.0-beta93",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta93/rest-bean.apk",
+    "sha256": "1625da5705cba9f2f619385691d9c602ca18b7f6a92f74cf7818b2038be87131",
+    "notes": "白板任务行复用任务页样式：圆形勾选、点进子任务、已完成沉到底部"
 }
