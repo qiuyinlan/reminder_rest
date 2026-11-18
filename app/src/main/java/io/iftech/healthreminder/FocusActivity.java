@@ -132,23 +132,38 @@ public final class FocusActivity extends Activity {
 
         if (!doneBanner.isEmpty()) container.addView(buildDoneBanner());
 
-        // 渲染 3 个并行任务卡片：主线 + 支线 1 + 支线 2
+        // 渲染并行任务卡片：只画有任务的槽位，勾掉即从页面消失
         FocusStore.TaskSlot main = FocusStore.getMain(this);
         FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
         FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
 
-        container.addView(buildTaskCard(main, "主线任务",
-                () -> completeSlot(FocusStore.KEY_MAIN),
-                () -> clearSlot(FocusStore.KEY_MAIN)));
-        container.addView(buildTaskCard(sub1, "支线任务 1",
-                () -> completeSlot(FocusStore.KEY_SUB1),
-                () -> clearSlot(FocusStore.KEY_SUB1)));
-        container.addView(buildTaskCard(sub2, "支线任务 2",
-                () -> completeSlot(FocusStore.KEY_SUB2),
-                () -> clearSlot(FocusStore.KEY_SUB2)));
+        // 先清空旧引用，避免刷到已经被移除的控件上
+        mainElapsed = null;
+        sub1Elapsed = null;
+        sub2Elapsed = null;
 
-        // 如果三个槽位都为空，显示选择器
-        if (main.isEmpty() && sub1.isEmpty() && sub2.isEmpty()) {
+        int filled = 0;
+        if (!main.isEmpty()) {
+            filled++;
+            container.addView(buildTaskCard(main, "主线任务",
+                    () -> completeSlot(FocusStore.KEY_MAIN),
+                    () -> clearSlot(FocusStore.KEY_MAIN)));
+        }
+        if (!sub1.isEmpty()) {
+            filled++;
+            container.addView(buildTaskCard(sub1, "支线任务 1",
+                    () -> completeSlot(FocusStore.KEY_SUB1),
+                    () -> clearSlot(FocusStore.KEY_SUB1)));
+        }
+        if (!sub2.isEmpty()) {
+            filled++;
+            container.addView(buildTaskCard(sub2, "支线任务 2",
+                    () -> completeSlot(FocusStore.KEY_SUB2),
+                    () -> clearSlot(FocusStore.KEY_SUB2)));
+        }
+
+        // 还有空槽位就留一条添加入口
+        if (filled < 3) {
             container.addView(pickerOpen ? buildPicker() : buildCollapsedPicker());
         }
         container.addView(buildIdeaSection());
