@@ -1,7 +1,7 @@
 {
-    "versionCode": 116,
-    "versionName": "0.3.0-beta98",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta98/rest-bean.apk",
-    "sha256": "0f0b48621e9490739718583e7e44de60961967a6b552e1882e7a0f4f0c463613",
-    "notes": "修贴边展开被裁到屏幕外：展开时自动把窗口拉回屏内，点半圆直接展开"
+    "versionCode": 117,
+    "versionName": "0.3.0-beta99",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta99/rest-bean.apk",
+    "sha256": "83098695319b44f791ea124392a121d57eb87cbd504cb6ac030bcedbb9995f7b",
+    "notes": "去掉长按进 App：只保留放大镜进对应页面"
 }
