@@ -1,7 +1,7 @@
 {
-    "versionCode": 113,
-    "versionName": "0.3.0-beta95",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta95/rest-bean.apk",
-    "sha256": "e43037ce6b1988d90880f9b49e6fdd8f4c44e3811fdef875ca1c768beebfbe67",
-    "notes": "白板页直接复用任务页：分类、点进拆子任务、已完成折叠全部通用，数据单独存"
+    "versionCode": 114,
+    "versionName": "0.3.0-beta96",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta96/rest-bean.apk",
+    "sha256": "8f4413628e7d4d4068bfee6f72d6eae947c7f03e71d968c3a5805ee8859935b0",
+    "notes": "悬浮窗：白板勾选态同步、放大键改成「并跟随分区跳转、done 分区可随手记一条"
 }
