@@ -31,7 +31,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -770,8 +769,8 @@ public final class FocusBubbleService extends Service {
             fillIdeas();
             applyInputMode();
             updateMusicButton();
-            // 高度跟着内容，最多屏幕 62%，超了就滑
-            final int maxHeight = (int) (screenHeight() * 0.62f);
+            // 高度跟内容走，最长不超过 300dp（跟以前的展开态差不多高）
+            final int maxHeight = Math.min(dp(300), (int) (screenHeight() * 0.5f));
             expandScroll.post(() -> {
                 int contentHeight = expandBox.getMeasuredHeight();
                 if (contentHeight <= 0) return;
@@ -883,35 +882,14 @@ public final class FocusBubbleService extends Service {
         FocusStore.TaskSlot main = FocusStore.getMain(this);
         FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
         FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
-        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
 
-        List<Integer> slotRuleIds = new ArrayList<>();
-        if (main.ruleId >= 0) slotRuleIds.add(main.ruleId);
-        if (sub1.ruleId >= 0) slotRuleIds.add(sub1.ruleId);
-        if (sub2.ruleId >= 0) slotRuleIds.add(sub2.ruleId);
-
-        // 1. 正在做的槽位任务
+        // 只列「现在」页的槽位任务（主线 + 支线），任务页的不在这里重复
         if (!main.isEmpty()) content.addView(buildSlotStatusRow("主线", main));
         if (!sub1.isEmpty()) content.addView(buildSlotStatusRow("支线 1", sub1));
         if (!sub2.isEmpty()) content.addView(buildSlotStatusRow("支线 2", sub2));
 
-        // 2. 今天还没做的任务
-        for (ReminderSettings.Rule task : Tasks.today(this)) {
-            if (slotRuleIds.contains(task.id)) continue;
-            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
-                continue;
-            }
-            content.addView(buildTaskRow(task));
-        }
-
-        // 3. 今天要做的微习惯
-        for (Habits.Habit habit : Habits.todayScheduled(this)) {
-            if (Habits.isCompletedToday(this, habit.id, dayStart)) continue;
-            content.addView(buildHabitRow(habit));
-        }
-
         if (content.getChildCount() == 0) {
-            TextView empty = FormKit.text(this, "今天都做完了", 11, UiPalette.MUTED, false);
+            TextView empty = FormKit.text(this, "还没选任务", 11, UiPalette.MUTED, false);
             empty.setPadding(0, dp(4), 0, dp(4));
             content.addView(empty);
         }
@@ -948,85 +926,6 @@ public final class FocusBubbleService extends Service {
 
         row.setOnClickListener(v -> completeSlot(slot.slotKey));
         return row;
-    }
-
-    /** 展开态里的今日任务行：点方框或整行就勾掉。 */
-    private View buildTaskRow(final ReminderSettings.Rule task) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(5), 0, dp(5));
-
-        row.addView(buildCheckBox("完成 " + (task.title.isEmpty() ? "这个任务" : task.title),
-                v -> completeTask(task)), new LinearLayout.LayoutParams(dp(16), dp(16)));
-
-        TextView name = FormKit.text(this, task.title.isEmpty() ? "未命名任务" : task.title,
-                11, UiPalette.INK, false);
-        name.setMaxLines(1);
-        name.setEllipsize(TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        nameParams.leftMargin = dp(8);
-        row.addView(name, nameParams);
-
-        row.setOnClickListener(v -> completeTask(task));
-        return row;
-    }
-
-    /** 展开态里的微习惯行：点一下就打卡。 */
-    private View buildHabitRow(final Habits.Habit habit) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(5), 0, dp(5));
-
-        row.addView(buildCheckBox("打卡 " + habit.title, v -> completeHabit(habit)),
-                new LinearLayout.LayoutParams(dp(16), dp(16)));
-
-        TextView name = FormKit.text(this, habit.title, 11, UiPalette.INK, false);
-        name.setMaxLines(1);
-        name.setEllipsize(TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        nameParams.leftMargin = dp(8);
-        row.addView(name, nameParams);
-
-        row.setOnClickListener(v -> completeHabit(habit));
-        return row;
-    }
-
-    /** 悬浮窗里勾掉一条今日任务，顺便清掉它占着的槽位。 */
-    private void completeTask(ReminderSettings.Rule task) {
-        long now = System.currentTimeMillis();
-        long dayStart = ReminderRecord.dayStart(now);
-        if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) return;
-
-        for (ReminderSettings.Rule sub : Subtasks.of(this, task.id)) {
-            if (!Subtasks.doneToday(this, task.id, sub.title, dayStart)) {
-                Subtasks.toggleQuiet(this, task.id, sub.title, false, dayStart);
-            }
-        }
-        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
-                ReminderRecord.KIND_DONE, now, now, "悬浮窗完成", ReminderSettings.MODULE_TASK);
-        ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
-        clearSlotsWithRule(task.id);
-        render();
-    }
-
-    /** 微习惯打卡。 */
-    private void completeHabit(Habits.Habit habit) {
-        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
-        if (Habits.isCompletedToday(this, habit.id, dayStart)) return;
-        Habits.toggleCompletion(this, habit.id, dayStart, true);
-        render();
-    }
-
-    /** 任务在任何槽位上挂着，就一并清掉，避免“勾了但条子还写着”。 */
-    private void clearSlotsWithRule(int ruleId) {
-        for (String key : new String[]{FocusStore.KEY_MAIN, FocusStore.KEY_SUB1, FocusStore.KEY_SUB2}) {
-            FocusStore.TaskSlot slot = slotOf(key);
-            if (!slot.isEmpty() && slot.ruleId == ruleId) {
-                FocusStore.clearSlot(this, key);
-            }
-        }
     }
 
     private void fillIdeas() {
