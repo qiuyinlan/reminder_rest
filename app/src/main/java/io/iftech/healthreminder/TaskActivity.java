@@ -39,7 +39,7 @@ public final class TaskActivity extends Activity {
     private LinearLayout listContainer;
     private LinearLayout headerHost;
     /** 当前页面背的是哪一类数据：任务页是 task，白板是 board（只换数据源，UI 全复用）。 */
-    private String module = module;
+    private String module = ReminderSettings.MODULE_TASK;
     private boolean completedExpanded;
     private boolean habitDoneExpanded;
     private boolean futureExpanded;
