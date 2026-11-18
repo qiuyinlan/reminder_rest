@@ -707,8 +707,13 @@ public final class FocusBubbleService extends Service {
                     }
                     case MotionEvent.ACTION_UP:
                         if (!moved) {
-                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) openFocus();
-                            else restoreFromEdge();
+                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) {
+                                openFocus();
+                            } else {
+                                // 贴边点一下：直接展开大窗（不能只恢复成条子）
+                                restoreFromEdge();
+                                if (!expanded) toggleExpand();
+                            }
                         } else {
                             persistPos();
                         }
@@ -820,6 +825,18 @@ public final class FocusBubbleService extends Service {
         }
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
+        // 贴边后展开，必须把窗口拉回屏幕内，否则右侧/底部会被裁掉
+        if (expanded) {
+            int sw = screenWidth();
+            int sh = screenHeight();
+            int w = dp(260);
+            if (params.x + w > sw) params.x = Math.max(0, sw - w);
+            if (params.x < 0) params.x = 0;
+            int visibleH = Math.min(dp(300), (int) (sh * 0.5f));
+            int maxY = Math.max(0, sh - visibleH - dp(8));
+            if (params.y > maxY) params.y = maxY;
+            if (params.y < 0) params.y = 0;
+        }
         // 弹性占位只在展开态撑开，收起态必须缩成 1px，否则整条撑满屏幕
         if (headSpacer != null && headSpacer.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             LinearLayout.LayoutParams spacerParams =
