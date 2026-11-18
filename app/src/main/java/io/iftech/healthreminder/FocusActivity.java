@@ -142,26 +142,20 @@ public final class FocusActivity extends Activity {
         sub1Elapsed = null;
         sub2Elapsed = null;
 
-        int filled = 0;
-        if (!main.isEmpty()) {
-            filled++;
-            container.addView(buildTaskCard(main, "主线任务",
-                    () -> completeSlot(FocusStore.KEY_MAIN),
-                    () -> clearSlot(FocusStore.KEY_MAIN)));
-        }
-        if (!sub1.isEmpty()) {
-            filled++;
-            container.addView(buildTaskCard(sub1, "支线任务 1",
-                    () -> completeSlot(FocusStore.KEY_SUB1),
-                    () -> clearSlot(FocusStore.KEY_SUB1)));
-        }
-        if (!sub2.isEmpty()) {
-            filled++;
-            container.addView(buildTaskCard(sub2, "支线任务 2",
-                    () -> completeSlot(FocusStore.KEY_SUB2),
-                    () -> clearSlot(FocusStore.KEY_SUB2)));
-        }
+        container.addView(buildTaskCard(main, "主线任务",
+                () -> completeSlot(FocusStore.KEY_MAIN),
+                () -> clearSlot(FocusStore.KEY_MAIN)));
+        container.addView(buildTaskCard(sub1, "支线任务 1",
+                () -> completeSlot(FocusStore.KEY_SUB1),
+                () -> clearSlot(FocusStore.KEY_SUB1)));
+        container.addView(buildTaskCard(sub2, "支线任务 2",
+                () -> completeSlot(FocusStore.KEY_SUB2),
+                () -> clearSlot(FocusStore.KEY_SUB2)));
 
+        int filled = 0;
+        if (!main.isEmpty()) filled++;
+        if (!sub1.isEmpty()) filled++;
+        if (!sub2.isEmpty()) filled++;
         // 还有空槽位就留一条添加入口
         if (filled < 3) {
             container.addView(pickerOpen ? buildPicker() : buildCollapsedPicker());
@@ -220,15 +214,15 @@ public final class FocusActivity extends Activity {
         // 刷新三个槽位的倒计时显示
         if (mainElapsed != null) {
             FocusStore.TaskSlot main = FocusStore.getMain(this);
-            mainElapsed.setText(main.isRunning() ? "已 " + elapsedText(main.startedAt) : "准备开始");
+            mainElapsed.setText(main.isRunning() ? "已 " + elapsedText(main.startedAt) : "");
         }
         if (sub1Elapsed != null) {
             FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
-            sub1Elapsed.setText(sub1.isRunning() ? "已 " + elapsedText(sub1.startedAt) : "准备开始");
+            sub1Elapsed.setText(sub1.isRunning() ? "已 " + elapsedText(sub1.startedAt) : "");
         }
         if (sub2Elapsed != null) {
             FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
-            sub2Elapsed.setText(sub2.isRunning() ? "已 " + elapsedText(sub2.startedAt) : "准备开始");
+            sub2Elapsed.setText(sub2.isRunning() ? "已 " + elapsedText(sub2.startedAt) : "");
         }
     }
 
@@ -273,74 +267,78 @@ public final class FocusActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 UiPalette.heroGradient());
-        bg.setCornerRadius(dp(20));
+        bg.setCornerRadius(dp(16));
         bg.setStroke(dp(1), UiPalette.BORDER);
         card.setBackground(bg);
-        card.setPadding(dp(18), dp(16), dp(18), dp(14));
-        card.setElevation(dp(2));
+        card.setPadding(dp(14), dp(11), dp(14), dp(11));
+        card.setElevation(dp(1));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.bottomMargin = dp(14);
+        cardParams.bottomMargin = dp(10);
         card.setLayoutParams(cardParams);
 
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         int dotColor = slot.isEmpty() ? UiPalette.MUTED :
                        slot.isRunning() ? UiPalette.ACCENT : UiPalette.SOFT;
-        View dot = dotView(dotColor);
-        top.addView(dot, new LinearLayout.LayoutParams(dp(8), dp(8)));
-        TextView labelView = text(label, 12, dotColor, true);
+        top.addView(dotView(dotColor), new LinearLayout.LayoutParams(dp(7), dp(7)));
+        TextView labelView = text(label, 11, dotColor, true);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        labelParams.leftMargin = dp(8);
+        labelParams.leftMargin = dp(7);
         top.addView(labelView, labelParams);
 
         // 根据槽位选择对应的 elapsed TextView
+        String elapsed = slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "";
         TextView elapsedView;
         if (label.equals("主线任务")) {
-            elapsedView = mainElapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
-                    12, UiPalette.MUTED, true);
+            elapsedView = mainElapsed = text(elapsed, 11, UiPalette.MUTED, true);
         } else if (label.equals("支线任务 1")) {
-            elapsedView = sub1Elapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
-                    12, UiPalette.MUTED, true);
+            elapsedView = sub1Elapsed = text(elapsed, 11, UiPalette.MUTED, true);
         } else {
-            elapsedView = sub2Elapsed = text(slot.isRunning() ? "已 " + elapsedText(slot.startedAt) : "准备开始",
-                    12, UiPalette.MUTED, true);
+            elapsedView = sub2Elapsed = text(elapsed, 11, UiPalette.MUTED, true);
         }
         top.addView(elapsedView);
 
-        // 时长：点这颗时钟用滚轮设（时/分/秒）
-        TextView targetChip = text("⏱ " + durationLabel(slot.targetSeconds), 11,
-                slot.targetSeconds > 0 ? UiPalette.ACCENT : UiPalette.MUTED, true);
+        // 设时长：只画一个时钟图标
+        TextView targetChip = text("⏱", 13,
+                slot.targetSeconds > 0 ? UiPalette.ACCENT : UiPalette.MUTED, false);
         targetChip.setGravity(Gravity.CENTER);
-        targetChip.setPadding(dp(8), dp(4), dp(8), dp(4));
-        targetChip.setBackground(FormKit.round(this, UiPalette.PALE, 10));
+        targetChip.setPadding(dp(6), dp(1), dp(6), dp(1));
         targetChip.setContentDescription("设置时长");
         targetChip.setOnClickListener(v -> pickTarget(slot));
         LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(-2, -2);
-        chipParams.leftMargin = dp(6);
+        chipParams.leftMargin = dp(4);
         top.addView(targetChip, chipParams);
+
+        if (!slot.isEmpty() && slot.isRunning()) {
+            TextView more = text("⋯", 14, UiPalette.MUTED, true);
+            more.setGravity(Gravity.CENTER);
+            more.setPadding(dp(8), 0, dp(2), 0);
+            more.setContentDescription("更多");
+            more.setOnClickListener(v -> showSlotMenu(slot.slotKey));
+            top.addView(more);
+        }
         card.addView(top);
 
-        // 任务标题或输入框
         if (slot.isEmpty()) {
-            // 空槽位显示输入框
+            // 空槽位：一行输入框 + 设定
             LinearLayout inputRow = new LinearLayout(this);
             inputRow.setGravity(Gravity.CENTER_VERTICAL);
             EditText titleInput = FormKit.input(this, InputType.TYPE_CLASS_TEXT);
             titleInput.setSingleLine(true);
             titleInput.setHint("输入任务名称");
-            inputRow.addView(titleInput, new LinearLayout.LayoutParams(0, dp(48), 1f));
+            inputRow.addView(titleInput, new LinearLayout.LayoutParams(0, dp(44), 1f));
 
             TextView setBtn = pill("设定", UiPalette.ACCENT, Color.WHITE);
+            setBtn.setTextSize(14);
             setBtn.setOnClickListener(v -> {
                 String title = titleInput.getText().toString().trim();
                 if (title.isEmpty()) {
                     Toast.makeText(this, "先写任务名称", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                // 创建任务规则并设置到对应槽位
                 ReminderSettings.Rule rule = FocusStore.createTaskRule(this, title);
                 int ruleId = rule != null ? rule.id : -1;
-                int targetSec = 25 * 60; // 默认 25 分钟
+                int targetSec = 25 * 60;
                 if (label.equals("主线任务")) {
                     FocusStore.setMain(this, title, ruleId, targetSec);
                 } else if (label.equals("支线任务 1")) {
@@ -350,28 +348,39 @@ public final class FocusActivity extends Activity {
                 }
                 render();
             });
-            LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(dp(70), dp(48));
+            LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(dp(62), dp(44));
             setParams.leftMargin = dp(8);
             inputRow.addView(setBtn, setParams);
-            card.addView(inputRow, new LinearLayout.LayoutParams(-1, -2, 1f));
+            LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1, -2);
+            inputParams.topMargin = dp(8);
+            card.addView(inputRow, inputParams);
         } else {
-            // 有任务显示标题
-            TextView name = text(slot.title, 19, UiPalette.INK, true);
-            name.setMaxLines(2);
+            // 标题：点一下进拆任务页（跟任务页点行同一个界面）
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.setGravity(Gravity.CENTER_VERTICAL);
+            TextView name = text(slot.title, 15, UiPalette.INK, true);
+            name.setMaxLines(1);
             name.setEllipsize(TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
-            nameParams.topMargin = dp(8);
-            card.addView(name, nameParams);
+            titleRow.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView arrow = text("›", 15, UiPalette.MUTED, true);
+            arrow.setPadding(dp(6), 0, 0, 0);
+            titleRow.addView(arrow);
+            LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+            titleParams.topMargin = dp(6);
+            card.addView(titleRow, titleParams);
+            if (slot.ruleId >= 0) {
+                titleRow.setOnClickListener(v -> openSubtasks(slot));
+            }
 
-            // 操作按钮：主按钮一条，清空放右边当次要操作
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
-            actionsParams.topMargin = dp(12);
+            actionsParams.topMargin = dp(8);
             card.addView(actions, actionsParams);
 
             TextView primary = pill(slot.isRunning() ? "做完了" : "开始做",
                     UiPalette.ACCENT, Color.WHITE);
+            primary.setTextSize(14);
             primary.setOnClickListener(v -> {
                 if (slot.isRunning()) {
                     onComplete.run();
@@ -380,31 +389,24 @@ public final class FocusActivity extends Activity {
                     render();
                 }
             });
-            actions.addView(primary, new LinearLayout.LayoutParams(0, dp(44), 1f));
+            actions.addView(primary, new LinearLayout.LayoutParams(0, dp(40), 1f));
 
-            TextView clear = text("清空", 13, UiPalette.MUTED, true);
+            TextView clear = text("清空", 12, UiPalette.MUTED, true);
             clear.setGravity(Gravity.CENTER);
-            clear.setPadding(dp(12), dp(6), dp(4), dp(6));
+            clear.setPadding(dp(10), dp(4), dp(2), dp(4));
             clear.setOnClickListener(v -> onClear.run());
             LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(-2, -2);
             clearParams.leftMargin = dp(6);
             actions.addView(clear, clearParams);
-
-            if (slot.isRunning()) {
-                TextView more = text("⋯", 16, UiPalette.MUTED, true);
-                more.setGravity(Gravity.CENTER);
-                more.setPadding(dp(10), dp(6), dp(4), dp(6));
-                more.setContentDescription("更多");
-                more.setOnClickListener(v -> showSlotMenu(slot.slotKey));
-                actions.addView(more);
-            }
-
-            // 显示步骤（如果有）
-            if (slot.ruleId >= 0) {
-                card.addView(buildSubtaskBlock(slot));
-            }
         }
         return card;
+    }
+
+    /** 点任务跳到拆任务页（复用任务页的子任务界面）。 */
+    private void openSubtasks(FocusStore.TaskSlot slot) {
+        startActivity(new Intent(this, SubtaskActivity.class)
+                .putExtra(SubtaskActivity.EXTRA_PARENT_ID, slot.ruleId)
+                .putExtra(SubtaskActivity.EXTRA_PARENT_TITLE, slot.title));
     }
 
     /** 槽位下的步骤：直接在这里勾、也能现场加一条。 */
