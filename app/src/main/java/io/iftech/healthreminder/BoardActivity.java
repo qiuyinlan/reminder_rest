@@ -31,6 +31,8 @@ public final class BoardActivity extends Activity {
 
     private final List<BoardStore.Item> items = new ArrayList<>();
     private String draft = "";
+    /** 已完成区是否展开（默认收起，跟任务页一样）。 */
+    private boolean completedOpen;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -89,7 +91,14 @@ public final class BoardActivity extends Activity {
         if (items.isEmpty()) {
             container.addView(emptyCard());
         } else {
-            container.addView(buildListCard());
+            List<BoardStore.Item> pending = new ArrayList<>();
+            List<BoardStore.Item> finished = new ArrayList<>();
+            for (BoardStore.Item item : items) {
+                if (item.done) finished.add(item);
+                else pending.add(item);
+            }
+            if (!pending.isEmpty()) container.addView(buildListCard(pending));
+            if (!finished.isEmpty()) container.addView(buildDoneSection(finished));
         }
         container.addView(footerText());
     }
@@ -200,43 +209,50 @@ public final class BoardActivity extends Activity {
         return card;
     }
 
-    private View buildListCard() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(FormKit.round(this, Color.WHITE, 18));
-        card.setPadding(dp(14), dp(10), dp(14), dp(12));
-        card.setElevation(dp(2));
-
-        for (int i = 0; i < items.size(); i++) {
-            if (i > 0) card.addView(divider());
-            card.addView(buildItemRow(items.get(i)));
+    private View buildListCard(List<BoardStore.Item> pending) {
+        LinearLayout card = TaskRowKit.groupCard(this);
+        for (int i = 0; i < pending.size(); i++) {
+            if (i > 0) card.addView(TaskRowKit.divider(this));
+            card.addView(buildItemRow(pending.get(i)));
         }
         return card;
+    }
+
+    /** 已完成：跟任务页一样的底部折叠区。 */
+    private View buildDoneSection(List<BoardStore.Item> finished) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+
+        View head = TaskRowKit.sectionHeader(this, "已完成", String.valueOf(finished.size()),
+                completedOpen ? "⌃" : "⌄", null);
+        head.setOnClickListener(v -> {
+            completedOpen = !completedOpen;
+            render();
+        });
+        section.addView(head);
+
+        if (completedOpen) {
+            LinearLayout card = TaskRowKit.groupCard(this);
+            for (int i = 0; i < finished.size(); i++) {
+                if (i > 0) card.addView(TaskRowKit.divider(this));
+                card.addView(buildItemRow(finished.get(i)));
+            }
+            section.addView(card);
+        }
+        return section;
     }
 
     private View buildItemRow(final BoardStore.Item item) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, dp(8), 0, dp(8));
 
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
+        // 跟任务页、「现在」页同一套行外观（TaskRowKit）
+        LinearLayout row = TaskRowKit.mainRow(this);
+        row.addView(TaskRowKit.circleCheck(this, item.done, v -> toggleItem(item)),
+                TaskRowKit.checkParams(this));
 
-        final TextView mark = text(item.done ? "✓" : "○", 13,
-                item.done ? UiPalette.ACCENT : UiPalette.MUTED, true);
-        mark.setGravity(Gravity.CENTER);
-        mark.setBackground(FormKit.round(this,
-                item.done ? UiPalette.SOFT : UiPalette.PALE, 10));
-        row.addView(mark, new LinearLayout.LayoutParams(dp(26), dp(26)));
-
-        final TextView title = text(item.title, 15,
-                item.done ? UiPalette.MUTED : UiPalette.INK, true);
-        title.setMaxLines(2);
-        title.setEllipsize(TextUtils.TruncateAt.END);
-        if (item.done) title.setPaintFlags(title.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        titleParams.leftMargin = dp(10);
-        row.addView(title, titleParams);
+        TextView title = TaskRowKit.title(this, item.title, item.done);
+        row.addView(title, TaskRowKit.titleParams(this));
 
         TextView plus = text("＋", 15, UiPalette.ACCENT, true);
         plus.setGravity(Gravity.CENTER);
@@ -256,20 +272,23 @@ public final class BoardActivity extends Activity {
         });
         row.addView(del);
 
-        row.setOnClickListener(v -> {
-            item.done = !item.done;
-            if (item.done) {
-                for (BoardStore.Sub sub : item.subs) sub.done = true;
-            }
-            persist();
-            render();
-        });
+        // 点行进子任务（跟任务页一样），勾完成走左边的圈
+        row.setOnClickListener(v -> promptSubtask(item));
         box.addView(row);
 
         for (final BoardStore.Sub sub : item.subs) {
             box.addView(buildSubRow(item, sub));
         }
         return box;
+    }
+
+    private void toggleItem(BoardStore.Item item) {
+        item.done = !item.done;
+        if (item.done) {
+            for (BoardStore.Sub sub : item.subs) sub.done = true;
+        }
+        persist();
+        render();
     }
 
     private View buildSubRow(final BoardStore.Item item, final BoardStore.Sub sub) {

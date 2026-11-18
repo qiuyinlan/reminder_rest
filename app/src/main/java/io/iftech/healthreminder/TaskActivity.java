@@ -461,50 +461,7 @@ public final class TaskActivity extends Activity {
     /** 分组头：小标题 + 计数 + 细线 + 右侧操作。 */
     private View buildSectionHeader(String name, String count, String action,
                                     View.OnClickListener onAction) {
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(6), dp(14), dp(6), dp(8));
-
-        // 色点：给分组头一个落点
-        View dot = new View(this);
-        GradientDrawable dotBg = new GradientDrawable();
-        dotBg.setShape(GradientDrawable.OVAL);
-        dotBg.setColor(UiPalette.ACCENT);
-        dot.setBackground(dotBg);
-        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(6), dp(6));
-        dotParams.rightMargin = dp(8);
-        header.addView(dot, dotParams);
-
-        header.addView(text(name, 13, UiPalette.INK, true),
-                new LinearLayout.LayoutParams(-2, -2));
-
-        if (count != null && !count.isEmpty()) {
-            TextView countView = text(count, 11, UiPalette.MUTED, true);
-            GradientDrawable chipBg = new GradientDrawable();
-            chipBg.setCornerRadius(dp(8));
-            chipBg.setColor(UiPalette.PALE);
-            countView.setBackground(chipBg);
-            countView.setPadding(dp(7), dp(1), dp(7), dp(1));
-            LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, -2);
-            countParams.leftMargin = dp(8);
-            header.addView(countView, countParams);
-        }
-
-        View line = new View(this);
-        line.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(0, dp(1), 1f);
-        lineParams.leftMargin = dp(12);
-        lineParams.rightMargin = dp(12);
-        header.addView(line, lineParams);
-
-        if (action != null) {
-            TextView actionView = text(action, 12, UiPalette.ACCENT, true);
-            actionView.setPadding(dp(4), dp(2), dp(2), dp(2));
-            if (onAction != null) actionView.setOnClickListener(onAction);
-            header.addView(actionView, new LinearLayout.LayoutParams(-2, -2));
-        }
-        return header;
+        return TaskRowKit.sectionHeader(this, name, count, action, onAction);
     }
 
     // ------------------------------------------------------------ 微习惯
@@ -972,33 +929,15 @@ public final class TaskActivity extends Activity {
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
-        // 主任务行：圆形勾选框 + 标题 + 右侧时间
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(52));
-        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        // 主任务行：统一外观（TaskRowKit 跟白板、「现在」页共用）
+        LinearLayout row = TaskRowKit.mainRow(this);
+        TextView box = TaskRowKit.circleCheck(this, done,
+                v -> toggleDone(task, done, dayStart, allSubDone));
+        row.addView(box, TaskRowKit.checkParams(this));
 
-        GradientDrawable boxShape = new GradientDrawable();
-        boxShape.setShape(GradientDrawable.OVAL);
-        boxShape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        if (!done) boxShape.setStroke(dp(2), UiPalette.DISABLED);
-        TextView box = text(done ? "✓" : "", 12, done ? Color.WHITE : UiPalette.DISABLED, true);
-        box.setGravity(Gravity.CENTER);
-        box.setBackground(boxShape);
-        box.setContentDescription(done ? "取消完成" : "标记完成");
-        LinearLayout.LayoutParams boxParams = new LinearLayout.LayoutParams(dp(24), dp(24));
-        row.addView(box, boxParams);
-        box.setOnClickListener(v -> toggleDone(task, done, dayStart, allSubDone));
-
-        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 16,
-                done ? UiPalette.MUTED : UiPalette.INK, false);
-        title.setMaxLines(1);
-        title.setEllipsize(TextUtils.TruncateAt.END);
-        if (done) title.setPaintFlags(title.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        titleParams.leftMargin = dp(12);
-        row.addView(title, titleParams);
+        TextView title = TaskRowKit.title(this,
+                task.title.isEmpty() ? "未命名任务" : task.title, done);
+        row.addView(title, TaskRowKit.titleParams(this));
 
         row.setOnClickListener(v -> openSubtasks(task));
         row.setOnLongClickListener(v -> {
