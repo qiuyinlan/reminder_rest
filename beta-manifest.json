@@ -1,7 +1,7 @@
 {
-    "versionCode": 106,
-    "versionName": "0.3.0-beta88",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta88/rest-bean.apk",
-    "sha256": "7dc73bc4e98d89afc8e2be0b71dc9e0b2a6a8db500b03cf4c8df3ab4e09d20a0",
-    "notes": "悬浮窗：大窗右上「」进 App、内容可滑动看全部待办与想法；小窗只留任务名"
+    "versionCode": 107,
+    "versionName": "0.3.0-beta89",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta89/rest-bean.apk",
+    "sha256": "7d458eb43be8d5c5800c44538fa5149c14f17f8e96e23f16066a82f1a0b0818a",
+    "notes": "悬浮窗大窗缩短到与之前相当，只显示「现在」页的主线/支线槽位"
 }
