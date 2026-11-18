@@ -23,6 +23,8 @@ final class ReminderSettings {
     static final String MODULE_TASK_ALL = "task_all";
     /** 子任务：挂在某个任务下的小条目，不单独排闹钟。 */
     static final String MODULE_SUBTASK = "subtask";
+    /** 白板：只活今天的草稿清单，复用任务页 UI，不入任务表。 */
+    static final String MODULE_BOARD = "board";
     static final String KEY_ENABLED = "enabled";
     private static final String PREFS = "reminder_settings";
     private static final String RULES_KEY = "reminder_rules_v2";

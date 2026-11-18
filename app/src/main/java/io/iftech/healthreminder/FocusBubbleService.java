@@ -978,32 +978,37 @@ public final class FocusBubbleService extends Service {
         }
     }
 
-    /** 白板：今天的草稿清单，点一下勾掉。 */
+    /** 白板：跟白板页同一份数据（module=board 的规则），点一下勾掉。 */
     private void fillBoard() {
-        List<BoardStore.Item> items = BoardStore.load(this);
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.CHINA)
+                .format(new java.util.Date());
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+
+        List<ReminderSettings.Rule> items = new ArrayList<>();
+        for (ReminderSettings.Rule rule : ReminderSettings.moduleRules(this, ReminderSettings.MODULE_BOARD)) {
+            if (today.equals(rule.deckId)) items.add(rule);
+        }
+
         if (items.isEmpty()) {
             TextView empty = FormKit.text(this, "白板是空的", 11, UiPalette.MUTED, false);
             empty.setPadding(0, dp(4), 0, dp(4));
             slotBox.addView(empty);
             return;
         }
-        for (final BoardStore.Item item : items) {
+        for (final ReminderSettings.Rule rule : items) {
+            final boolean done = ReminderRecord.completedOn(this,
+                    ReminderSettings.MODULE_BOARD, rule.title, dayStart);
+
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(0, dp(4), 0, dp(4));
 
-            row.addView(buildCheckBox("勾掉 " + item.title, v -> {
-                item.done = !item.done;
-                if (item.done) {
-                    for (BoardStore.Sub sub : item.subs) sub.done = true;
-                }
-                BoardStore.save(this, items);
-                render();
-            }), new LinearLayout.LayoutParams(dp(15), dp(15)));
+            row.addView(buildCheckBox("勾掉 " + rule.title, v -> toggleBoardItem(rule)),
+                    new LinearLayout.LayoutParams(dp(15), dp(15)));
 
-            TextView name = FormKit.text(this, item.title, 11,
-                    item.done ? UiPalette.MUTED : UiPalette.INK, false);
+            TextView name = FormKit.text(this, rule.title, 11,
+                    done ? UiPalette.MUTED : UiPalette.INK, false);
             name.setMaxLines(1);
             name.setEllipsize(TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
@@ -1011,6 +1016,28 @@ public final class FocusBubbleService extends Service {
             row.addView(name, nameParams);
             slotBox.addView(row);
         }
+    }
+
+    /** 在悬浮窗勾掉/取消一条白板条目。 */
+    private void toggleBoardItem(ReminderSettings.Rule rule) {
+        long now = System.currentTimeMillis();
+        long dayStart = ReminderRecord.dayStart(now);
+        boolean done = ReminderRecord.completedOn(this,
+                ReminderSettings.MODULE_BOARD, rule.title, dayStart);
+        if (done) {
+            ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_BOARD, rule.title, dayStart);
+            ReminderSettings.unmarkCompleted(this, rule.id);
+        } else {
+            for (ReminderSettings.Rule sub : Subtasks.of(this, rule.id)) {
+                if (!Subtasks.doneToday(this, rule.id, sub.title, dayStart)) {
+                    Subtasks.toggleQuiet(this, rule.id, sub.title, false, dayStart);
+                }
+            }
+            ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), rule.title,
+                    ReminderRecord.KIND_DONE, now, now, "白板勾选", ReminderSettings.MODULE_BOARD);
+            ReminderSettings.markCompleted(this, rule.id, 1);
+        }
+        render();
     }
 
     /** done：今天做成的事，只读。 */

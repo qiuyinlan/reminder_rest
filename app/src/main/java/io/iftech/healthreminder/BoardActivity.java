@@ -2,6 +2,7 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
@@ -38,44 +39,52 @@ public final class BoardActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
-
-        FrameLayout shell = new FrameLayout(this);
-        shell.setBackgroundColor(UiPalette.PAGE);
-        setContentView(shell);
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackground(UiPalette.page());
-        shell.addView(root, new FrameLayout.LayoutParams(-1, -1));
-
-        header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        root.addView(header, new LinearLayout.LayoutParams(-1, -2));
-
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setClipToPadding(false);
-        container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(dp(16), dp(8), dp(16), dp(24));
-        scroll.addView(container, new ScrollView.LayoutParams(-1, -2));
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-
-        items.clear();
-        items.addAll(BoardStore.load(this));
-        render();
+        migrateLegacy();
+        // 白板直接复用任务页 UI，只把数据源换成 module=board
+        startActivity(new Intent(this, TaskActivity.class)
+                .putExtra("module", ReminderSettings.MODULE_BOARD));
+        overridePendingTransition(0, 0);
+        finish();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 跨天了就重读（会变成空的）
-        List<BoardStore.Item> fresh = BoardStore.load(this);
-        if (fresh.size() != items.size()) {
-            items.clear();
-            items.addAll(fresh);
-            render();
+    }
+
+    /** 把旧的本地白板数据搬进 module=board 的规则，只搬一次。 */
+    private void migrateLegacy() {
+        List<BoardStore.Item> legacy = BoardStore.load(this);
+        if (legacy.isEmpty()) return;
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.CHINA)
+                .format(new java.util.Date());
+        for (BoardStore.Item item : legacy) {
+            ArrayList<Integer> points = new ArrayList<>();
+            points.add(9 * 3600);
+            ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                            ReminderSettings.nextRuleId(this), item.title, 9 * 60, 9 * 60, 24 * 3600,
+                            points, 1, true, false)
+                    .withModule(ReminderSettings.MODULE_BOARD)
+                    .withDeck(today, false);
+            ReminderSettings.upsertRule(this, rule);
+
+            if (item.done) {
+                long now = System.currentTimeMillis();
+                ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), item.title,
+                        ReminderRecord.KIND_DONE, now, now, "白板导入",
+                        ReminderSettings.MODULE_BOARD);
+                ReminderSettings.markCompleted(this, rule.id, 1);
+            }
+            long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+            int step = 0;
+            for (BoardStore.Sub sub : item.subs) {
+                Subtasks.add(this, rule.id, sub.title, step++);
+                if (sub.done) {
+                    Subtasks.toggleQuiet(this, rule.id, sub.title, sub.done, dayStart);
+                }
+            }
         }
+        BoardStore.clear(this);
     }
 
     // -------------------------------------------------------------- 页面骨架

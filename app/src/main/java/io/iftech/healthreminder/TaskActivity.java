@@ -38,6 +38,8 @@ public final class TaskActivity extends Activity {
 
     private LinearLayout listContainer;
     private LinearLayout headerHost;
+    /** 当前页面背的是哪一类数据：任务页是 task，白板是 board（只换数据源，UI 全复用）。 */
+    private String module = module;
     private boolean completedExpanded;
     private boolean habitDoneExpanded;
     private boolean futureExpanded;
@@ -47,6 +49,11 @@ public final class TaskActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         UiPalette.applyWindow(getWindow());
+        String extraModule = getIntent().getStringExtra("module");
+        if (ReminderSettings.MODULE_BOARD.equals(extraModule)) {
+            module = ReminderSettings.MODULE_BOARD;
+            purgeStaleBoard();
+        }
         android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
         shell.setBackgroundColor(UiPalette.PAGE);
         setContentView(shell);
@@ -133,8 +140,11 @@ public final class TaskActivity extends Activity {
                 ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
                                 ReminderSettings.nextRuleId(this), title, 9 * 60, 9 * 60, 24 * 3600,
                                 points, 1, true, false)
-                        .withModule(ReminderSettings.MODULE_TASK)
+                        .withModule(module)
                         .withCategory(categoryId[0]);
+                if (ReminderSettings.MODULE_BOARD.equals(module)) {
+                    rule = rule.withDeck(boardDayKey(), false);
+                }
                 ReminderSettings.upsertRule(this, rule);
                 dialog.dismiss();
                 reload();
@@ -194,7 +204,7 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text("任务", 26, UiPalette.INK, true);
+        TextView title = text(ReminderSettings.MODULE_BOARD.equals(module) ? "白板" : "任务", 26, UiPalette.INK, true);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         // 「现在」入口：一眼看到此刻该做哪一件，点进去就不容易跑偏
@@ -333,6 +343,38 @@ public final class TaskActivity extends Activity {
         return bar;
     }
 
+    /** 当前页该用的「今天」列表：白板直接取同 module 的规则，不按日期过滤。 */
+    private List<ReminderSettings.Rule> tasksToday() {
+        if (ReminderSettings.MODULE_BOARD.equals(module)) {
+            return ReminderSettings.moduleRules(this, module);
+        }
+        return Tasks.today(this);
+    }
+
+    /** 「之后的任务」用的全量列表。 */
+    private List<ReminderSettings.Rule> tasksAll() {
+        if (ReminderSettings.MODULE_BOARD.equals(module)) {
+            return ReminderSettings.moduleRules(this, module);
+        }
+        return Tasks.all(this);
+    }
+
+    /** 白板条目的日期戳（yyyy-MM-dd）。 */
+    private String boardDayKey() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.CHINA)
+                .format(new java.util.Date());
+    }
+
+    /** 白板条目用 deckId 记创建日期，过期的（昨天的）开机就清掉。 */
+    private void purgeStaleBoard() {
+        String today = boardDayKey();
+        for (ReminderSettings.Rule rule : ReminderSettings.moduleRules(this, module)) {
+            if (rule.deckId == null || !today.equals(rule.deckId)) {
+                ReminderSettings.deleteRule(this, rule.id);
+            }
+        }
+    }
+
     private void reload() {
         // 清除子任务滚动位置，让每次都能自动滚动到第一个未完成
         subtaskScrollPositions.clear();
@@ -340,7 +382,7 @@ public final class TaskActivity extends Activity {
         // 「刚想到的」那些念头有自己的页面，不在任务清单里重复出现
         List<Integer> ideaIds = FocusStore.ideaRuleIds(this);
         List<ReminderSettings.Rule> tasks = new ArrayList<>();
-        for (ReminderSettings.Rule task : Tasks.today(this)) {
+        for (ReminderSettings.Rule task : tasksToday()) {
             if (!ideaIds.contains(task.id)) tasks.add(task);
         }
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
@@ -357,7 +399,7 @@ public final class TaskActivity extends Activity {
         for (ReminderSettings.Rule task : tasks) {
             // 分类被删掉或数据异常时，退回默认分类，不能让任务凭空消失
             int catId = byCat.containsKey(task.categoryId) ? task.categoryId : 0;
-            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
+            if (ReminderRecord.completedOn(this, module, task.title, dayStart)) {
                 List<ReminderSettings.Rule> list = doneByCat.get(catId);
                 if (list != null) list.add(task);
             } else {
@@ -368,7 +410,7 @@ public final class TaskActivity extends Activity {
         
         int doneToday = 0;
         for (ReminderSettings.Rule task : tasks) {
-            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) {
+            if (ReminderRecord.completedOn(this, module, task.title, dayStart)) {
                 doneToday++;
             }
         }
@@ -376,9 +418,11 @@ public final class TaskActivity extends Activity {
 
         listContainer.removeAllViews();
         // 顶部只保留「正在做」锚点；总览提醒的设置入口收进右上角 ⋯
-        View focusBar = buildFocusBar();
-        if (focusBar != null) listContainer.addView(focusBar);
-        listContainer.addView(buildHabitSection(dayStart));
+        if (!ReminderSettings.MODULE_BOARD.equals(module)) {
+            View focusBar = buildFocusBar();
+            if (focusBar != null) listContainer.addView(focusBar);
+            listContainer.addView(buildHabitSection(dayStart));
+        }
         
         // 按分类渲染（只有一个分类时不显示分组标题）
         boolean showHeaders = cats.size() > 1;
@@ -414,7 +458,7 @@ public final class TaskActivity extends Activity {
         // 未分类的其他任务（之后/已完成）
         List<ReminderSettings.Rule> future = new ArrayList<>();
         long now = System.currentTimeMillis();
-        for (ReminderSettings.Rule task : Tasks.all(this)) {
+        for (ReminderSettings.Rule task : tasksAll()) {
             if (!Tasks.isForToday(task, now)) future.add(task);
         }
         if (!future.isEmpty()) {
@@ -922,7 +966,7 @@ public final class TaskActivity extends Activity {
     }
 
     private View buildRow(ReminderSettings.Rule task, long dayStart) {
-        boolean done = ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
+        boolean done = ReminderRecord.completedOn(this, module, task.title, dayStart);
         List<ReminderSettings.Rule> subtasks = Subtasks.of(this, task.id);
         boolean allSubDone = subtasks.isEmpty() ? false : Subtasks.allCompleted(this, task.id, dayStart);
 
@@ -1101,7 +1145,7 @@ public final class TaskActivity extends Activity {
 
     private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart, boolean allSubDone) {
         if (done) {
-            ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
+            ReminderRecord.deleteCompletion(this, module, task.title, dayStart);
             ReminderSettings.unmarkCompleted(this, task.id);
         } else {
             // 勾选大任务时，自动把所有子任务一并勾选
@@ -1113,7 +1157,7 @@ public final class TaskActivity extends Activity {
             }
             long now = System.currentTimeMillis();
             ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
-                    ReminderRecord.KIND_DONE, now, now, "任务清单勾选", ReminderSettings.MODULE_TASK);
+                    ReminderRecord.KIND_DONE, now, now, "任务清单勾选", module);
             ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
         }
         reload();
@@ -1308,7 +1352,7 @@ public final class TaskActivity extends Activity {
                 .setNegativeButton("取消", null)
                 .setPositiveButton("清空", (d, w) -> {
                     ReminderSettings.clearModule(this, ReminderSettings.MODULE_SUBTASK);
-                    ReminderSettings.clearModule(this, ReminderSettings.MODULE_TASK);
+                    ReminderSettings.clearModule(this, module);
                     reload();
                 })
                 .create();
@@ -1321,7 +1365,7 @@ public final class TaskActivity extends Activity {
                 .setMessage("把今天所有任务的完成状态清掉，重新开始打卡。")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("重置", (d, w) -> {
-                    ReminderRecord.deleteForDay(this, ReminderSettings.MODULE_TASK,
+                    ReminderRecord.deleteForDay(this, module,
                             ReminderRecord.dayStart(System.currentTimeMillis()));
                     reload();
                 })
@@ -1720,8 +1764,11 @@ public final class TaskActivity extends Activity {
         ReminderSettings.Rule rule = ReminderSettings.Rule.withIntervalSeconds(id, title, startMinute, endMinute,
                         intervalSeconds, 1, true, true)
                 .withSchedule(specificTimes, effectivePoints, daysMask, onceAt)
-                .withModule(ReminderSettings.MODULE_TASK)
+                .withModule(module)
                 .withReminderMessage(note);
+        if (ReminderSettings.MODULE_BOARD.equals(module)) {
+            rule = rule.withDeck(boardDayKey(), false);
+        }
         if (existing != null) {
             rule = rule.withIcon(existing.icon).withColor(existing.color).withOverlayArtwork(existing.overlayArtwork);
         }
