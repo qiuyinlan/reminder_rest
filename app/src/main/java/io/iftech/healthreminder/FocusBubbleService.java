@@ -79,6 +79,8 @@ public final class FocusBubbleService extends Service {
     private ScrollView expandScroll;
     /** 展开态头部「正在做」右边的放大按钮，点了进 App。 */
     private TextView expandAppView;
+    /** 展开态头部中间的弹性占位，只在展开时生效（收起时保留 1px，不然会把条子撑到全屏）。 */
+    private View headSpacer;
     /** 悬浮窗最底部的已完成区。 */
     private LinearLayout doneBox;
     private boolean doneIdeasOpen;
@@ -228,7 +230,8 @@ public final class FocusBubbleService extends Service {
         expandAppView.setOnClickListener(v -> openFocus());
 
         View spacer = new View(this);
-        head.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        headSpacer = spacer;
+        head.addView(spacer, new LinearLayout.LayoutParams(1, 1, 0f));
 
         elapsedView = FormKit.text(this, "", 10, UiPalette.MUTED, false);
         head.addView(elapsedView);
@@ -794,6 +797,14 @@ public final class FocusBubbleService extends Service {
         }
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
+        // 弹性占位只在展开态撑开，收起态必须缩成 1px，否则整条撑满屏幕
+        if (headSpacer != null && headSpacer.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams spacerParams =
+                    (LinearLayout.LayoutParams) headSpacer.getLayoutParams();
+            spacerParams.width = expanded ? 0 : 1;
+            spacerParams.weight = expanded ? 1f : 0f;
+            headSpacer.setLayoutParams(spacerParams);
+        }
         updateLayout();
         updatePeek();
     }
