@@ -225,7 +225,7 @@ public final class FocusBubbleService extends Service {
         head.addView(label, labelParams);
 
         // 放大按钮「紧跟在「正在做」右边（收起态不显示）
-        expandAppView = FormKit.text(this, "「", 14, UiPalette.ACCENT, true);
+        expandAppView = FormKit.text(this, "🔍", 13, UiPalette.ACCENT, true);
         expandAppView.setGravity(Gravity.CENTER);
         expandAppView.setContentDescription("打开当前页面");
         expandAppView.setPadding(dp(8), dp(2), dp(8), dp(2));
@@ -990,38 +990,135 @@ public final class FocusBubbleService extends Service {
                 .format(new java.util.Date());
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
 
-        List<ReminderSettings.Rule> items = new ArrayList<>();
+        List<ReminderSettings.Rule> pending = new ArrayList<>();
+        List<ReminderSettings.Rule> finished = new ArrayList<>();
         for (ReminderSettings.Rule rule : ReminderSettings.moduleRules(this, ReminderSettings.MODULE_BOARD)) {
-            if (today.equals(rule.deckId)) items.add(rule);
+            if (!today.equals(rule.deckId)) continue;
+            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_BOARD, rule.title, dayStart)) {
+                finished.add(rule);
+            } else {
+                pending.add(rule);
+            }
         }
 
-        if (items.isEmpty()) {
+        if (pending.isEmpty() && finished.isEmpty()) {
             TextView empty = FormKit.text(this, "白板是空的", 11, UiPalette.MUTED, false);
             empty.setPadding(0, dp(4), 0, dp(4));
             slotBox.addView(empty);
+        } else {
+            if (pending.isEmpty()) {
+                TextView doneAll = FormKit.text(this, "都做完了", 11, UiPalette.MUTED, false);
+                doneAll.setPadding(0, dp(4), 0, dp(4));
+                slotBox.addView(doneAll);
+            }
+            for (ReminderSettings.Rule rule : pending) {
+                slotBox.addView(buildBoardRow(rule, false));
+            }
+
+            // 已完成收进底部折叠，不占主列表
+            if (!finished.isEmpty()) {
+                LinearLayout head = new LinearLayout(this);
+                head.setGravity(Gravity.CENTER_VERTICAL);
+                head.setPadding(0, dp(4), 0, dp(2));
+                head.addView(FormKit.text(this,
+                        "已完成 " + finished.size() + (boardDoneOpen ? " ⌃" : " ⌄"),
+                        10, UiPalette.MUTED, true), new LinearLayout.LayoutParams(0, -2, 1f));
+                head.setOnClickListener(v -> {
+                    boardDoneOpen = !boardDoneOpen;
+                    render();
+                });
+                slotBox.addView(head);
+                if (boardDoneOpen) {
+                    for (ReminderSettings.Rule rule : finished) {
+                        slotBox.addView(buildBoardRow(rule, true));
+                    }
+                }
+            }
+        }
+
+        slotBox.addView(buildBoardInputRow(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private View buildBoardRow(final ReminderSettings.Rule rule, final boolean done) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(4), 0, dp(4));
+
+        row.addView(buildCheckBox("勾掉 " + rule.title, done, v -> toggleBoardItem(rule)),
+                new LinearLayout.LayoutParams(dp(15), dp(15)));
+
+        TextView name = FormKit.text(this, rule.title, 11,
+                done ? UiPalette.MUTED : UiPalette.INK, false);
+        name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        nameParams.leftMargin = dp(7);
+        row.addView(name, nameParams);
+        return row;
+    }
+
+    /** 白板分区底部的一行输入，直接往今日白板加一条。 */
+    private View buildBoardInputRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = dp(6);
+        row.setLayoutParams(rowParams);
+
+        boardInput = new EditText(this);
+        boardInput.setHint("往白板记一条");
+        boardInput.setTextSize(12);
+        boardInput.setSingleLine(true);
+        boardInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        boardInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        boardInput.setTextColor(UiPalette.INK);
+        boardInput.setHintTextColor(UiPalette.MUTED);
+        boardInput.setPadding(dp(8), dp(6), dp(8), dp(6));
+        boardInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        boardInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) grabWindowFocus();
+            else dropWindowFocus();
+        });
+        boardInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitBoardItem();
+                return true;
+            }
+            return false;
+        });
+        row.addView(boardInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
+
+        TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
+        plus.setGravity(Gravity.CENTER);
+        plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 9));
+        plus.setOnClickListener(v -> submitBoardItem());
+        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(34), dp(34));
+        plusParams.leftMargin = dp(6);
+        row.addView(plus, plusParams);
+        return row;
+    }
+
+    private void submitBoardItem() {
+        String text = boardInput == null ? "" : boardInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            dropWindowFocus();
             return;
         }
-        for (final ReminderSettings.Rule rule : items) {
-            final boolean done = ReminderRecord.completedOn(this,
-                    ReminderSettings.MODULE_BOARD, rule.title, dayStart);
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, dp(4), 0, dp(4));
-
-            row.addView(buildCheckBox("勾掉 " + rule.title, done, v -> toggleBoardItem(rule)),
-                    new LinearLayout.LayoutParams(dp(15), dp(15)));
-
-            TextView name = FormKit.text(this, rule.title, 11,
-                    done ? UiPalette.MUTED : UiPalette.INK, false);
-            name.setMaxLines(1);
-            name.setEllipsize(TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
-            nameParams.leftMargin = dp(7);
-            row.addView(name, nameParams);
-            slotBox.addView(row);
-        }
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.CHINA)
+                .format(new java.util.Date());
+        ArrayList<Integer> points = new ArrayList<>();
+        points.add(9 * 3600);
+        ReminderSettings.Rule rule = ReminderSettings.Rule.withSpecificTimes(
+                        ReminderSettings.nextRuleId(this), text, 9 * 60, 9 * 60, 24 * 3600,
+                        points, 1, true, false)
+                .withModule(ReminderSettings.MODULE_BOARD)
+                .withDeck(today, false);
+        ReminderSettings.upsertRule(this, rule);
+        boardInput.setText("");
+        dropWindowFocus();
+        render();
     }
 
     /** 在悬浮窗勾掉/取消一条白板条目。 */
@@ -1464,8 +1561,12 @@ public final class FocusBubbleService extends Service {
         updateLayout();
     }
 
-    /** 展开态底部弹性占位之外，done 输入框的引用。 */
+    /** done 输入框的引用。 */
     private EditText doneInput;
+    /** 白板输入框的引用。 */
+    private EditText boardInput;
+    /** 白板已完成区是否展开。 */
+    private boolean boardDoneOpen;
 
     /** 放大键：跟随当前 tab 进对应页面。 */
     private void openCurrentTab() {
