@@ -755,20 +755,24 @@ public final class FocusBubbleService extends Service {
         updatePeek();
     }
 
-    /** 收起态的三行：主线 + 支线 1、2，左边都有 checkbox。 */
+    /** 收起态：只显示一个「」按钮，点一下展开或进 App。 */
     private void fillMiniBox(FocusStore.TaskSlot main, FocusStore.TaskSlot sub1,
                              FocusStore.TaskSlot sub2) {
         if (miniBox == null) return;
         miniBox.removeAllViews();
-        if (main.isEmpty() && sub1.isEmpty() && sub2.isEmpty()) {
-            TextView empty = FormKit.text(this, "还没挑任务", 11, UiPalette.MUTED, false);
-            empty.setPadding(0, dp(2), 0, 0);
-            miniBox.addView(empty);
-            return;
-        }
-        miniBox.addView(buildMiniRow("主线", main, true));
-        if (!sub1.isEmpty()) miniBox.addView(buildMiniRow("支线 1", sub1, false));
-        if (!sub2.isEmpty()) miniBox.addView(buildMiniRow("支线 2", sub2, false));
+
+        TextView expandBtn = FormKit.text(this, "」", 18, UiPalette.ACCENT, true);
+        expandBtn.setGravity(Gravity.CENTER);
+        expandBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
+        expandBtn.setBackground(FormKit.round(this, UiPalette.SOFT, 10));
+        expandBtn.setOnClickListener(v -> {
+            if (main.isEmpty() && sub1.isEmpty() && sub2.isEmpty()) {
+                openFocus();
+            } else {
+                toggleExpand();
+            }
+        });
+        miniBox.addView(expandBtn, new LinearLayout.LayoutParams(-2, -2));
     }
 
     /** 左边 checkbox，点一下就算完成。 */
@@ -781,7 +785,13 @@ public final class FocusBubbleService extends Service {
         box.setGravity(Gravity.CENTER);
         box.setBackground(shape);
         box.setContentDescription("完成 " + (slot.title.isEmpty() ? "这个任务" : slot.title));
-        box.setOnClickListener(v -> completeSlot(slot.slotKey));
+        box.setOnClickListener(v -> {
+            // 实时获取槽位状态，避免连点时状态错乱
+            FocusStore.TaskSlot currentSlot = slotOf(slot.slotKey);
+            if (currentSlot != null && !currentSlot.isEmpty()) {
+                completeSlot(slot.slotKey);
+            }
+        });
         return box;
     }
 
@@ -851,27 +861,29 @@ public final class FocusBubbleService extends Service {
         return FocusStore.getSub2(this);
     }
 
-    /** 显示 3 个槽位的状态（展开态，添加到 stepBox 前面） */
+    /** 显示 3 个槽位的状态（展开态，可滑动查看所有任务） */
     private void fillSlotStatus() {
         if (slotBox == null) return;
         slotBox.removeAllViews();
+
+        // 添加ScrollView 让任务列表可以滑动
+        ScrollView scroll = new ScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout scrollContent = new LinearLayout(this);
+        scrollContent.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(scrollContent, new ScrollView.LayoutParams(-1, -2));
+        slotBox.addView(scroll, new LinearLayout.LayoutParams(-1, dp(140)));
 
         FocusStore.TaskSlot main = FocusStore.getMain(this);
         FocusStore.TaskSlot sub1 = FocusStore.getSub1(this);
         FocusStore.TaskSlot sub2 = FocusStore.getSub2(this);
 
-        // 添加槽位状态标题
-        TextView slotTitle = FormKit.text(this, "任务槽位", 11, UiPalette.MUTED, true);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
-        titleParams.bottomMargin = dp(4);
-        slotBox.addView(slotTitle, titleParams);
-
         // 主线
-        slotBox.addView(buildSlotStatusRow("主线", main));
+        scrollContent.addView(buildSlotStatusRow("主线", main));
         // 支线 1
-        slotBox.addView(buildSlotStatusRow("支线 1", sub1));
+        scrollContent.addView(buildSlotStatusRow("支线 1", sub1));
         // 支线 2
-        slotBox.addView(buildSlotStatusRow("支线 2", sub2));
+        scrollContent.addView(buildSlotStatusRow("支线 2", sub2));
     }
 
     private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
@@ -909,6 +921,13 @@ public final class FocusBubbleService extends Service {
                                             slot.isRunning() ? elapsedText(slot.startedAt) : "",
                                             9, UiPalette.MUTED, false);
         row.addView(elapsedView);
+
+        // 点击整行也完成任务
+        row.setOnClickListener(v -> {
+            if (!slot.isEmpty()) {
+                completeSlot(slot.slotKey);
+            }
+        });
 
         return row;
     }
@@ -1093,10 +1112,6 @@ public final class FocusBubbleService extends Service {
         stepBox.addView(head, headParams);
 
         if (subs.isEmpty()) {
-            TextView empty = FormKit.text(this, "还没拆步骤 · 点下面的「想法」切成「步骤」就能加",
-                    10, UiPalette.MUTED, false);
-            empty.setPadding(0, dp(2), 0, dp(2));
-            stepBox.addView(empty);
             return;
         }
 
