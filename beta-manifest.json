@@ -1,7 +1,7 @@
 {
-    "versionCode": 109,
-    "versionName": "0.3.0-beta91",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta91/rest-bean.apk",
-    "sha256": "94364613697ac64a76d046b456ca764dc682daf4d6a66d6a172121bac260c0b2",
-    "notes": "现在页卡片压缩：恢复支线填写、时长只留时钟图标、点任务进拆任务页"
+    "versionCode": 110,
+    "versionName": "0.3.0-beta92",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta92/rest-bean.apk",
+    "sha256": "095256f1b626277d5a1ed2181235f49c9dd4558c9274a32b5b4dbd465aed5c29",
+    "notes": "修小悬浮窗宽度不回到自适应：弹性占位只在展开时生效"
 }
