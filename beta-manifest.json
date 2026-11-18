@@ -1,7 +1,7 @@
 {
-    "versionCode": 114,
-    "versionName": "0.3.0-beta96",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta96/rest-bean.apk",
-    "sha256": "8f4413628e7d4d4068bfee6f72d6eae947c7f03e71d968c3a5805ee8859935b0",
-    "notes": "悬浮窗：白板勾选态同步、放大键改成「并跟随分区跳转、done 分区可随手记一条"
+    "versionCode": 115,
+    "versionName": "0.3.0-beta97",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta97/rest-bean.apk",
+    "sha256": "d6338d664cad34163bced5ad84a92152513cc9e5dd5f8beab362978efb4b06e9",
+    "notes": "悬浮窗白板分区：可直接记一条、已完成收进底部折叠；放大键换成放大镜图标"
 }
