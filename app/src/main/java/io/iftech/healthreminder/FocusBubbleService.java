@@ -224,15 +224,15 @@ public final class FocusBubbleService extends Service {
         labelParams.leftMargin = dp(6);
         head.addView(label, labelParams);
 
-        // 放大按钮「」紧跟在「正在做」右边（收起态不显示）
-        expandAppView = FormKit.text(this, "」", 14, UiPalette.ACCENT, true);
+        // 放大按钮「紧跟在「正在做」右边（收起态不显示）
+        expandAppView = FormKit.text(this, "「", 14, UiPalette.ACCENT, true);
         expandAppView.setGravity(Gravity.CENTER);
-        expandAppView.setContentDescription("打开 App");
-        expandAppView.setPadding(dp(8), dp(2), dp(2), dp(2));
+        expandAppView.setContentDescription("打开当前页面");
+        expandAppView.setPadding(dp(8), dp(2), dp(8), dp(2));
         LinearLayout.LayoutParams appParams = new LinearLayout.LayoutParams(-2, -2);
         appParams.leftMargin = dp(2);
         head.addView(expandAppView, appParams);
-        expandAppView.setOnClickListener(v -> openFocus());
+        expandAppView.setOnClickListener(v -> openCurrentTab());
 
         View spacer = new View(this);
         headSpacer = spacer;
@@ -861,11 +861,17 @@ public final class FocusBubbleService extends Service {
 
     /** 统一样式的方框，点一下执行 onClick。 */
     private TextView buildCheckBox(String description, View.OnClickListener onClick) {
+        return buildCheckBox(description, false, onClick);
+    }
+
+    /** 带完成态的方框：打完勾就是实心主色 + 对勾。 */
+    private TextView buildCheckBox(String description, boolean done, View.OnClickListener onClick) {
         GradientDrawable shape = new GradientDrawable();
         shape.setCornerRadius(dp(4));
-        shape.setColor(Color.TRANSPARENT);
-        shape.setStroke(dp(1), UiPalette.DISABLED);
-        TextView box = FormKit.text(this, "", 9, UiPalette.DISABLED, true);
+        shape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) shape.setStroke(dp(1), UiPalette.DISABLED);
+        TextView box = FormKit.text(this, done ? "✓" : "", 9,
+                done ? Color.WHITE : UiPalette.DISABLED, true);
         box.setGravity(Gravity.CENTER);
         box.setBackground(shape);
         box.setContentDescription(description);
@@ -1004,7 +1010,7 @@ public final class FocusBubbleService extends Service {
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(0, dp(4), 0, dp(4));
 
-            row.addView(buildCheckBox("勾掉 " + rule.title, v -> toggleBoardItem(rule)),
+            row.addView(buildCheckBox("勾掉 " + rule.title, done, v -> toggleBoardItem(rule)),
                     new LinearLayout.LayoutParams(dp(15), dp(15)));
 
             TextView name = FormKit.text(this, rule.title, 11,
@@ -1047,24 +1053,82 @@ public final class FocusBubbleService extends Service {
             TextView empty = FormKit.text(this, "今天还没记录", 11, UiPalette.MUTED, false);
             empty.setPadding(0, dp(4), 0, dp(4));
             slotBox.addView(empty);
+        } else {
+            for (String line : lines) {
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(0, dp(3), 0, dp(3));
+
+                TextView tick = FormKit.text(this, "✓", 9, UiPalette.ACCENT, true);
+                tick.setGravity(Gravity.CENTER);
+                row.addView(tick, new LinearLayout.LayoutParams(dp(14), -2));
+
+                TextView name = FormKit.text(this, line, 11, UiPalette.INK, false);
+                name.setMaxLines(2);
+                name.setEllipsize(TextUtils.TruncateAt.END);
+                row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+                slotBox.addView(row);
+            }
+        }
+        slotBox.addView(buildDoneInputRow(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** done 分区底部的一行输入：直接在里面记一条。 */
+    private View buildDoneInputRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = dp(6);
+        row.setLayoutParams(rowParams);
+
+        doneInput = new EditText(this);
+        doneInput.setHint("今天做成了什么");
+        doneInput.setTextSize(12);
+        doneInput.setSingleLine(true);
+        doneInput.setMaxLines(1);
+        doneInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        doneInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        doneInput.setTextColor(UiPalette.INK);
+        doneInput.setHintTextColor(UiPalette.MUTED);
+        doneInput.setPadding(dp(8), dp(6), dp(8), dp(6));
+        doneInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        doneInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) grabWindowFocus();
+            else dropWindowFocus();
+        });
+        doneInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitDone();
+                return true;
+            }
+            return false;
+        });
+        row.addView(doneInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
+
+        TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
+        plus.setGravity(Gravity.CENTER);
+        plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 9));
+        plus.setOnClickListener(v -> submitDone());
+        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(34), dp(34));
+        plusParams.leftMargin = dp(6);
+        row.addView(plus, plusParams);
+        return row;
+    }
+
+    private void submitDone() {
+        String text = doneInput == null ? "" : doneInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            dropWindowFocus();
             return;
         }
-        for (String line : lines) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, dp(3), 0, dp(3));
-
-            TextView tick = FormKit.text(this, "✓", 9, UiPalette.ACCENT, true);
-            tick.setGravity(Gravity.CENTER);
-            row.addView(tick, new LinearLayout.LayoutParams(dp(14), -2));
-
-            TextView name = FormKit.text(this, line, 11, UiPalette.INK, false);
-            name.setMaxLines(2);
-            name.setEllipsize(TextUtils.TruncateAt.END);
-            row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
-            slotBox.addView(row);
-        }
+        List<String> lines = DoneStore.load(this);
+        lines.add(text);
+        DoneStore.save(this, lines);
+        doneInput.setText("");
+        dropWindowFocus();
+        render();
     }
 
     private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
@@ -1398,6 +1462,31 @@ public final class FocusBubbleService extends Service {
         }
         params.flags = params.flags | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         updateLayout();
+    }
+
+    /** 展开态底部弹性占位之外，done 输入框的引用。 */
+    private EditText doneInput;
+
+    /** 放大键：跟随当前 tab 进对应页面。 */
+    private void openCurrentTab() {
+        Intent intent;
+        if (boardTab == 1) {
+            intent = new Intent(this, TaskActivity.class)
+                    .putExtra("module", ReminderSettings.MODULE_BOARD);
+        } else if (boardTab == 2) {
+            intent = new Intent(this, DoneActivity.class);
+        } else {
+            intent = new Intent(this, FocusActivity.class);
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        try {
+            startActivity(intent);
+        } catch (RuntimeException e) {
+            try {
+                PendingIntent.getActivity(this, 3, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE).send();
+            } catch (Exception ignored) { }
+        }
     }
 
     private void openFocus() {
