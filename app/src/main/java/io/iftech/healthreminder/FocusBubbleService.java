@@ -47,8 +47,6 @@ public final class FocusBubbleService extends Service {
     private static final int NOTICE_ID = 4301;
     /** 长按多久算「进 App」。 */
     private static final long LONG_PRESS_MS = 600;
-    /** 展开后最多列几条想法，剩下的回 App 里看。 */
-    private static final int MAX_IDEAS = 4;
     /** 贴边收起后的半个圆尺寸：宽度就是圆的一半，直接贴着屏幕边。 */
     private static final int PEEK_W = 28;
     private static final int PEEK_H = 56;
@@ -76,6 +74,11 @@ public final class FocusBubbleService extends Service {
     private LinearLayout miniBox;
     /** 展开态的槽位状态区（跟步骤分开放，以前被步骤覆盖掉了）。 */
     private LinearLayout slotBox;
+
+    /** 展开态整块内容的外层滚动容器，任务/想法多了直接滑。 */
+    private ScrollView expandScroll;
+    /** 展开态头部右侧的「」按钮，点了进 App。 */
+    private TextView expandAppView;
 
     /** 展开态的陪伴音乐按钮。 */
     private LinearLayout musicRowView;
@@ -225,6 +228,16 @@ public final class FocusBubbleService extends Service {
         collapseView.setOnClickListener(v -> {
             if (expanded) toggleExpand();
         });
+
+        // 展开态的进 App 按钮（收起态不显示）
+        expandAppView = FormKit.text(this, "」", 14, UiPalette.ACCENT, true);
+        expandAppView.setGravity(Gravity.CENTER);
+        expandAppView.setContentDescription("打开 App");
+        expandAppView.setPadding(dp(8), dp(2), dp(2), dp(2));
+        LinearLayout.LayoutParams appParams = new LinearLayout.LayoutParams(-2, -2);
+        appParams.leftMargin = dp(2);
+        head.addView(expandAppView, appParams);
+        expandAppView.setOnClickListener(v -> openFocus());
         headerBox.addView(head);
 
         titleView = FormKit.text(this, "", 13, UiPalette.INK, true);
@@ -240,8 +253,14 @@ public final class FocusBubbleService extends Service {
 
         expandBox = new LinearLayout(this);
         expandBox.setOrientation(LinearLayout.VERTICAL);
-        expandBox.setVisibility(View.GONE);
-        card.addView(expandBox, new LinearLayout.LayoutParams(-1, -2));
+
+        // 整块内容放进 ScrollView：任务/想法再多也能滑到
+        expandScroll = new ScrollView(this);
+        expandScroll.setVerticalScrollBarEnabled(false);
+        expandScroll.setClipToPadding(false);
+        expandScroll.addView(expandBox, new ScrollView.LayoutParams(-1, -2));
+        expandScroll.setVisibility(View.GONE);
+        card.addView(expandScroll, new LinearLayout.LayoutParams(-1, -2));
 
         View line = new View(this);
         line.setBackgroundColor(UiPalette.hairline());
@@ -742,14 +761,25 @@ public final class FocusBubbleService extends Service {
         miniBox.setVisibility(expanded ? View.GONE : View.VISIBLE);
         if (!expanded) fillMiniBox(main, sub1, sub2);
 
-        expandBox.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        expandScroll.setVisibility(expanded ? View.VISIBLE : View.GONE);
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        expandAppView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
-            fillSlotStatus(); // 显示 3 个槽位的状态
+            fillSlotStatus(); // 显示全部待办
             fillSteps();
             fillIdeas();
             applyInputMode();
             updateMusicButton();
+            // 高度跟着内容，最多屏幕 62%，超了就滑
+            final int maxHeight = (int) (screenHeight() * 0.62f);
+            expandScroll.post(() -> {
+                int contentHeight = expandBox.getMeasuredHeight();
+                if (contentHeight <= 0) return;
+                android.view.ViewGroup.LayoutParams lp = expandScroll.getLayoutParams();
+                lp.height = Math.min(contentHeight, maxHeight);
+                expandScroll.setLayoutParams(lp);
+                updateLayout();
+            });
         }
 
         params.width = expanded ? dp(260) : WindowManager.LayoutParams.WRAP_CONTENT;
@@ -757,15 +787,11 @@ public final class FocusBubbleService extends Service {
         updatePeek();
     }
 
-    /** 收起态：任务名一行一个，「」按钮点进 App，点名字展开大窗。 */
+    /** 收起态：只列任务名，点一下展开大窗（小窗不放进 App 的按钮）。 */
     private void fillMiniBox(FocusStore.TaskSlot main, FocusStore.TaskSlot sub1,
                              FocusStore.TaskSlot sub2) {
         if (miniBox == null) return;
         miniBox.removeAllViews();
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
 
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
@@ -776,27 +802,16 @@ public final class FocusBubbleService extends Service {
             TextView name = FormKit.text(this, slot.title, 12, UiPalette.INK, true);
             name.setMaxLines(1);
             name.setEllipsize(TextUtils.TruncateAt.END);
-            name.setMaxWidth(dp(150));
+            name.setMaxWidth(dp(170));
             names.addView(name, new LinearLayout.LayoutParams(-2, -2));
         }
         if (!any) {
             names.addView(FormKit.text(this, "还没挑任务", 11, UiPalette.MUTED, false));
         }
         names.setContentDescription("展开任务列表");
+        names.setPadding(0, dp(2), 0, dp(2));
         names.setOnClickListener(v -> toggleExpand());
-        row.addView(names, new LinearLayout.LayoutParams(-2, -2));
-
-        TextView expandBtn = FormKit.text(this, "」", 16, UiPalette.ACCENT, true);
-        expandBtn.setGravity(Gravity.CENTER);
-        expandBtn.setPadding(dp(9), dp(6), dp(9), dp(6));
-        expandBtn.setBackground(FormKit.round(this, UiPalette.SOFT, 10));
-        expandBtn.setContentDescription("打开 App");
-        expandBtn.setOnClickListener(v -> openFocus());
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-2, -2);
-        btnParams.leftMargin = dp(8);
-        row.addView(expandBtn, btnParams);
-
-        miniBox.addView(row);
+        miniBox.addView(names, new LinearLayout.LayoutParams(-2, -2));
     }
 
     /** 统一样式的方框，点一下执行 onClick。 */
@@ -901,21 +916,8 @@ public final class FocusBubbleService extends Service {
             content.addView(empty);
         }
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.setClipToPadding(false);
-        scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
-        slotBox.addView(scroll, new LinearLayout.LayoutParams(-1, -2));
-
-        // 高度跟内容走，超过 220dp 才滚动（以前固定 140dp 会空一大块）
-        final int maxHeight = dp(220);
-        scroll.post(() -> {
-            int measured = content.getMeasuredHeight();
-            if (measured <= 0) return;
-            android.view.ViewGroup.LayoutParams lp = scroll.getLayoutParams();
-            lp.height = Math.min(measured, maxHeight);
-            scroll.setLayoutParams(lp);
-        });
+        // 外层 expandScroll 统一滚动，这里不再套一层
+        slotBox.addView(content, new LinearLayout.LayoutParams(-1, -2));
     }
 
     private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
@@ -1041,15 +1043,8 @@ public final class FocusBubbleService extends Service {
             return;
         }
 
-        int shown = Math.min(ideas.size(), MAX_IDEAS);
-        for (int i = 0; i < shown; i++) {
+        for (int i = 0; i < ideas.size(); i++) {
             ideaContainer.addView(buildIdeaRow(ideas.get(i)));
-        }
-        if (ideas.size() > shown) {
-            TextView rest = FormKit.text(this, "还有 " + (ideas.size() - shown) + " 条在 App 里",
-                    10, UiPalette.MUTED, false);
-            rest.setPadding(0, dp(4), 0, 0);
-            ideaContainer.addView(rest);
         }
     }
 
