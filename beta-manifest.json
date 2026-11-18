@@ -1,7 +1,7 @@
 {
-    "versionCode": 117,
-    "versionName": "0.3.0-beta99",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta99/rest-bean.apk",
-    "sha256": "83098695319b44f791ea124392a121d57eb87cbd504cb6ac030bcedbb9995f7b",
-    "notes": "去掉长按进 App：只保留放大镜进对应页面"
+    "versionCode": 118,
+    "versionName": "0.3.0-beta100",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta100/rest-bean.apk",
+    "sha256": "0fdb4e79e736d57c05c82a40160483c7843b7357f3d0162291e19c76d49fe1ef",
+    "notes": "悬浮窗整块可拖动；新增任务分区（今日任务+微习惯，可直接勾选/添加）"
 }
