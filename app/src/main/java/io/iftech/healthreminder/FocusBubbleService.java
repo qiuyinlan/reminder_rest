@@ -77,6 +77,11 @@ public final class FocusBubbleService extends Service {
 
     /** 展开态整块内容的外层滚动容器，任务/想法多了直接滑。 */
     private ScrollView expandScroll;
+    /** 展开态顶部切换：0 现在 / 1 白板 / 2 done。 */
+    private int boardTab;
+    private LinearLayout tabBar;
+    /** 「现在」专属区域（音乐/步骤/想法/输入），切到白板或 done 时整块隐藏。 */
+    private LinearLayout nowBox;
     /** 展开态头部「正在做」右边的放大按钮，点了进 App。 */
     private TextView expandAppView;
     /** 展开态头部中间的弹性占位，只在展开时生效（收起时保留 1px，不然会把条子撑到全屏）。 */
@@ -278,15 +283,27 @@ public final class FocusBubbleService extends Service {
         lineParams.bottomMargin = dp(8);
         expandBox.addView(line, lineParams);
 
-        expandBox.addView(buildMusicRow());
+        // 顶部分区切换：现在 / 白板 / done
+        tabBar = new LinearLayout(this);
+        tabBar.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(-1, -2);
+        tabParams.bottomMargin = dp(6);
+        expandBox.addView(tabBar, tabParams);
 
+        // slotBox 三个分区共用，其它「现在」专属区域包进 nowBox
         slotBox = new LinearLayout(this);
         slotBox.setOrientation(LinearLayout.VERTICAL);
         expandBox.addView(slotBox, new LinearLayout.LayoutParams(-1, -2));
 
+        nowBox = new LinearLayout(this);
+        nowBox.setOrientation(LinearLayout.VERTICAL);
+        expandBox.addView(nowBox, new LinearLayout.LayoutParams(-1, -2));
+
+        nowBox.addView(buildMusicRow());
+
         stepBox = new LinearLayout(this);
         stepBox.setOrientation(LinearLayout.VERTICAL);
-        expandBox.addView(stepBox, new LinearLayout.LayoutParams(-1, -2));
+        nowBox.addView(stepBox, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout ideaHead = new LinearLayout(this);
         ideaHead.setGravity(Gravity.CENTER_VERTICAL);
@@ -294,20 +311,20 @@ public final class FocusBubbleService extends Service {
                 new LinearLayout.LayoutParams(0, -2, 1f));
         countView = FormKit.text(this, "", 11, UiPalette.ACCENT, true);
         ideaHead.addView(countView);
-        expandBox.addView(ideaHead);
+        nowBox.addView(ideaHead);
 
         ideaContainer = new LinearLayout(this);
         ideaContainer.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams ideasParams = new LinearLayout.LayoutParams(-1, -2);
         ideasParams.topMargin = dp(2);
-        expandBox.addView(ideaContainer, ideasParams);
+        nowBox.addView(ideaContainer, ideasParams);
 
-        expandBox.addView(buildInputRow(), new LinearLayout.LayoutParams(-1, -2));
+        nowBox.addView(buildInputRow(), new LinearLayout.LayoutParams(-1, -2));
 
         // 已完成的想法收在最底部
         doneBox = new LinearLayout(this);
         doneBox.setOrientation(LinearLayout.VERTICAL);
-        expandBox.addView(doneBox, new LinearLayout.LayoutParams(-1, -2));
+        nowBox.addView(doneBox, new LinearLayout.LayoutParams(-1, -2));
         // 展开后手指按在列表/步骤上也应该能长按进 App
         expandBox.setOnLongClickListener(v -> {
             openFocus();
@@ -779,11 +796,17 @@ public final class FocusBubbleService extends Service {
         collapseView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         expandAppView.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expanded) {
-            fillSlotStatus(); // 显示全部待办
-            fillSteps();
-            fillIdeas();
-            applyInputMode();
-            updateMusicButton();
+            fillTabBar();
+            fillSlotStatus(); // 按顶部选中的分区渲染
+            if (nowBox != null) {
+                nowBox.setVisibility(boardTab == 0 ? View.VISIBLE : View.GONE);
+            }
+            if (boardTab == 0) {
+                fillSteps();
+                fillIdeas();
+                applyInputMode();
+                updateMusicButton();
+            }
             // 高度跟内容走，最长不超过 300dp（跟以前的展开态差不多高）
             final int maxHeight = Math.min(dp(300), (int) (screenHeight() * 0.5f));
             expandScroll.post(() -> {
@@ -898,6 +921,14 @@ public final class FocusBubbleService extends Service {
     private void fillSlotStatus() {
         if (slotBox == null) return;
         slotBox.removeAllViews();
+        if (boardTab == 1) {
+            fillBoard();
+            return;
+        }
+        if (boardTab == 2) {
+            fillDoneList();
+            return;
+        }
 
         final LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -919,6 +950,94 @@ public final class FocusBubbleService extends Service {
 
         // 外层 expandScroll 统一滚动，这里不再套一层
         slotBox.addView(content, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** 顶部三个切换片。 */
+    private void fillTabBar() {
+        if (tabBar == null) return;
+        tabBar.removeAllViews();
+        String[] names = {"现在", "白板", "done"};
+        for (int i = 0; i < names.length; i++) {
+            final int index = i;
+            boolean active = boardTab == i;
+            TextView chip = FormKit.text(this, names[i], 10,
+                    active ? Color.WHITE : UiPalette.MUTED, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(6), dp(4), dp(6), dp(4));
+            chip.setBackground(FormKit.round(this,
+                    active ? UiPalette.ACCENT : UiPalette.PALE, 9));
+            chip.setContentDescription("切换到" + names[i]);
+            chip.setOnClickListener(v -> {
+                if (boardTab == index) return;
+                boardTab = index;
+                render();
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (i > 0) params.leftMargin = dp(4);
+            tabBar.addView(chip, params);
+        }
+    }
+
+    /** 白板：今天的草稿清单，点一下勾掉。 */
+    private void fillBoard() {
+        List<BoardStore.Item> items = BoardStore.load(this);
+        if (items.isEmpty()) {
+            TextView empty = FormKit.text(this, "白板是空的", 11, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(4), 0, dp(4));
+            slotBox.addView(empty);
+            return;
+        }
+        for (final BoardStore.Item item : items) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, dp(4), 0, dp(4));
+
+            row.addView(buildCheckBox("勾掉 " + item.title, v -> {
+                item.done = !item.done;
+                if (item.done) {
+                    for (BoardStore.Sub sub : item.subs) sub.done = true;
+                }
+                BoardStore.save(this, items);
+                render();
+            }), new LinearLayout.LayoutParams(dp(15), dp(15)));
+
+            TextView name = FormKit.text(this, item.title, 11,
+                    item.done ? UiPalette.MUTED : UiPalette.INK, false);
+            name.setMaxLines(1);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            nameParams.leftMargin = dp(7);
+            row.addView(name, nameParams);
+            slotBox.addView(row);
+        }
+    }
+
+    /** done：今天做成的事，只读。 */
+    private void fillDoneList() {
+        List<String> lines = DoneStore.load(this);
+        if (lines.isEmpty()) {
+            TextView empty = FormKit.text(this, "今天还没记录", 11, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(4), 0, dp(4));
+            slotBox.addView(empty);
+            return;
+        }
+        for (String line : lines) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, dp(3), 0, dp(3));
+
+            TextView tick = FormKit.text(this, "✓", 9, UiPalette.ACCENT, true);
+            tick.setGravity(Gravity.CENTER);
+            row.addView(tick, new LinearLayout.LayoutParams(dp(14), -2));
+
+            TextView name = FormKit.text(this, line, 11, UiPalette.INK, false);
+            name.setMaxLines(2);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+            slotBox.addView(row);
+        }
     }
 
     private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
