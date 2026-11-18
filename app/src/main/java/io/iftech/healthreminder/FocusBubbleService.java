@@ -31,6 +31,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -76,8 +77,11 @@ public final class FocusBubbleService extends Service {
 
     /** 展开态整块内容的外层滚动容器，任务/想法多了直接滑。 */
     private ScrollView expandScroll;
-    /** 展开态头部右侧的「」按钮，点了进 App。 */
+    /** 展开态头部「正在做」右边的放大按钮，点了进 App。 */
     private TextView expandAppView;
+    /** 悬浮窗最底部的已完成区。 */
+    private LinearLayout doneBox;
+    private boolean doneIdeasOpen;
 
     /** 展开态的陪伴音乐按钮。 */
     private LinearLayout musicRowView;
@@ -209,9 +213,22 @@ public final class FocusBubbleService extends Service {
         head.addView(dot, new LinearLayout.LayoutParams(dp(7), dp(7)));
 
         TextView label = FormKit.text(this, "正在做", 10, UiPalette.MUTED, true);
-        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
         labelParams.leftMargin = dp(6);
         head.addView(label, labelParams);
+
+        // 放大按钮「」紧跟在「正在做」右边（收起态不显示）
+        expandAppView = FormKit.text(this, "」", 14, UiPalette.ACCENT, true);
+        expandAppView.setGravity(Gravity.CENTER);
+        expandAppView.setContentDescription("打开 App");
+        expandAppView.setPadding(dp(8), dp(2), dp(2), dp(2));
+        LinearLayout.LayoutParams appParams = new LinearLayout.LayoutParams(-2, -2);
+        appParams.leftMargin = dp(2);
+        head.addView(expandAppView, appParams);
+        expandAppView.setOnClickListener(v -> openFocus());
+
+        View spacer = new View(this);
+        head.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
 
         elapsedView = FormKit.text(this, "", 10, UiPalette.MUTED, false);
         head.addView(elapsedView);
@@ -227,16 +244,6 @@ public final class FocusBubbleService extends Service {
         collapseView.setOnClickListener(v -> {
             if (expanded) toggleExpand();
         });
-
-        // 展开态的进 App 按钮（收起态不显示）
-        expandAppView = FormKit.text(this, "」", 14, UiPalette.ACCENT, true);
-        expandAppView.setGravity(Gravity.CENTER);
-        expandAppView.setContentDescription("打开 App");
-        expandAppView.setPadding(dp(8), dp(2), dp(2), dp(2));
-        LinearLayout.LayoutParams appParams = new LinearLayout.LayoutParams(-2, -2);
-        appParams.leftMargin = dp(2);
-        head.addView(expandAppView, appParams);
-        expandAppView.setOnClickListener(v -> openFocus());
         headerBox.addView(head);
 
         titleView = FormKit.text(this, "", 13, UiPalette.INK, true);
@@ -293,6 +300,11 @@ public final class FocusBubbleService extends Service {
         expandBox.addView(ideaContainer, ideasParams);
 
         expandBox.addView(buildInputRow(), new LinearLayout.LayoutParams(-1, -2));
+
+        // 已完成的想法收在最底部
+        doneBox = new LinearLayout(this);
+        doneBox.setOrientation(LinearLayout.VERTICAL);
+        expandBox.addView(doneBox, new LinearLayout.LayoutParams(-1, -2));
         // 展开后手指按在列表/步骤上也应该能长按进 App
         expandBox.setOnLongClickListener(v -> {
             openFocus();
@@ -931,19 +943,54 @@ public final class FocusBubbleService extends Service {
     private void fillIdeas() {
         if (ideaContainer == null) return;
         ideaContainer.removeAllViews();
+        if (doneBox != null) doneBox.removeAllViews();
 
         List<FocusStore.Idea> ideas = FocusStore.ideas(this);
-        countView.setText(ideas.isEmpty() ? "" : String.valueOf(ideas.size()));
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+
+        List<FocusStore.Idea> pending = new ArrayList<>();
+        List<FocusStore.Idea> finished = new ArrayList<>();
+        for (FocusStore.Idea idea : ideas) {
+            if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK,
+                    ideaTitle(idea), dayStart)) {
+                finished.add(idea);
+            } else {
+                pending.add(idea);
+            }
+        }
+        countView.setText(pending.isEmpty() ? "" : String.valueOf(pending.size()));
 
         if (ideas.isEmpty()) {
             TextView empty = FormKit.text(this, "还没记东西", 11, UiPalette.MUTED, false);
             empty.setPadding(0, dp(5), 0, dp(3));
             ideaContainer.addView(empty);
-            return;
+        } else if (pending.isEmpty()) {
+            TextView empty = FormKit.text(this, "都完成了", 11, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(5), 0, dp(3));
+            ideaContainer.addView(empty);
+        } else {
+            for (FocusStore.Idea idea : pending) {
+                ideaContainer.addView(buildIdeaRow(idea));
+            }
         }
 
-        for (int i = 0; i < ideas.size(); i++) {
-            ideaContainer.addView(buildIdeaRow(ideas.get(i)));
+        // 已完成的想法移到底部折叠区
+        if (doneBox == null || finished.isEmpty()) return;
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(0, dp(4), 0, dp(2));
+        head.addView(FormKit.text(this,
+                "已完成 " + finished.size() + (doneIdeasOpen ? " ⌃" : " ⌄"),
+                10, UiPalette.MUTED, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.setOnClickListener(v -> {
+            doneIdeasOpen = !doneIdeasOpen;
+            fillIdeas();
+        });
+        doneBox.addView(head);
+        if (doneIdeasOpen) {
+            for (FocusStore.Idea idea : finished) {
+                doneBox.addView(buildIdeaRow(idea));
+            }
         }
     }
 
