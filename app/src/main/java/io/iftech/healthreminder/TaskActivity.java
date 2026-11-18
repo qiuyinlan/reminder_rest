@@ -79,7 +79,14 @@ public final class TaskActivity extends Activity {
 
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.TASKS,
                 () -> { startActivity(new Intent(this, MainActivity.class)); overridePendingTransition(0, 0); finish(); },
-                null,
+                // 白板页也要能一键回到任务页（否则底部「任务」是灰的）
+                ReminderSettings.MODULE_BOARD.equals(module)
+                        ? () -> {
+                            startActivity(new Intent(this, TaskActivity.class));
+                            overridePendingTransition(0, 0);
+                            finish();
+                        }
+                        : null,
                 () -> { startActivity(new Intent(this, CardActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
