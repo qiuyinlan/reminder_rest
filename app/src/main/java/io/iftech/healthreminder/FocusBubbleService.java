@@ -46,7 +46,7 @@ public final class FocusBubbleService extends Service {
     private static final String CHANNEL = "focus_bubble";
     private static final int NOTICE_ID = 4301;
     /** 长按多久算「进 App」。 */
-    private static final long LONG_PRESS_MS = 600;
+    private static final long LONG_PRESS_MS = 600; // 已不再用于进 App，保留给手势判定余量
     /** 贴边收起后的半个圆尺寸：宽度就是圆的一半，直接贴着屏幕边。 */
     private static final int PEEK_W = 28;
     private static final int PEEK_H = 56;
@@ -325,11 +325,6 @@ public final class FocusBubbleService extends Service {
         doneBox = new LinearLayout(this);
         doneBox.setOrientation(LinearLayout.VERTICAL);
         nowBox.addView(doneBox, new LinearLayout.LayoutParams(-1, -2));
-        // 展开后手指按在列表/步骤上也应该能长按进 App
-        expandBox.setOnLongClickListener(v -> {
-            openFocus();
-            return true;
-        });
 
         params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -516,9 +511,7 @@ public final class FocusBubbleService extends Service {
                     }
                     case MotionEvent.ACTION_UP:
                         if (!moved) {
-                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) {
-                                openFocus();
-                            } else if (!expanded) {
+                            if (!expanded) {
                                 // 展开态点空白不再收起，收起只走右上角 －，防止误触
                                 toggleExpand();
                             }
@@ -707,13 +700,9 @@ public final class FocusBubbleService extends Service {
                     }
                     case MotionEvent.ACTION_UP:
                         if (!moved) {
-                            if (System.currentTimeMillis() - downAt >= LONG_PRESS_MS) {
-                                openFocus();
-                            } else {
-                                // 贴边点一下：直接展开大窗（不能只恢复成条子）
-                                restoreFromEdge();
-                                if (!expanded) toggleExpand();
-                            }
+                            // 贴边点一下：直接展开大窗（进 App 只走放大镜）
+                            restoreFromEdge();
+                            if (!expanded) toggleExpand();
                         } else {
                             persistPos();
                         }
