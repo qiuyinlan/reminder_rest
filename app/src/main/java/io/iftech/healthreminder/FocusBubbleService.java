@@ -1189,7 +1189,7 @@ public final class FocusBubbleService extends Service {
                 head.setGravity(Gravity.CENTER_VERTICAL);
                 head.setPadding(0, dp(4), 0, dp(2));
                 head.addView(FormKit.text(this,
-                        "已完成 " + finished.size() + (boardDoneOpen ? " ⌃" : " ⌄"),
+                        (boardDoneOpen ? "已完成 ⌃" : "已完成 ⌄"),
                         10, UiPalette.MUTED, true), new LinearLayout.LayoutParams(0, -2, 1f));
                 head.setOnClickListener(v -> {
                     boardDoneOpen = !boardDoneOpen;
@@ -1466,7 +1466,7 @@ public final class FocusBubbleService extends Service {
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.setPadding(0, dp(4), 0, dp(2));
         head.addView(FormKit.text(this,
-                "已完成 " + finished.size() + (doneIdeasOpen ? " ⌃" : " ⌄"),
+                (doneIdeasOpen ? "已完成 ⌃" : "已完成 ⌄"),
                 10, UiPalette.MUTED, true), new LinearLayout.LayoutParams(0, -2, 1f));
         head.setOnClickListener(v -> {
             doneIdeasOpen = !doneIdeasOpen;
