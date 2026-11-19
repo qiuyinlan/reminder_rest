@@ -427,11 +427,14 @@ public final class MainActivity extends Activity {
         int remainingReminders = 0;
         long now = System.currentTimeMillis();
         long dayStart = ReminderRecord.dayStart(now);
-        for (ReminderSettings.Rule rule : rules) {
-            completed += ReminderSettings.completedToday(this, rule.id);
-            target += rule.dailyTarget;
-            // 总开关关了就不算提醒次数，开了才统计待完成的
-            if (remindersOn) remainingReminders += countRemainingReminders(rule, now, dayStart);
+        if (remindersOn) {
+            // 只统计已生效的提醒：关了的规则不计入分母，也不计入完成数
+            for (ReminderSettings.Rule rule : rules) {
+                if (!rule.enabled) continue;
+                completed += ReminderSettings.completedToday(this, rule.id);
+                target += countTodaySlots(rule, dayStart);
+                remainingReminders += countRemainingReminders(rule, now, dayStart);
+            }
         }
 
         LinearLayout card = new LinearLayout(this);
@@ -477,12 +480,21 @@ public final class MainActivity extends Activity {
         card.addView(divider, dividerParams);
 
         LinearLayout metrics = row();
-        metrics.addView(statusMetric("今日完成", completed + " / " + Math.max(target, 1) + " 次"),
+        String completedText = remindersOn && target > 0
+                ? completed + " / " + target + " 次" : "—";
+        metrics.addView(statusMetric("今日完成", completedText),
                 new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams completionParams = new LinearLayout.LayoutParams(0, -2, 1);
         completionParams.leftMargin = dp(14);
         metrics.addView(statusMetric("待完成提醒", remindersOn ? remainingReminders + " 次" : "—"), completionParams);
         card.addView(metrics);
+
+        if (!remindersOn || target <= 0) {
+            LinearLayout.LayoutParams cardParams = full();
+            cardParams.bottomMargin = dp(14);
+            body.addView(card, cardParams);
+            return;
+        }
 
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(false);
@@ -500,6 +512,43 @@ public final class MainActivity extends Activity {
         body.addView(card, cardParams);
     }
 
+    /** 今天这条规则该提醒几次（不分早晚，只看今天该不该响）。 */
+    private int countTodaySlots(ReminderSettings.Rule rule, long dayStart) {
+        if (!rule.enabled) return 0;
+        if (rule.isSubtaskModule()) return 0;
+        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
+        if (!appliesToday(rule, dayStart)) return 0;
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.specificTimeMode) {
+            int total = 0;
+            for (int pointSec : rule.timePointsSeconds) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(dayStart);
+                cal.add(Calendar.SECOND, pointSec);
+                if (cal.getTimeInMillis() < dayEnd) total++;
+            }
+            return total;
+        }
+        int startSec = rule.start * 60;
+        int endSec = rule.end * 60;
+        if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
+        long windowStart = dayStart + startSec * 1000L;
+        long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
+        if (windowEnd <= windowStart) return 0;
+        int interval = Math.max(1, rule.intervalSeconds);
+        return (int) ((windowEnd - windowStart) / (interval * 1000L)) + 1;
+    }
+
+    /** 单次 / 每周规则今天到底该不该响。 */
+    private boolean appliesToday(ReminderSettings.Rule rule, long dayStart) {
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.isOnceSchedule()) return rule.onceAt >= dayStart && rule.onceAt < dayEnd;
+        if (rule.isWeeklySchedule()) {
+            return rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK));
+        }
+        return true;
+    }
+
     /** 今天还剩多少次提醒：取「还没到的时间点」和「还没完成的数量」中小的那个。 */
     private int countRemainingReminders(ReminderSettings.Rule rule, long now, long dayStart) {
         if (!rule.enabled) return 0;
@@ -513,7 +562,8 @@ public final class MainActivity extends Activity {
             if (!rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) return 0;
         }
         int upcoming = 0;
-        int total = 0;
+        int total = countTodaySlots(rule, dayStart);
+        if (total <= 0) return 0;
         long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
         if (rule.specificTimeMode) {
             for (int pointSec : rule.timePointsSeconds) {
@@ -522,7 +572,6 @@ public final class MainActivity extends Activity {
                 cal.add(Calendar.SECOND, pointSec);
                 long pointMillis = cal.getTimeInMillis();
                 if (pointMillis >= dayEnd) continue;
-                total++;
                 if (pointMillis > now) upcoming++;
             }
         } else {
@@ -531,10 +580,6 @@ public final class MainActivity extends Activity {
             if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
             long windowStart = dayStart + startSec * 1000L;
             long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
-            if (windowEnd > windowStart) {
-                int interval = Math.max(1, rule.intervalSeconds);
-                total = (int) ((windowEnd - windowStart) / (interval * 1000L)) + 1;
-            }
             long effectiveStart = Math.max(now, windowStart);
             if (windowEnd > effectiveStart) {
                 int interval = Math.max(1, rule.intervalSeconds);
@@ -910,14 +955,22 @@ public final class MainActivity extends Activity {
             itemProgress.setMax(Math.max(1, rule.dailyTarget));
             itemProgress.setProgress(Math.min(updatedDone, Math.max(1, rule.dailyTarget)));
 
+            boolean remindersOn = ReminderSettings.enabled(this);
+            long todayStart = ReminderRecord.dayStart(now);
             int allDone = 0;
             int allTarget = 0;
-            for (ReminderSettings.Rule current : ReminderSettings.rules(this)) {
-                allDone += ReminderSettings.completedToday(this, current.id);
-                allTarget += current.dailyTarget;
+            if (remindersOn) {
+                for (ReminderSettings.Rule current : ReminderSettings.listedRules(this)) {
+                    if (!current.enabled) continue;
+                    allDone += ReminderSettings.completedToday(this, current.id);
+                    allTarget += countTodaySlots(current, todayStart);
+                }
             }
-            if (completedMetric != null) completedMetric.setText(allDone + " / " + Math.max(allTarget, 1) + " 次");
-            if (todayProgress != null) {
+            if (completedMetric != null) {
+                completedMetric.setText(remindersOn && allTarget > 0
+                        ? allDone + " / " + allTarget + " 次" : "—");
+            }
+            if (todayProgress != null && remindersOn && allTarget > 0) {
                 todayProgress.setMax(Math.max(1, allTarget));
                 todayProgress.setProgress(Math.min(allDone, Math.max(1, allTarget)));
             }
