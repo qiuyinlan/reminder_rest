@@ -126,6 +126,17 @@ public final class MainActivity extends Activity {
         TextView brand = label("休息一下", 30, INK, true);
         brand.setLetterSpacing(0.01f);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView moodButton = label("心情", 12, INK, true);
+        moodButton.setGravity(Gravity.CENTER);
+        moodButton.setLetterSpacing(0.06f);
+        moodButton.setPadding(dp(15), dp(9), dp(15), dp(9));
+        moodButton.setBackground(outline(UiPalette.SOFT, UiPalette.BORDER, 18));
+        moodButton.setElevation(dp(1));
+        moodButton.setContentDescription("记一下现在的心情");
+        moodButton.setOnClickListener(v -> MoodDialogs.add(this, this::render));
+        LinearLayout.LayoutParams moodParams = new LinearLayout.LayoutParams(-2, -2);
+        moodParams.rightMargin = dp(8);
+        top.addView(moodButton, moodParams);
         TextView settingsButton = label("设置", 12, INK, true);
         settingsButton.setGravity(Gravity.CENTER);
         settingsButton.setLetterSpacing(0.06f);

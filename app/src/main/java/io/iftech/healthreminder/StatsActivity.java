@@ -345,6 +345,11 @@ public final class StatsActivity extends Activity {
         content.addView(bodyNote, bodyNoteParams);
         if (ReminderSettings.MODULE_BODY.equals(moduleFilter)) {
             try {
+                addMoodCard(content);
+            } catch (Throwable error) {
+                CrashLog.save(this, error);
+            }
+            try {
                 addPeriodCard(content);
             } catch (Throwable error) {
                 CrashLog.save(this, error);
@@ -1089,6 +1094,62 @@ public final class StatsActivity extends Activity {
             emptyParams.topMargin = dp(6);
             content.addView(empty, emptyParams);
         }
+    }
+
+    /** 心情记录：今天几条、本月几条，最近几条可点开修改。 */
+    private void addMoodCard(LinearLayout content) {
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        int todayCount = MoodStore.onDay(this, dayStart).size();
+        List<MoodStore.Entry> month = MoodStore.inMonth(this, Calendar.getInstance());
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(round(Color.WHITE, 16));
+        lift(card);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.bottomMargin = dp(12);
+        card.setLayoutParams(cardParams);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text("心情", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(text("今天 " + todayCount + " 次 · 本月 " + month.size() + " 次", 12, MUTED, false));
+        TextView plus = text("＋", 16, GREEN, true);
+        plus.setGravity(Gravity.CENTER);
+        plus.setPadding(dp(10), dp(2), dp(10), dp(2));
+        plus.setBackground(round(MINT_LIGHT, 10));
+        plus.setContentDescription("记一下心情");
+        plus.setOnClickListener(v -> MoodDialogs.add(this, this::render));
+        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(-2, -2);
+        plusParams.leftMargin = dp(10);
+        head.addView(plus, plusParams);
+        card.addView(head);
+
+        if (month.isEmpty()) {
+            TextView empty = text("还没记过心情。", 13, MUTED, false);
+            empty.setPadding(0, dp(8), 0, 0);
+            card.addView(empty);
+        } else {
+            int shown = 0;
+            for (final MoodStore.Entry entry : month) {
+                if (shown >= 5) break;
+                shown++;
+                LinearLayout row = new LinearLayout(this);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(0, dp(8), 0, 0);
+                row.addView(text(shortDate(entry.at) + " " + time(entry.at), 11, MUTED, false));
+                TextView mood = text(entry.mood, 13, INK, false);
+                mood.setMaxLines(1);
+                mood.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                LinearLayout.LayoutParams moodParams = new LinearLayout.LayoutParams(0, -2, 1f);
+                moodParams.leftMargin = dp(8);
+                row.addView(mood, moodParams);
+                row.setOnClickListener(v -> MoodDialogs.edit(this, entry, this::render));
+                card.addView(row);
+            }
+        }
+        content.addView(card);
     }
 
     /** 点身体情况卡片：这一天没记就补，记了就改。 */
