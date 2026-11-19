@@ -1,7 +1,7 @@
 {
-    "versionCode": 131,
-    "versionName": "0.3.0-beta115",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta115/rest-bean.apk",
-    "sha256": "bacf5c382bc08ee83f3cdcfc0baa2f0b484c6546129e78243ef10b7454691ebd",
-    "notes": "复盘进入提醒事项列表第一位，首页显示下次提醒倒计时"
+    "versionCode": 132,
+    "versionName": "0.3.0-beta116",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta116/rest-bean.apk",
+    "sha256": "1a90639f03284a281b7bb48376c05656619b5b994840296c3202d52f301cc905",
+    "notes": "复盘改名为「复盘」，在事项里单独一条用分隔线隔开，可在设置里关掉"
 }
