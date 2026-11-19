@@ -1,7 +1,7 @@
 {
-    "versionCode": 123,
-    "versionName": "0.3.0-beta105",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta105/rest-bean.apk",
-    "sha256": "a5e34c96c21862bb4511a7741aa9a2139b4ade2cb036f8d74e0ff1009f0c3fe5",
-    "notes": "统计页可以直接补记和修改身体记录"
+    "versionCode": 124,
+    "versionName": "0.3.0-beta106",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta106/rest-bean.apk",
+    "sha256": "529dd18bbf095bc75975aef2e33d4ebff9012a0c037676db07b496ca49760e45",
+    "notes": "现在页记的想法不再混进提醒事项；悬浮窗整块都能拖"
 }
