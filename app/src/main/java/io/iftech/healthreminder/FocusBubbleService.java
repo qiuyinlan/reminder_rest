@@ -1037,10 +1037,6 @@ public final class FocusBubbleService extends Service {
             fillReview();
             return;
         }
-        if (boardTab == 4) {
-            fillDoneList();
-            return;
-        }
 
         final LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -1068,7 +1064,7 @@ public final class FocusBubbleService extends Service {
     private void fillTabBar() {
         if (tabBar == null) return;
         tabBar.removeAllViews();
-        String[] names = {"现在", "任务", "白板", "复盘", "done"};
+        String[] names = {"现在", "任务", "白板", "复盘"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
             boolean active = boardTab == i;
@@ -1467,91 +1463,6 @@ public final class FocusBubbleService extends Service {
         render();
     }
 
-    /** done：今天做成的事，只读。 */
-    private void fillDoneList() {
-        List<String> lines = DoneStore.load(this);
-        if (lines.isEmpty()) {
-            TextView empty = FormKit.text(this, "今天还没记录", 11, UiPalette.MUTED, false);
-            empty.setPadding(0, dp(4), 0, dp(4));
-            slotBox.addView(empty);
-        } else {
-            for (String line : lines) {
-                LinearLayout row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(0, dp(3), 0, dp(3));
-
-                TextView tick = FormKit.text(this, "✓", 9, UiPalette.ACCENT, true);
-                tick.setGravity(Gravity.CENTER);
-                row.addView(tick, new LinearLayout.LayoutParams(dp(14), -2));
-
-                TextView name = FormKit.text(this, line, 11, UiPalette.INK, false);
-                name.setMaxLines(2);
-                name.setEllipsize(TextUtils.TruncateAt.END);
-                row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
-                slotBox.addView(row);
-            }
-        }
-        slotBox.addView(buildDoneInputRow(), new LinearLayout.LayoutParams(-1, -2));
-    }
-
-    /** done 分区底部的一行输入：直接在里面记一条。 */
-    private View buildDoneInputRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-        rowParams.topMargin = dp(6);
-        row.setLayoutParams(rowParams);
-
-        doneInput = new EditText(this);
-        doneInput.setHint("今天做成了什么");
-        doneInput.setTextSize(12);
-        doneInput.setSingleLine(true);
-        doneInput.setMaxLines(1);
-        doneInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
-        doneInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        doneInput.setTextColor(UiPalette.INK);
-        doneInput.setHintTextColor(UiPalette.MUTED);
-        doneInput.setPadding(dp(8), dp(6), dp(8), dp(6));
-        doneInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
-        doneInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) grabWindowFocus();
-            else dropWindowFocus();
-        });
-        doneInput.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                submitDone();
-                return true;
-            }
-            return false;
-        });
-        row.addView(doneInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
-
-        TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
-        plus.setGravity(Gravity.CENTER);
-        plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 9));
-        plus.setOnClickListener(v -> submitDone());
-        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(34), dp(34));
-        plusParams.leftMargin = dp(6);
-        row.addView(plus, plusParams);
-        return row;
-    }
-
-    private void submitDone() {
-        String text = doneInput == null ? "" : doneInput.getText().toString().trim();
-        if (text.isEmpty()) {
-            dropWindowFocus();
-            return;
-        }
-        List<String> lines = DoneStore.load(this);
-        lines.add(text);
-        DoneStore.save(this, lines);
-        doneInput.setText("");
-        dropWindowFocus();
-        render();
-    }
-
     private View buildSlotStatusRow(String label, final FocusStore.TaskSlot slot) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -1892,8 +1803,6 @@ public final class FocusBubbleService extends Service {
         updateLayout();
     }
 
-    /** done 输入框的引用。 */
-    private EditText doneInput;
     /** 白板输入框的引用。 */
     private EditText boardInput;
     /** 任务分区输入框的引用。 */
@@ -1913,8 +1822,6 @@ public final class FocusBubbleService extends Service {
                     .putExtra("module", ReminderSettings.MODULE_BOARD);
         } else if (boardTab == 3) {
             intent = new Intent(this, StatsActivity.class);
-        } else if (boardTab == 4) {
-            intent = new Intent(this, DoneActivity.class);
         } else {
             intent = new Intent(this, FocusActivity.class);
         }
