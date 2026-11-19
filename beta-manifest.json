@@ -1,7 +1,7 @@
 {
-    "versionCode": 121,
-    "versionName": "0.3.0-beta103",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta103/rest-bean.apk",
-    "sha256": "2c5259ab7706c4acf0276af7c540612e722d338363adc6c73931a8004e6f12ba",
-    "notes": "修复任务勾选同步、白板隔天自动清理、首页待完成提醒统计；删除卡片功能"
+    "versionCode": 122,
+    "versionName": "0.3.0-beta104",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta104/rest-bean.apk",
+    "sha256": "c20c27559d4935ddbec1505e2efad3d9bd5b51182e52dd996cb97d211380d9fe",
+    "notes": "首页提醒次数只统计已生效的提醒，提醒总开关关闭时不显示次数"
 }
