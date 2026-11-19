@@ -65,6 +65,12 @@
             android:turnScreenOn="true"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".ReviewReminderActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:screenOrientation="portrait" />
+        <activity
             android:name=".SubtaskActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

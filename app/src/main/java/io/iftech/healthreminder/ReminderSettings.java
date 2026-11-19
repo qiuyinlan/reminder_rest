@@ -24,6 +24,8 @@ final class ReminderSettings {
     static final String MODULE_SUBTASK = "subtask";
     /** 白板：只活今天的草稿清单，复用任务页 UI，不入任务表。 */
     static final String MODULE_BOARD = "board";
+    /** 每日复盘：一条固定规则 + 每天一句话，不混进事项列表。 */
+    static final String MODULE_REVIEW = "review";
     static final String KEY_ENABLED = "enabled";
     private static final String PREFS = "reminder_settings";
     private static final String RULES_KEY = "reminder_rules_v2";
@@ -162,6 +164,7 @@ final class ReminderSettings {
         boolean isTaskModule() { return MODULE_TASK.equals(module); }
         boolean isTaskAllModule() { return MODULE_TASK_ALL.equals(module); }
         boolean isSubtaskModule() { return MODULE_SUBTASK.equals(module); }
+        boolean isReviewModule() { return MODULE_REVIEW.equals(module); }
 
         /** 单次提醒（指定日期时间，只响一次）。 */
         boolean isOnceSchedule() { return onceAt > 0L; }
@@ -448,6 +451,15 @@ final class ReminderSettings {
             if (rule.module.equals(module)) result.add(rule);
         }
         return result;
+    }
+
+    /** 列表页（首页 / 事项页）真正要展示的事项：排除现在页的想法和每日复盘。 */
+    static List<Rule> listedRules(Context context) {
+        ArrayList<Rule> kept = new ArrayList<>();
+        for (Rule rule : FocusStore.withoutIdeas(context, rules(context))) {
+            if (!rule.isReviewModule()) kept.add(rule);
+        }
+        return kept;
     }
 
     static Rule ruleById(Context context, int ruleId) {

@@ -35,6 +35,7 @@ final class ReminderOverlayWindow {
         final boolean bodyModule = rule == null || rule.isBodyModule();
         final Class<?> target = rule != null && rule.isTaskAllModule() ? TaskOverviewReminderActivity.class
                 : rule != null && rule.isTaskModule() ? TaskReminderActivity.class
+                : rule != null && rule.isReviewModule() ? ReviewReminderActivity.class
                 : ReminderActivity.class;
         final String overlineText = bodyModule ? "哪怕做一秒，身体也会舒服一点！\n求求主人了。"
                 : rule != null && rule.isTaskAllModule() ? "该看今天的清单了"

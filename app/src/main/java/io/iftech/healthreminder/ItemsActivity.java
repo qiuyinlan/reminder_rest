@@ -107,12 +107,13 @@ public final class ItemsActivity extends Activity {
 
     private void renderItems() {
         list.removeAllViews();
-        // 现在页记下的想法不算提醒事项，不要混进来
-        List<ReminderSettings.Rule> rules = FocusStore.withoutIdeas(this, ReminderSettings.rules(this));
+        // 现在页的想法、每日复盘的固定规则都不当普通事项列出来
+        List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
         boolean itemLimitReached = MembershipPolicy.requiresMembershipForNewItem(rules.size());
         addFabPro.setVisibility(itemLimitReached ? View.VISIBLE : View.GONE);
         addFab.setBackground(circle(itemLimitReached ? UiPalette.MUTED : MINT));
         addFab.setContentDescription(itemLimitReached ? "添加提醒事项，PRO" : "添加提醒事项");
+        list.addView(buildReviewCard());
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("今日行动", 26, INK, true);
@@ -292,6 +293,53 @@ public final class ItemsActivity extends Activity {
         return UiPalette.categoryStroke(UiPalette.categoryKind(title));
     }
 
+    /** 事项页最上面的复盘卡片：开关 + 提醒时间。 */
+    private LinearLayout buildReviewCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
+        card.setBackground(round(Color.WHITE, 16));
+        card.setElevation(dp(1));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.bottomMargin = dp(12);
+        card.setLayoutParams(cardParams);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(text("每日复盘", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView timeChip = text(ReviewStore.label(this), 13, GREEN, true);
+        timeChip.setGravity(Gravity.CENTER);
+        timeChip.setPadding(dp(10), dp(6), dp(10), dp(6));
+        timeChip.setBackground(round(MINT_LIGHT, 12));
+        timeChip.setContentDescription("复盘提醒时间");
+        timeChip.setOnClickListener(v -> WheelPicker.time(this, "复盘提醒时间", "确定",
+                ReviewStore.secondsOfDay(this), false, seconds -> {
+                    ReviewStore.setSecondsOfDay(this, seconds);
+                    renderItems();
+                }));
+        LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(-2, -2);
+        timeParams.rightMargin = dp(10);
+        row.addView(timeChip, timeParams);
+
+        Switch toggle = new Switch(this);
+        toggle.setFocusable(false);
+        toggle.setFocusableInTouchMode(false);
+        toggle.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{Color.WHITE, Color.WHITE}));
+        toggle.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{MINT, UiPalette.DISABLED}));
+        toggle.setChecked(ReviewStore.enabled(this));
+        toggle.setContentDescription("开启每日复盘提醒");
+        toggle.setOnCheckedChangeListener((button, checked) -> {
+            ReviewStore.setEnabled(this, checked);
+            renderItems();
+        });
+        row.addView(toggle);
+        card.addView(row);
+        return card;
+    }
+
     private GradientDrawable surface(int[] colors, int radius, int stroke) {
         GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
         background.setCornerRadius(dp(radius));
@@ -314,7 +362,7 @@ public final class ItemsActivity extends Activity {
 
     private void editRule(ReminderSettings.Rule existing) {
         if (existing == null && MembershipPolicy.requiresMembershipForNewItem(
-                FocusStore.withoutIdeas(this, ReminderSettings.rules(this)).size())) {
+                ReminderSettings.listedRules(this).size())) {
             MembershipAccess.requirePremium(this, "免费版最多可新建 3 个事项", active -> {
                 if (active) editRuleInternal(null);
             });

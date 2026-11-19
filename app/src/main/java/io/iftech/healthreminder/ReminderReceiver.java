@@ -166,6 +166,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
         Class<?> target = ReminderActivity.class;
         if (rule != null && rule.isTaskAllModule()) target = TaskOverviewReminderActivity.class;
         else if (rule != null && rule.isTaskModule()) target = TaskReminderActivity.class;
+        else if (rule != null && rule.isReviewModule()) target = ReviewReminderActivity.class;
         Intent open = new Intent(context, target).putExtra("action", action).putExtra("rule_id", ruleId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 702, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -173,7 +174,9 @@ public final class ReminderReceiver extends BroadcastReceiver {
         PendingIntent delete = PendingIntent.getBroadcast(context, 704, dismissed,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         // 所有模块都用同一套悬浮霸屏页：以前只给身体模块，任务和卡片就只剩一条通知。
-        boolean covered = ReminderOverlayWindow.show(context, action, ruleId);
+        // 复盘不走悬浮页：它要直接弹整页要求写一句，少点一层。
+        boolean covered = (rule != null && rule.isReviewModule())
+                ? false : ReminderOverlayWindow.show(context, action, ruleId);
         ReminderDebug.note(context, "post rule=" + ruleId + " target=" + target.getSimpleName()
                 + " alarmMode=" + alarmMode + " overlay=" + covered
                 + " notify=" + notificationsEnabled + " exact="
