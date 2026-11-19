@@ -461,7 +461,9 @@ final class ReminderSettings {
         ArrayList<Rule> body = new ArrayList<>();
         for (Rule rule : rules(context)) {
             if (ideaIds.contains(rule.id)) continue;
-            if (rule.isReviewModule()) reviews.add(rule);
+            if (rule.isReviewModule()) {
+                if (ReviewStore.visible(context)) reviews.add(rule);
+            }
             else if (MODULE_BODY.equals(rule.module)) body.add(rule);
         }
         ArrayList<Rule> kept = new ArrayList<>(reviews);

@@ -47,7 +47,7 @@ public final class ReviewReminderActivity extends Activity {
         headBg.setCornerRadii(new float[]{0, 0, 0, 0, radius, radius, radius, radius});
         head.setBackground(headBg);
 
-        TextView overline = text("每日复盘", 12, UiPalette.MUTED, true);
+        TextView overline = text("复盘", 12, UiPalette.MUTED, true);
         head.addView(overline);
         TextView title = text("今天过得怎么样？", 24, UiPalette.INK, true);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
@@ -121,7 +121,7 @@ public final class ReviewReminderActivity extends Activity {
         ReviewStore.save(this, note);
         long now = System.currentTimeMillis();
         int id = ruleId >= 0 ? ruleId : ReviewStore.RULE_ID;
-        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "每日复盘",
+        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "复盘",
                 ReminderRecord.KIND_DONE, now, now, note, ReminderSettings.MODULE_REVIEW);
         ReminderSettings.markCompleted(this, id, 1);
         // 写完立刻刷新下次提醒时间，不必等下一次重排

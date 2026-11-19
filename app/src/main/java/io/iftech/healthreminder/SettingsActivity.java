@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -200,7 +201,7 @@ public final class SettingsActivity extends Activity {
         page.addView(sectionHeader, sectionParams);
         sectionHeader.addView(text("提醒与权限", 14, INK, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
-        TextView sectionTag = text("1 项", 11, GREEN, true);
+        TextView sectionTag = text("2 项", 11, GREEN, true);
         sectionTag.setPadding(dp(9), dp(5), dp(9), dp(5));
         sectionTag.setBackground(round(MINT_PALE, 12));
         sectionHeader.addView(sectionTag);
@@ -232,6 +233,29 @@ public final class SettingsActivity extends Activity {
         TextView arrow = text("›", 25, GREEN, false);
         arrow.setGravity(Gravity.CENTER);
         settingCard.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(40)));
+
+        LinearLayout reviewCard = new LinearLayout(this);
+        reviewCard.setGravity(Gravity.CENTER_VERTICAL);
+        reviewCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        reviewCard.setBackground(round(Color.WHITE, 17));
+        reviewCard.setElevation(dp(1));
+        LinearLayout.LayoutParams reviewCardParams = new LinearLayout.LayoutParams(-1, -2);
+        reviewCardParams.topMargin = dp(9);
+        page.addView(reviewCard, reviewCardParams);
+
+        LinearLayout reviewCopy = new LinearLayout(this);
+        reviewCopy.setOrientation(LinearLayout.VERTICAL);
+        reviewCopy.addView(text("复盘提醒", 16, INK, true));
+        TextView reviewDetail = text("关掉后不在提醒事项里显示", 12, MUTED, false);
+        reviewDetail.setPadding(0, dp(5), 0, 0);
+        reviewCopy.addView(reviewDetail);
+        reviewCard.addView(reviewCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        Switch reviewSwitch = new Switch(this);
+        reviewSwitch.setChecked(ReviewStore.visible(this));
+        reviewSwitch.setContentDescription("显示复盘提醒");
+        reviewSwitch.setOnCheckedChangeListener((button, checked) -> ReviewStore.setVisible(this, checked));
+        reviewCard.addView(reviewSwitch);
 
         LinearLayout diagnostics = new LinearLayout(this);
         diagnostics.setGravity(Gravity.CENTER_VERTICAL);

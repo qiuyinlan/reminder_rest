@@ -232,6 +232,16 @@ public final class ItemsActivity extends Activity {
             } else {
                 card.setOnLongClickListener(v -> { showItemHistory(rule); return true; });
             }
+            // 复盘独立一条：下面画一条线跟其他事项隔开
+            if (rule.isReviewModule()) {
+                View reviewDivider = new View(this);
+                reviewDivider.setBackgroundColor(UiPalette.hairline());
+                LinearLayout.LayoutParams dividerParams =
+                        new LinearLayout.LayoutParams(-1, dp(1));
+                dividerParams.topMargin = dp(2);
+                dividerParams.bottomMargin = dp(10);
+                list.addView(reviewDivider, dividerParams);
+            }
         }
         if (rules.isEmpty()) {
             TextView empty = text("", 15, MUTED, true);

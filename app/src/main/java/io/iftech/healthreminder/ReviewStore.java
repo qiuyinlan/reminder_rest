@@ -62,9 +62,26 @@ final class ReviewStore {
         else prefs(context).edit().putString(dayKey(), value).apply();
     }
 
+    /** 复盘提醒是否显示（设置里可关，关了就不出现在提醒事项里）。 */
+    static boolean visible(Context context) {
+        return prefs(context).getBoolean("review_visible", true);
+    }
+
+    static void setVisible(Context context, boolean on) {
+        prefs(context).edit().putBoolean("review_visible", on).apply();
+        ReminderSettings.Rule rule = rule(context);
+        if (rule != null) ReminderSettings.upsertRule(context, rule.withEnabled(on));
+    }
+
     static ReminderSettings.Rule rule(Context context) {
         for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(context)) {
-            if (rule.id == RULE_ID) return rule;
+            if (rule.id != RULE_ID) continue;
+            if (!"复盘".equals(rule.title)) {
+                ReminderSettings.Rule renamed = rule.withTitle("复盘");
+                ReminderSettings.upsertRule(context, renamed);
+                return renamed;
+            }
+            return rule;
         }
         return null;
     }
@@ -96,7 +113,7 @@ final class ReviewStore {
         int safe = ((seconds % 86400) + 86400) % 86400;
         ArrayList<Integer> points = new ArrayList<>();
         points.add(safe);
-        return ReminderSettings.Rule.withSpecificTimes(RULE_ID, "每日复盘",
+        return ReminderSettings.Rule.withSpecificTimes(RULE_ID, "复盘",
                         safe / 60, safe / 60, 24 * 3600, points, 1, false, enabled)
                 .withModule(ReminderSettings.MODULE_REVIEW)
                 .withReminderMessage("花一分钟，写下今天的一句");
