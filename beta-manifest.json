@@ -1,7 +1,7 @@
 {
-    "versionCode": 132,
-    "versionName": "0.3.0-beta116",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta116/rest-bean.apk",
-    "sha256": "1a90639f03284a281b7bb48376c05656619b5b994840296c3202d52f301cc905",
-    "notes": "复盘改名为「复盘」，在事项里单独一条用分隔线隔开，可在设置里关掉"
+    "versionCode": 133,
+    "versionName": "0.3.0-beta117",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta117/rest-bean.apk",
+    "sha256": "72bad8d4668452e5ec09be83e1bcdef0092a34315e43b879b84dd7037c8443cc",
+    "notes": "陪伴环境音音量调到正常水平"
 }
