@@ -1,7 +1,7 @@
 {
-    "versionCode": 129,
-    "versionName": "0.3.0-beta113",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta113/rest-bean.apk",
-    "sha256": "36149b88b46dc42e28e3cadb2db0099daa5f4a5eef39e4bbd009f2f913721497",
-    "notes": "修复白板任务混进提醒事项：列表只显示身体提醒和任务"
+    "versionCode": 130,
+    "versionName": "0.3.0-beta114",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta114/rest-bean.apk",
+    "sha256": "e91c90e5c1211142132f0a08fc3b138514b2397114288b9fb6936a5a83eb9f3f",
+    "notes": "事项页只显示在事项里建的东西，任务和白板不再混进来"
 }
