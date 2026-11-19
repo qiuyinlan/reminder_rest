@@ -1,7 +1,7 @@
 {
-    "versionCode": 127,
-    "versionName": "0.3.0-beta110",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta110/rest-bean.apk",
-    "sha256": "dad2a53873d375f07bcd32456352ffd4e1a2de62ba68812befaa2fbca90fec2e",
-    "notes": "统计页新增复盘分区，任务右边一栏"
+    "versionCode": 128,
+    "versionName": "0.3.0-beta112",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta112/rest-bean.apk",
+    "sha256": "d6ea611d75ac71313c0e50d2fd19a18676f9ca9cb47ee5ed62e61b34c9700d24",
+    "notes": "点心情和复盘先看今天的记录，再决定补记或修改"
 }
