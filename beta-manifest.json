@@ -1,7 +1,7 @@
 {
-    "versionCode": 133,
-    "versionName": "0.3.0-beta117",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta117/rest-bean.apk",
-    "sha256": "72bad8d4668452e5ec09be83e1bcdef0092a34315e43b879b84dd7037c8443cc",
-    "notes": "陪伴环境音音量调到正常水平"
+    "versionCode": 134,
+    "versionName": "0.3.0-beta118",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta118/rest-bean.apk",
+    "sha256": "eb65a911649ca19dd558f26b5cf20bcb4c5eba6e1ba61eaa5c7ac2ac405beb94",
+    "notes": "悬浮窗拖拽修好，页面记住滚动位置"
 }
