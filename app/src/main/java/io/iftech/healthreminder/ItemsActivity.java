@@ -293,8 +293,9 @@ public final class ItemsActivity extends Activity {
         return UiPalette.categoryStroke(UiPalette.categoryKind(title));
     }
 
-    /** 事项页最上面的复盘卡片：开关 + 提醒时间。 */
+    /** 事项页最上面的复盘卡片：开关 + 跟普通事项同一套时间设置。 */
     private LinearLayout buildReviewCard() {
+        final ReminderSettings.Rule review = ReviewStore.rule(this);
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(12), dp(16), dp(12));
@@ -308,19 +309,16 @@ public final class ItemsActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.addView(text("每日复盘", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView timeChip = text(ReviewStore.label(this), 13, GREEN, true);
-        timeChip.setGravity(Gravity.CENTER);
-        timeChip.setPadding(dp(10), dp(6), dp(10), dp(6));
-        timeChip.setBackground(round(MINT_LIGHT, 12));
-        timeChip.setContentDescription("复盘提醒时间");
-        timeChip.setOnClickListener(v -> WheelPicker.time(this, "复盘提醒时间", "确定",
-                ReviewStore.secondsOfDay(this), false, seconds -> {
-                    ReviewStore.setSecondsOfDay(this, seconds);
-                    renderItems();
-                }));
-        LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(-2, -2);
-        timeParams.rightMargin = dp(10);
-        row.addView(timeChip, timeParams);
+        String summary = review == null ? "未设置" : scheduleSummary(review);
+        TextView timing = text(summary, 12, GREEN, true);
+        timing.setGravity(Gravity.CENTER);
+        timing.setPadding(dp(10), dp(6), dp(10), dp(6));
+        timing.setBackground(round(MINT_LIGHT, 12));
+        timing.setContentDescription("复盘提醒时间");
+        timing.setOnClickListener(v -> editRule(ReviewStore.ensureRule(this)));
+        LinearLayout.LayoutParams timingParams = new LinearLayout.LayoutParams(-2, -2);
+        timingParams.rightMargin = dp(10);
+        row.addView(timing, timingParams);
 
         Switch toggle = new Switch(this);
         toggle.setFocusable(false);
@@ -337,6 +335,7 @@ public final class ItemsActivity extends Activity {
         });
         row.addView(toggle);
         card.addView(row);
+        card.setOnClickListener(v -> editRule(ReviewStore.ensureRule(this)));
         return card;
     }
 
@@ -757,6 +756,13 @@ public final class ItemsActivity extends Activity {
                     .withIcon(iconValue[0])
                     .withColor(colorValue[0])
                     .withOverlayArtwork(artworkValue[0]);
+            // 编辑已有事项时保留它原本的模块/分类/子任务信息，别把复盘这类特殊规则改成普通事项
+            if (existing != null) {
+                rule = rule.withModule(existing.module)
+                        .withDeck(existing.deckId, existing.quiz)
+                        .withStep(existing.step)
+                        .withCategory(existing.categoryId);
+            }
             // 原位替换，保持事项在列表里的顺序不变（新增才追加到末尾）
             int replaceIndex = -1;
             for (int i = 0; i < updated.size(); i++) {

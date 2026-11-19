@@ -69,36 +69,28 @@ final class ReviewStore {
         return null;
     }
 
-    static int secondsOfDay(Context context) {
-        ReminderSettings.Rule rule = rule(context);
-        if (rule != null && rule.timePointsSeconds != null && !rule.timePointsSeconds.isEmpty()) {
-            return rule.timePointsSeconds.get(0);
-        }
-        return DEFAULT_SECONDS;
-    }
 
     static boolean enabled(Context context) {
         ReminderSettings.Rule rule = rule(context);
         return rule != null && rule.enabled;
     }
 
+    /** 拿到复盘规则；还没有就建一条默认的（21:30，先关着）。 */
+    static ReminderSettings.Rule ensureRule(Context context) {
+        ReminderSettings.Rule rule = rule(context);
+        if (rule != null) return rule;
+        ReminderSettings.upsertRule(context, build(context, DEFAULT_SECONDS, false));
+        return rule(context);
+    }
+
+    /** 拿到规则，没有就建（开关用）。 */
     static void setEnabled(Context context, boolean on) {
         ReminderSettings.Rule rule = rule(context);
-        rule = rule == null ? build(context, secondsOfDay(context), on) : rule.withEnabled(on);
+        rule = rule == null ? build(context, DEFAULT_SECONDS, on) : rule.withEnabled(on);
         ReminderSettings.upsertRule(context, rule);
     }
 
-    static void setSecondsOfDay(Context context, int seconds) {
-        ReminderSettings.Rule current = rule(context);
-        boolean on = current != null && current.enabled;
-        ReminderSettings.upsertRule(context, build(context, seconds, on));
-    }
 
-    /** 21:30 这种展示用的时间。 */
-    static String label(Context context) {
-        int seconds = secondsOfDay(context);
-        return String.format(Locale.CHINA, "%02d:%02d", seconds / 3600, seconds / 60 % 60);
-    }
 
     private static ReminderSettings.Rule build(Context context, int seconds, boolean enabled) {
         int safe = ((seconds % 86400) + 86400) % 86400;
