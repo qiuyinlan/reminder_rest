@@ -310,20 +310,36 @@ public final class StatsActivity extends Activity {
 
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
         dayHeading.setPadding(dp(2), dp(18), dp(2), dp(9));
-        content.addView(dayHeading);
+        LinearLayout dayHead = new LinearLayout(this);
+        dayHead.setGravity(Gravity.CENTER_VERTICAL);
+        dayHead.addView(dayHeading, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView addChip = text("＋", 16, GREEN, true);
+        addChip.setGravity(Gravity.CENTER);
+        addChip.setPadding(dp(10), dp(2), dp(10), dp(2));
+        addChip.setBackground(round(MINT_LIGHT, 10));
+        addChip.setContentDescription("给这一天补一条记录");
+        addChip.setOnClickListener(v -> addRecordForDay());
+        LinearLayout.LayoutParams addChipParams = new LinearLayout.LayoutParams(-2, -2);
+        addChipParams.topMargin = dp(14);
+        dayHead.addView(addChip, addChipParams);
+        content.addView(dayHead);
         LinearLayout bodyNote = new LinearLayout(this);
         bodyNote.setOrientation(LinearLayout.VERTICAL);
         bodyNote.setPadding(dp(16), dp(14), dp(16), dp(14));
-        bodyNote.setBackground(round(Color.WHITE, 16));
-        bodyNote.addView(text("身体情况", 16, INK, true));
+        bodyNote.setBackground(pressable(outline(Color.WHITE, BORDER, 16)));
+        LinearLayout noteHead = new LinearLayout(this);
+        noteHead.setGravity(Gravity.CENTER_VERTICAL);
+        noteHead.addView(text("身体情况", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
         String dailyNote = DailyBodyNote.read(this, selected);
+        noteHead.addView(text(dailyNote.trim().isEmpty() ? "补记" : "修改", 12, GREEN, true));
+        bodyNote.addView(noteHead);
         TextView noteText = text(dailyNote.trim().isEmpty()
-                ? "这一天还没有身体记录，可在首页记录今天的情况。" : dailyNote,
+                ? "点一下记下这一天的情况。" : dailyNote,
                 14, dailyNote.trim().isEmpty() ? MUTED : INK, false);
         noteText.setPadding(0, dp(8), 0, 0);
         noteText.setLineSpacing(dp(4), 1f);
-        noteText.setTextIsSelectable(true);
         bodyNote.addView(noteText);
+        bodyNote.setOnClickListener(v -> editBodyNote());
         LinearLayout.LayoutParams bodyNoteParams = new LinearLayout.LayoutParams(-1, -2);
         bodyNoteParams.bottomMargin = dp(12);
         content.addView(bodyNote, bodyNoteParams);
@@ -1055,6 +1071,9 @@ public final class StatsActivity extends Activity {
             };
             item.setOnLongClickListener(openActions);
             details.setOnLongClickListener(openActions);
+            // 点一下直接改这条，不用先长按选菜单
+            item.setOnClickListener(v -> editRecord(record));
+            details.setOnClickListener(v -> editRecord(record));
             content.addView(item, new LinearLayout.LayoutParams(-1, -2));
         }
         if (records.isEmpty()) {
@@ -1070,6 +1089,134 @@ public final class StatsActivity extends Activity {
             emptyParams.topMargin = dp(6);
             content.addView(empty, emptyParams);
         }
+    }
+
+    /** 点身体情况卡片：这一天没记就补，记了就改。 */
+    private void editBodyNote() {
+        final EditText input = FormKit.input(this, android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setGravity(Gravity.TOP | Gravity.LEFT);
+        input.setMinLines(3);
+        input.setMaxLines(8);
+        input.setHint("睡得好不好、精神、酸痛、心情…");
+        input.setText(DailyBodyNote.read(this, selected));
+        if (input.getText() != null) input.setSelection(input.getText().length());
+
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        box.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        String label = new SimpleDateFormat("M月d日", Locale.CHINA).format(selected.getTime());
+        showStyledDialog(new AlertDialog.Builder(dialogContext())
+                .setTitle(label + " 身体情况")
+                .setView(box)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", (d, w) -> {
+                    DailyBodyNote.save(StatsActivity.this, selected,
+                            input.getText() == null ? "" : input.getText().toString());
+                    render();
+                })
+                .create());
+    }
+
+    /** 给选中的那一天补一条记录（以前忘了记的可以补上）。 */
+    private void addRecordForDay() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(18), dp(4), dp(18), dp(8));
+
+        EditText action = new EditText(dialogContext());
+        action.setSingleLine(true);
+        action.setHint("记录名称，比如「喝水」");
+        action.setTextColor(INK);
+        action.setHintTextColor(MUTED);
+        action.setPadding(dp(13), dp(10), dp(13), dp(10));
+        action.setMinHeight(dp(48));
+        action.setBackground(UiPalette.inputBackground(this, MINT_PALE, 12));
+        form.addView(action);
+
+        final String[] kind = {ReminderRecord.KIND_DONE};
+        LinearLayout kinds = new LinearLayout(this);
+        kinds.setOrientation(LinearLayout.HORIZONTAL);
+        kinds.setPadding(dp(4), dp(4), dp(4), dp(4));
+        kinds.setBackground(round(MINT_PALE, 12));
+        TextView doneOption = recordKindOption("做了", true);
+        TextView missedOption = recordKindOption("没做", false);
+        kinds.addView(doneOption, new LinearLayout.LayoutParams(0, dp(42), 1));
+        kinds.addView(missedOption, new LinearLayout.LayoutParams(0, dp(42), 1));
+        Runnable refreshKind = () -> {
+            setRecordKindSelected(doneOption, ReminderRecord.KIND_DONE.equals(kind[0]));
+            setRecordKindSelected(missedOption, ReminderRecord.KIND_MISSED.equals(kind[0]));
+        };
+        doneOption.setOnClickListener(v -> { kind[0] = ReminderRecord.KIND_DONE; refreshKind.run(); });
+        missedOption.setOnClickListener(v -> { kind[0] = ReminderRecord.KIND_MISSED; refreshKind.run(); });
+        LinearLayout.LayoutParams kindsParams = new LinearLayout.LayoutParams(-1, -2);
+        kindsParams.topMargin = dp(10);
+        form.addView(kinds, kindsParams);
+
+        // 默认时间：选中的那天，今天就用现在（去秒），过去的日子用 9:00
+        Calendar when = (Calendar) selected.clone();
+        if (sameDay(selected, Calendar.getInstance())) {
+            when.setTimeInMillis(System.currentTimeMillis());
+        } else {
+            when.set(Calendar.HOUR_OF_DAY, 9);
+            when.set(Calendar.MINUTE, 0);
+        }
+        when.set(Calendar.SECOND, 0);
+        when.set(Calendar.MILLISECOND, 0);
+        long[] startedAt = {when.getTimeInMillis()};
+        long[] endedAt = {when.getTimeInMillis() + 30 * 60 * 1000L};
+        TextView durationHint = text("", 12, MUTED, false);
+        final Runnable refreshDuration = () -> updateDurationHint(durationHint, startedAt[0], endedAt[0]);
+        LinearLayout startRow = recordTimeRow("开始时间", startedAt, refreshDuration);
+        LinearLayout endRow = recordTimeRow("结束时间", endedAt, refreshDuration);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = dp(8);
+        form.addView(startRow, rowParams);
+        LinearLayout.LayoutParams rowParams2 = new LinearLayout.LayoutParams(-1, -2);
+        rowParams2.topMargin = dp(6);
+        form.addView(endRow, rowParams2);
+        durationHint.setPadding(dp(2), dp(8), 0, 0);
+        form.addView(durationHint);
+        refreshDuration.run();
+
+        EditText reason = new EditText(dialogContext());
+        reason.setSingleLine(true);
+        reason.setHint("备注（选填）");
+        reason.setTextColor(INK);
+        reason.setHintTextColor(MUTED);
+        reason.setPadding(dp(13), dp(10), dp(13), dp(10));
+        reason.setMinHeight(dp(48));
+        reason.setBackground(UiPalette.inputBackground(this, MINT_PALE, 12));
+        LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(-1, -2);
+        reasonParams.topMargin = dp(8);
+        form.addView(reason, reasonParams);
+
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext())
+                .setTitle("补一条记录")
+                .setView(form)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String title = action.getText().toString().trim();
+            if (title.isEmpty()) {
+                Toast.makeText(this, "先写个记录名称", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (endedAt[0] < startedAt[0]) {
+                Toast.makeText(this, "结束时间不能早于开始时间", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String module = ReminderSettings.MODULE_TASK.equals(moduleFilter)
+                    ? ReminderSettings.MODULE_TASK : ReminderSettings.MODULE_BODY;
+            ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), title, kind[0],
+                    startedAt[0], endedAt[0], reason.getText().toString().trim(), module);
+            dialog.dismiss();
+            render();
+        }));
+        showStyledDialog(dialog);
     }
 
     /** 长按记录后的操作面板：两行卡片式操作，比系统列表更清楚也更顺手。 */
