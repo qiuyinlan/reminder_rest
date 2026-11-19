@@ -62,6 +62,22 @@ final class ReviewStore {
         else prefs(context).edit().putString(dayKey(), value).apply();
     }
 
+    /** 全部复盘拼成一段纯文本：日期 + 换行 + 内容，段与段空一行。 */
+    static String allAsText(Context context) {
+        StringBuilder sb = new StringBuilder();
+        for (java.util.Map.Entry<String, String> entry : all(context)) {
+            if (sb.length() > 0) sb.append("\n\n");
+            sb.append(entry.getKey()).append('\n').append(entry.getValue());
+        }
+        return sb.toString();
+    }
+
+    /** 记完今天这一句：算今天已完成，并把下次提醒推到明天。 */
+    static void markDone(Context context, int ruleId) {
+        ReminderSettings.markCompleted(context, ruleId, 1);
+        ReminderScheduler.update(context);
+    }
+
     /** 复盘提醒是否显示（设置里可关，关了就不出现在提醒事项里）。 */
     static boolean visible(Context context) {
         return prefs(context).getBoolean("review_visible", true);

@@ -1121,7 +1121,7 @@ public final class StatsActivity extends Activity {
             TextView copy = text("复制全部", 12, GREEN, true);
             copy.setPadding(dp(10), dp(6), dp(2), dp(6));
             copy.setContentDescription("复制全部复盘");
-            copy.setOnClickListener(v -> copyAllReviews(notes));
+            copy.setOnClickListener(v -> ReviewDialogs.copyAll(this));
             head.addView(copy);
         }
         card.addView(head);
@@ -1149,20 +1149,6 @@ public final class StatsActivity extends Activity {
             card.addView(row);
         }
         return card;
-    }
-
-    /** 把所有复盘拼成一段纯文本复制走。 */
-    private void copyAllReviews(List<java.util.Map.Entry<String, String>> notes) {
-        StringBuilder sb = new StringBuilder();
-        for (java.util.Map.Entry<String, String> entry : notes) {
-            if (sb.length() > 0) sb.append("\n\n");
-            sb.append(entry.getKey()).append('\n').append(entry.getValue());
-        }
-        android.content.ClipboardManager clipboard =
-                (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (clipboard == null || sb.length() == 0) return;
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("复盘", sb.toString()));
-        Toast.makeText(this, "已复制 " + notes.size() + " 天复盘", Toast.LENGTH_SHORT).show();
     }
 
     private String friendlyDay(String key) {

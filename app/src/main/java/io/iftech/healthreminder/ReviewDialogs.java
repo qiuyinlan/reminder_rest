@@ -2,46 +2,107 @@ package io.iftech.healthreminder;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.graphics.Paint;
+import android.text.InputType;
+import android.view.Gravity;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/** 复盘记录：点卡片先看今天写了什么，再决定补写还是改。 */
+/** 复盘记录：点卡片先看今天写了什么，再接着往下写。 */
 final class ReviewDialogs {
     interface OnSaved { void onSaved(); }
 
     private ReviewDialogs() { }
 
     static void showToday(final Activity activity, final OnSaved onSaved) {
-        String dayKey = ReviewStore.dayKey();
+        final String dayKey = ReviewStore.dayKey();
         final String note = ReviewStore.read(activity, dayKey);
+        int pad = FormKit.dp(activity, 18);
 
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(FormKit.dp(activity, 18), FormKit.dp(activity, 4),
-                FormKit.dp(activity, 18), FormKit.dp(activity, 4));
+        panel.setPadding(pad, FormKit.dp(activity, 12), pad, FormKit.dp(activity, 4));
 
+        // 顶行：左边日期，右上角「复制全部」
+        LinearLayout head = new LinearLayout(activity);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(activity);
+        title.setText(friendlyToday());
+        title.setTextSize(13);
+        title.setTextColor(UiPalette.MUTED);
+        title.setPaintFlags(title.getPaintFlags() | Paint.FAKE_BOLD_TEXT_FLAG);
+        head.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView copy = new TextView(activity);
+        copy.setText("复制全部");
+        copy.setTextSize(12);
+        copy.setTextColor(UiPalette.ACCENT);
+        copy.setPaintFlags(copy.getPaintFlags() | Paint.FAKE_BOLD_TEXT_FLAG);
+        copy.setPadding(FormKit.dp(activity, 10), FormKit.dp(activity, 4),
+                FormKit.dp(activity, 2), FormKit.dp(activity, 4));
+        copy.setOnClickListener(v -> copyAll(activity));
+        head.addView(copy);
+        panel.addView(head, new LinearLayout.LayoutParams(-1, -2));
+
+        // 今天写的那一句
         TextView body = new TextView(activity);
         body.setText(note.isEmpty() ? "今天还没写。" : note);
         body.setTextSize(15);
         body.setTextColor(note.isEmpty() ? UiPalette.MUTED : UiPalette.INK);
         body.setLineSpacing(FormKit.dp(activity, 4), 1f);
-        body.setPadding(0, FormKit.dp(activity, 6), 0, FormKit.dp(activity, 6));
+        body.setPadding(0, FormKit.dp(activity, 8), 0, FormKit.dp(activity, 8));
         panel.addView(body, new LinearLayout.LayoutParams(-1, -2));
 
+        // 底下接着写
+        final EditText more = FormKit.input(activity, InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        more.setGravity(Gravity.TOP | Gravity.LEFT);
+        more.setMinLines(2);
+        more.setMaxLines(6);
+        more.setHint(note.isEmpty() ? "写一句今天" : "接着写点什么…");
+        panel.addView(more, new LinearLayout.LayoutParams(-1, -2));
+
         final AlertDialog dialog = new AlertDialog.Builder(activity)
-                .setTitle(friendlyToday())
                 .setView(panel)
                 .setNegativeButton("关闭", null)
-                .setPositiveButton(note.isEmpty() ? "写一句" : "改一句", null)
+                .setPositiveButton("保存", null)
                 .create();
         dialog.setOnShowListener(ignored ->
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String extra = more.getText() == null ? "" : more.getText().toString().trim();
+                    if (extra.isEmpty()) {
+                        Toast.makeText(activity, "写一句再保存", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    // 接着写：拼在原来那句后面，不覆盖
+                    String merged = note.isEmpty() ? extra : note + "\n" + extra;
+                    ReviewStore.save(activity, dayKey, merged);
+                    ReviewStore.markDone(activity, ReviewStore.RULE_ID);
                     dialog.dismiss();
-                    edit(activity, dayKey, note, onSaved);
+                    if (onSaved != null) onSaved.onSaved();
                 }));
         FormKit.showStyled(activity, dialog);
+    }
+
+    /** 复制全部复盘（首页/事项页面板右上角和悬浮窗共用）。 */
+    static void copyAll(Context context) {
+        String text = ReviewStore.allAsText(context);
+        if (text.isEmpty()) {
+            Toast.makeText(context, "还没有复盘", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager clipboard =
+                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText("复盘", text));
+        Toast.makeText(context, "已复制 " + ReviewStore.all(context).size() + " 天复盘",
+                Toast.LENGTH_SHORT).show();
     }
 
     static void edit(final Activity activity, final String dayKey, String note, final OnSaved onSaved) {

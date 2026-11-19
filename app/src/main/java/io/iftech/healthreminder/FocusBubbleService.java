@@ -1034,6 +1034,10 @@ public final class FocusBubbleService extends Service {
             return;
         }
         if (boardTab == 3) {
+            fillReview();
+            return;
+        }
+        if (boardTab == 4) {
             fillDoneList();
             return;
         }
@@ -1064,7 +1068,7 @@ public final class FocusBubbleService extends Service {
     private void fillTabBar() {
         if (tabBar == null) return;
         tabBar.removeAllViews();
-        String[] names = {"现在", "任务", "白板", "done"};
+        String[] names = {"现在", "任务", "白板", "复盘", "done"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
             boolean active = boardTab == i;
@@ -1278,6 +1282,85 @@ public final class FocusBubbleService extends Service {
         }
 
         slotBox.addView(buildBoardInputRow(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** 复盘分区：今天写的那一句 + 底下接着写。 */
+    private void fillReview() {
+        final String note = ReviewStore.read(this);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(FormKit.text(this, "今天 · 复盘", 10, UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView copy = FormKit.text(this, "复制", 10, UiPalette.ACCENT, true);
+        copy.setPadding(dp(6), dp(4), dp(2), dp(4));
+        copy.setContentDescription("复制全部复盘");
+        copy.setOnClickListener(v -> ReviewDialogs.copyAll(this));
+        head.addView(copy);
+        slotBox.addView(head, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView body = FormKit.text(this, note.isEmpty() ? "今天还没写。" : note, 12,
+                note.isEmpty() ? UiPalette.MUTED : UiPalette.INK, false);
+        body.setLineSpacing(dp(3), 1f);
+        body.setPadding(0, dp(4), 0, dp(2));
+        body.setMaxLines(8);
+        body.setEllipsize(TextUtils.TruncateAt.END);
+        slotBox.addView(body);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = dp(6);
+        row.setLayoutParams(rowParams);
+
+        reviewInput = new EditText(this);
+        reviewInput.setHint(note.isEmpty() ? "写一句今天" : "接着写");
+        reviewInput.setTextSize(12);
+        reviewInput.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        reviewInput.setTextColor(UiPalette.INK);
+        reviewInput.setHintTextColor(UiPalette.MUTED);
+        reviewInput.setPadding(dp(8), dp(6), dp(8), dp(6));
+        reviewInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        reviewInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) grabWindowFocus();
+            else dropWindowFocus();
+        });
+        reviewInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitReview();
+                return true;
+            }
+            return false;
+        });
+        row.addView(reviewInput, new LinearLayout.LayoutParams(0, dp(36), 1f));
+
+        TextView plus = FormKit.text(this, "＋", 16, Color.WHITE, true);
+        plus.setGravity(Gravity.CENTER);
+        plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 10));
+        plus.setOnClickListener(v -> submitReview());
+        LinearLayout.LayoutParams plusParams = new LinearLayout.LayoutParams(dp(36), dp(36));
+        plusParams.leftMargin = dp(6);
+        row.addView(plus, plusParams);
+        slotBox.addView(row, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    /** 写一句复盘：拼在今天那句后面，并把下次提醒推到明天。 */
+    private void submitReview() {
+        String text = reviewInput == null || reviewInput.getText() == null
+                ? "" : reviewInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            Toast.makeText(this, "先写一句", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String today = ReviewStore.read(this);
+        ReviewStore.save(this, today.isEmpty() ? text : today + "\n" + text);
+        ReviewStore.markDone(this, ReviewStore.RULE_ID);
+        reviewInput.setText("");
+        dropWindowFocus();
+        Toast.makeText(this, "记下了", Toast.LENGTH_SHORT).show();
+        render();
     }
 
     private View buildBoardRow(final ReminderSettings.Rule rule, final boolean done) {
@@ -1786,17 +1869,24 @@ public final class FocusBubbleService extends Service {
         params.y = Math.min(params.y, dp(120));
         updateLayout();
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (imm != null && ideaInput != null) {
-            ideaInput.post(() -> imm.showSoftInput(ideaInput, InputMethodManager.SHOW_IMPLICIT));
+        // 当前是哪个输入框就弹哪个（现在/任务/白板/done/复盘各有一个）
+        android.view.View focused = card == null ? null : card.findFocus();
+        if (focused == null) focused = ideaInput;
+        final android.view.View target = focused;
+        if (imm != null && target != null) {
+            target.post(() -> imm.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT));
         }
     }
 
     private void dropWindowFocus() {
         if (params == null || (params.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) != 0) return;
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (imm != null && ideaInput != null) {
-            imm.hideSoftInputFromWindow(ideaInput.getWindowToken(), 0);
-            ideaInput.clearFocus();
+        if (imm != null) {
+            for (EditText field : new EditText[]{ideaInput, reviewInput}) {
+                if (field == null) continue;
+                imm.hideSoftInputFromWindow(field.getWindowToken(), 0);
+                field.clearFocus();
+            }
         }
         params.flags = params.flags | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         updateLayout();
@@ -1808,6 +1898,8 @@ public final class FocusBubbleService extends Service {
     private EditText boardInput;
     /** 任务分区输入框的引用。 */
     private EditText taskInput;
+    /** 复盘分区输入框的引用。 */
+    private EditText reviewInput;
     /** 白板已完成区是否展开。 */
     private boolean boardDoneOpen;
 
@@ -1820,6 +1912,8 @@ public final class FocusBubbleService extends Service {
             intent = new Intent(this, TaskActivity.class)
                     .putExtra("module", ReminderSettings.MODULE_BOARD);
         } else if (boardTab == 3) {
+            intent = new Intent(this, StatsActivity.class);
+        } else if (boardTab == 4) {
             intent = new Intent(this, DoneActivity.class);
         } else {
             intent = new Intent(this, FocusActivity.class);

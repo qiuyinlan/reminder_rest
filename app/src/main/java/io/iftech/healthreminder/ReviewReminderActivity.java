@@ -8,8 +8,6 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
-import android.view.View;
-import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -17,8 +15,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 /**
- * 复盘霸屏页：复用身体提醒那套「到点直接弹整页」的形态，
- * 但只做一件事——写下一句今天的话，写完「继续」才能点。
+ * 复盘霸屏页：上面显示今天已经记下的那一条，下面接着写。
+ * 写一句才能点「继续」，继续会把新内容接在原来那句后面。
  */
 public final class ReviewReminderActivity extends Activity {
     private int ruleId = -1;
@@ -28,8 +26,8 @@ public final class ReviewReminderActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         UiPalette.applyWindow(getWindow());
         ruleId = getIntent().getIntExtra("rule_id", -1);
 
@@ -37,6 +35,8 @@ public final class ReviewReminderActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(UiPalette.PAGE);
         setContentView(page);
+
+        final String note = ReviewStore.read(this);
 
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.VERTICAL);
@@ -47,13 +47,25 @@ public final class ReviewReminderActivity extends Activity {
         headBg.setCornerRadii(new float[]{0, 0, 0, 0, radius, radius, radius, radius});
         head.setBackground(headBg);
 
-        TextView overline = text("复盘", 12, UiPalette.MUTED, true);
-        head.addView(overline);
-        TextView title = text("今天过得怎么样？", 24, UiPalette.INK, true);
+        // 第一行：左边「复盘」，右上角「复制全部」
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+        topRow.addView(text("复盘", 12, UiPalette.MUTED, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView copyAll = text("复制全部", 12, UiPalette.ACCENT, true);
+        copyAll.setPadding(dp(10), dp(4), dp(2), dp(4));
+        copyAll.setContentDescription("复制全部复盘");
+        copyAll.setOnClickListener(v -> ReviewDialogs.copyAll(this));
+        topRow.addView(copyAll);
+        head.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView title = text(note.isEmpty() ? "今天过得怎么样？" : "今天记的这一句", 24,
+                UiPalette.INK, true);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = dp(6);
         head.addView(title, titleParams);
-        TextView hint = text("写一句就行，写完才能继续。", 13, UiPalette.MUTED, false);
+        TextView hint = text(note.isEmpty() ? "写一句就行，写完才能继续。" : "下面接着写，会接在后面。",
+                13, UiPalette.MUTED, false);
         LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
         hintParams.topMargin = dp(6);
         head.addView(hint, hintParams);
@@ -64,6 +76,17 @@ public final class ReviewReminderActivity extends Activity {
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(20), dp(16), dp(20), dp(20));
+
+        // 今天已经记下的：只读展示
+        if (!note.isEmpty()) {
+            TextView shown = text(note, 15, UiPalette.INK, false);
+            shown.setLineSpacing(dp(4), 1f);
+            shown.setPadding(dp(14), dp(12), dp(14), dp(12));
+            shown.setBackground(FormKit.round(this, UiPalette.PALE, 14));
+            LinearLayout.LayoutParams shownParams = new LinearLayout.LayoutParams(-1, -2);
+            shownParams.bottomMargin = dp(14);
+            body.addView(shown, shownParams);
+        }
 
         input = new EditText(this);
         input.setTextSize(16);
@@ -77,9 +100,9 @@ public final class ReviewReminderActivity extends Activity {
         input.setMaxLines(8);
         input.setPadding(dp(14), dp(12), dp(14), dp(12));
         input.setBackground(FormKit.round(this, UiPalette.PALE, 14));
-        input.setHint("今天做了什么、心情、明天想改的一件事…");
-        input.setText(ReviewStore.read(this));
-        if (input.getText() != null) input.setSelection(input.getText().length());
+        input.setHint(note.isEmpty()
+                ? "今天做了什么、心情、明天想改的一件事…"
+                : "接着写点什么…");
         body.addView(input, new LinearLayout.LayoutParams(-1, -2));
 
         continueButton = text("继续", 16, Color.WHITE, true);
@@ -113,19 +136,20 @@ public final class ReviewReminderActivity extends Activity {
     }
 
     private void submit() {
-        String note = input.getText() == null ? "" : input.getText().toString().trim();
-        if (note.isEmpty()) {
+        String extra = input.getText() == null ? "" : input.getText().toString().trim();
+        if (extra.isEmpty()) {
             Toast.makeText(this, "先写一句再继续", Toast.LENGTH_SHORT).show();
             return;
         }
+        String today = ReviewStore.read(this);
+        // 接着写：拼在今天那句后面，不覆盖
+        String note = today.isEmpty() ? extra : today + "\n" + extra;
         ReviewStore.save(this, note);
         long now = System.currentTimeMillis();
         int id = ruleId >= 0 ? ruleId : ReviewStore.RULE_ID;
         ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "复盘",
                 ReminderRecord.KIND_DONE, now, now, note, ReminderSettings.MODULE_REVIEW);
-        ReminderSettings.markCompleted(this, id, 1);
-        // 写完立刻刷新下次提醒时间，不必等下一次重排
-        ReminderScheduler.update(this);
+        ReviewStore.markDone(this, id);
         finish();
     }
 
