@@ -1,7 +1,7 @@
 {
-    "versionCode": 120,
-    "versionName": "0.3.0-beta102",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta102/rest-bean.apk",
-    "sha256": "b2fbf3de87ad91bf7afe8ed242b1c876cce516afa4868271aac56a5e434d0406",
-    "notes": "悬浮窗「已完成」去掉右边数字，只留箭头"
+    "versionCode": 121,
+    "versionName": "0.3.0-beta103",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta103/rest-bean.apk",
+    "sha256": "2c5259ab7706c4acf0276af7c540612e722d338363adc6c73931a8004e6f12ba",
+    "notes": "修复任务勾选同步、白板隔天自动清理、首页待完成提醒统计；删除卡片功能"
 }
