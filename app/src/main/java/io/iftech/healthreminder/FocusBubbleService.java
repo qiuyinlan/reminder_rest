@@ -485,6 +485,8 @@ public final class FocusBubbleService extends Service {
         private int startX;
         private int startY;
         private boolean dragging;
+        /** DOWN 是不是落在可滚动内容里（展开态的滚动区）。 */
+        private boolean downInScroll;
         private final int slop;
 
         BubbleCard(Context context) {
@@ -502,58 +504,92 @@ public final class FocusBubbleService extends Service {
             if (expanded) super.requestDisallowInterceptTouchEvent(disallow);
         }
 
+        private void beginGesture(MotionEvent event) {
+            downX = event.getRawX();
+            downY = event.getRawY();
+            startX = params.x;
+            startY = params.y;
+            dragging = false;
+            downInScroll = insideScroll(event.getRawX(), event.getRawY());
+        }
+
+        /** 手指落点在不在展开态的滚动区里。 */
+        private boolean insideScroll(float rawX, float rawY) {
+            if (!expanded || expandScroll == null) return false;
+            int[] location = new int[2];
+            expandScroll.getLocationOnScreen(location);
+            return rawX >= location[0] && rawX <= location[0] + expandScroll.getWidth()
+                    && rawY >= location[1] && rawY <= location[1] + expandScroll.getHeight();
+        }
+
+        /**
+         * 越过阈值就把这次手势判给拖动；已经判过直接 true。
+         * 收起态：任一方向都算拖。
+         * 展开态：横向优先；竖向只有落点不在滚动区（头部）时才拖，
+         * 否则竖向留给 ScrollView 滚内容。
+         */
+        private boolean grabIfDragged(MotionEvent event) {
+            if (dragging) return true;
+            float dx = event.getRawX() - downX;
+            float dy = event.getRawY() - downY;
+            float ax = Math.abs(dx);
+            float ay = Math.abs(dy);
+            boolean grab = expanded
+                    ? (ax > slop * 2 && ax > ay * 1.5f)
+                        || (ay > slop * 2 && ax < ay && !downInScroll)
+                    : (ax > slop || ay > slop);
+            if (grab) dragging = true;
+            return dragging;
+        }
+
+        private void dragTo(MotionEvent event) {
+            params.x = startX + (int) (event.getRawX() - downX);
+            params.y = startY + (int) (event.getRawY() - downY);
+            updateLayout();
+        }
+
+        private void endGesture() {
+            if (dragging) {
+                dragging = false;
+                settleAfterDrag();
+            } else if (!expanded) {
+                // 收起态点空白：展开
+                toggleExpand();
+            }
+        }
+
         @Override
         public boolean onInterceptTouchEvent(MotionEvent event) {
             if (params == null) return false;
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    downX = event.getRawX();
-                    downY = event.getRawY();
-                    startX = params.x;
-                    startY = params.y;
-                    dragging = false;
+                    beginGesture(event);
                     return false;
-                case MotionEvent.ACTION_MOVE: {
-                    float dx = event.getRawX() - downX;
-                    float dy = event.getRawY() - downY;
-                    float ax = Math.abs(dx);
-                    float ay = Math.abs(dy);
-                    // 展开态：只有明显横向才拖窗口，竖向留给 ScrollView
-                    // 收起态：任一方向超过系统滑动阈值就开始拖，避免把点击误判成拖
-                    boolean grab = expanded
-                            ? (ax > slop * 2 && ax > ay * 1.5f)
-                            : (ax > slop || ay > slop);
-                    if (grab) {
-                        dragging = true;
-                        return true;
-                    }
-                    return false;
-                }
+                case MotionEvent.ACTION_MOVE:
+                    return grabIfDragged(event);
                 default:
                     return false;
             }
         }
 
+        /**
+         * 关键：窗里空白处（没有可点子视图的地方）按下时，DOWN 是被卡片自己吃掉的，
+         * 这时 onInterceptTouchEvent 根本不会再被调用，只在拦截里判拖动就永远拖不动。
+         * 所以 onTouchEvent 里也要能起拖。
+         */
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             if (params == null) return super.onTouchEvent(event);
             switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    beginGesture(event);
+                    return true;
                 case MotionEvent.ACTION_MOVE:
-                    if (dragging) {
-                        params.x = startX + (int) (event.getRawX() - downX);
-                        params.y = startY + (int) (event.getRawY() - downY);
-                        updateLayout();
-                    }
+                    if (grabIfDragged(event)) dragTo(event);
                     return true;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    if (dragging) {
-                        dragging = false;
-                        settleAfterDrag();
-                    } else if (!expanded) {
-                        // 收起态点空白：展开
-                        toggleExpand();
-                    }
+                    endGesture();
                     return true;
                 default:
                     return true;

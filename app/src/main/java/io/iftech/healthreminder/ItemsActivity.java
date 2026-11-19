@@ -52,6 +52,9 @@ public final class ItemsActivity extends Activity {
     private TextView addFab;
     private TextView addFabPro;
     private boolean returnToHome;
+    /** 事项页也记住滚动位置，换页回来不跳回顶部。 */
+    private ScrollView scroll;
+    private int lastScrollY;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -61,12 +64,13 @@ public final class ItemsActivity extends Activity {
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackground(UiPalette.page());
-        ScrollView scroll = new ScrollView(this);
+        ScrollView scrollView = new ScrollView(this);
+        scroll = scrollView;
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(20), dp(14), dp(20), dp(96));
-        scroll.addView(list);
-        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        scrollView.addView(list);
+        screen.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
         addNavigation(screen);
         frame.addView(screen);
         addFab = text("＋", 28, Color.WHITE, false);
@@ -87,6 +91,10 @@ public final class ItemsActivity extends Activity {
         addFabPro.setVisibility(View.GONE);
         setContentView(frame);
         frame.post(() -> FormKit.hideEmptyText(frame));
+        lastScrollY = getSharedPreferences("task_scroll_memory", MODE_PRIVATE)
+                .getInt("items_page", 0);
+        scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldX, oldY) ->
+                lastScrollY = scrollY);
         renderItems();
         if (state == null) {
             if (getIntent().getBooleanExtra("new_item", false)) {
@@ -105,7 +113,14 @@ public final class ItemsActivity extends Activity {
 
     @Override protected void onResume() { super.onResume(); if (list != null) renderItems(); }
 
+    @Override protected void onPause() {
+        super.onPause();
+        getSharedPreferences("task_scroll_memory", MODE_PRIVATE).edit()
+                .putInt("items_page", lastScrollY).apply();
+    }
+
     private void renderItems() {
+        final int restoreY = lastScrollY;
         list.removeAllViews();
         // 复盘排第一，后面是在事项里建的提醒
         List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
@@ -249,6 +264,18 @@ public final class ItemsActivity extends Activity {
             empty.setPadding(dp(16), dp(30), dp(16), dp(30));
             empty.setBackground(surface(UiPalette.headGradient(), 16, UiPalette.BORDER));
             list.addView(empty);
+        }
+
+        // 布局完了再滑回原位（太早会被夹成顶部）
+        if (restoreY > 0) {
+            scroll.getViewTreeObserver().addOnGlobalLayoutListener(
+                    new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                        @Override public void onGlobalLayout() {
+                            if (list.getHeight() <= 0 || scroll.getHeight() <= 0) return;
+                            scroll.scrollTo(0, restoreY);
+                            scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                        }
+                    });
         }
     }
 

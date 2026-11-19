@@ -44,6 +44,10 @@ public final class TaskActivity extends Activity {
     private boolean habitDoneExpanded;
     private boolean futureExpanded;
     private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
+    /** 页面竖向滚动：换页/重画回来后停在上次的位置，不跳回第一个未完成。 */
+    private ScrollView scroll;
+    private int lastScrollY;
+    private static final String PREFS_SCROLL = "task_scroll_memory";
 
     @Override
     protected void onCreate(Bundle state) {
@@ -67,7 +71,7 @@ public final class TaskActivity extends Activity {
         headerHost.setOrientation(LinearLayout.VERTICAL);
         root.addView(headerHost, new LinearLayout.LayoutParams(-1, -2));
 
-        ScrollView scroll = new ScrollView(this);
+        scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         listContainer = new LinearLayout(this);
@@ -75,6 +79,9 @@ public final class TaskActivity extends Activity {
         listContainer.setPadding(dp(16), dp(8), dp(16), dp(96));
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        loadScrollMemory();
+        scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) ->
+                lastScrollY = scrollY);
 
 
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.TASKS,
@@ -181,9 +188,55 @@ public final class TaskActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        saveScrollMemory();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         subtaskScrollPositions.clear();
+    }
+
+    // ------------------------------------------------------- 滚动位置记忆
+
+    private String pageScrollKey() {
+        return "page_" + module;
+    }
+
+    private String subtaskScrollKey() {
+        return "sub_" + module;
+    }
+
+    private void loadScrollMemory() {
+        android.content.SharedPreferences prefs =
+                getSharedPreferences(PREFS_SCROLL, MODE_PRIVATE);
+        lastScrollY = prefs.getInt(pageScrollKey(), 0);
+        subtaskScrollPositions.clear();
+        String raw = prefs.getString(subtaskScrollKey(), "");
+        if (raw == null || raw.isEmpty()) return;
+        for (String part : raw.split(";")) {
+            int colon = part.indexOf(':');
+            if (colon <= 0) continue;
+            try {
+                subtaskScrollPositions.put(Integer.parseInt(part.substring(0, colon)),
+                        Integer.parseInt(part.substring(colon + 1)));
+            } catch (NumberFormatException ignored) { }
+        }
+    }
+
+    private void saveScrollMemory() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < subtaskScrollPositions.size(); i++) {
+            if (sb.length() > 0) sb.append(';');
+            sb.append(subtaskScrollPositions.keyAt(i)).append(':')
+                    .append(subtaskScrollPositions.valueAt(i));
+        }
+        getSharedPreferences(PREFS_SCROLL, MODE_PRIVATE).edit()
+                .putInt(pageScrollKey(), lastScrollY)
+                .putString(subtaskScrollKey(), sb.toString())
+                .apply();
     }
 
     static final String EXTRA_EDIT_RULE_ID = "edit_rule_id";
@@ -384,9 +437,9 @@ public final class TaskActivity extends Activity {
     }
 
     private void reload() {
-        // 清除子任务滚动位置，让每次都能自动滚动到第一个未完成
-        subtaskScrollPositions.clear();
-        
+        // 重画前先记住当前滚动位置，画完再滑回去
+        final int restoreY = lastScrollY;
+
         // 「刚想到的」那些念头有自己的页面，不在任务清单里重复出现
         List<Integer> ideaIds = FocusStore.ideaRuleIds(this);
         List<ReminderSettings.Rule> tasks = new ArrayList<>();
@@ -481,6 +534,16 @@ public final class TaskActivity extends Activity {
         if (!allDone.isEmpty()) {
             listContainer.addView(buildCompletedSection(allDone, dayStart));
         }
+
+        // 等布局完成再滑回去（post 有可能比首帧布局早，尺寸还是 0 会被夹成顶部）
+        scroll.getViewTreeObserver().addOnGlobalLayoutListener(
+                new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                    @Override public void onGlobalLayout() {
+                        if (listContainer.getHeight() <= 0 || scroll.getHeight() <= 0) return;
+                        scroll.scrollTo(0, restoreY);
+                        scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    }
+                });
     }
 
     // ------------------------------------------------------------ 卡片与分组
@@ -1018,10 +1081,6 @@ public final class TaskActivity extends Activity {
         scroll.setFillViewport(false);
         scroll.setPadding(dp(10), dp(2), dp(6), dp(3));
         scroll.setMinimumHeight(dp(36));
-        
-        // 恢复之前保存的滚动位置
-        int savedScroll = subtaskScrollPositions.get(parentId, 0);
-        scroll.scrollTo(savedScroll, 0);
 
         LinearLayout flow = new LinearLayout(this);
         flow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1112,22 +1171,28 @@ public final class TaskActivity extends Activity {
             subtaskScrollPositions.put(parentId, scrollX);
         });
         
-        // 布局完成后，滚动到第一个未完成子任务的真实位置
+        // 布局完成后：用户拖过就回到他拖的位置，没拖过才定位到第一个未完成
         scroll.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
             @Override public void onGlobalLayout() {
                 if (flow.getWidth() == 0 || scroll.getWidth() == 0) return; // 还没测量，等下一轮
-                int targetLeft = -1;
-                for (int i = 0; i < boxes.size(); i++) {
-                    if (!dones.get(i)) {
-                        targetLeft = boxes.get(i).getLeft();
-                        break;
+                int saved = subtaskScrollPositions.get(parentId, -1);
+                int x;
+                if (saved >= 0) {
+                    x = saved;
+                } else {
+                    int targetLeft = -1;
+                    for (int i = 0; i < boxes.size(); i++) {
+                        if (!dones.get(i)) {
+                            targetLeft = boxes.get(i).getLeft();
+                            break;
+                        }
                     }
+                    if (targetLeft < 0) {
+                        scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                        return;
+                    }
+                    x = Math.max(0, targetLeft - scroll.getPaddingLeft());
                 }
-                if (targetLeft < 0) {
-                    scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                    return;
-                }
-                int x = Math.max(0, targetLeft - scroll.getPaddingLeft());
                 scroll.scrollTo(x, 0);
                 subtaskScrollPositions.put(parentId, x);
                 scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
