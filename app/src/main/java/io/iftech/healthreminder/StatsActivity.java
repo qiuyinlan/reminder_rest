@@ -1113,7 +1113,18 @@ public final class StatsActivity extends Activity {
         lift(card);
 
         List<java.util.Map.Entry<String, String>> notes = ReviewStore.all(this);
-        card.addView(text(notes.isEmpty() ? "还没有复盘" : "共 " + notes.size() + " 天", 12, MUTED, false));
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text(notes.isEmpty() ? "还没有复盘" : "共 " + notes.size() + " 天", 12, MUTED, false),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        if (!notes.isEmpty()) {
+            TextView copy = text("复制全部", 12, GREEN, true);
+            copy.setPadding(dp(10), dp(6), dp(2), dp(6));
+            copy.setContentDescription("复制全部复盘");
+            copy.setOnClickListener(v -> copyAllReviews(notes));
+            head.addView(copy);
+        }
+        card.addView(head);
         if (notes.isEmpty()) {
             TextView empty = text("到点弹出的复盘页里写一句，就会记在这里。", 13, MUTED, false);
             empty.setPadding(0, dp(8), 0, 0);
@@ -1138,6 +1149,20 @@ public final class StatsActivity extends Activity {
             card.addView(row);
         }
         return card;
+    }
+
+    /** 把所有复盘拼成一段纯文本复制走。 */
+    private void copyAllReviews(List<java.util.Map.Entry<String, String>> notes) {
+        StringBuilder sb = new StringBuilder();
+        for (java.util.Map.Entry<String, String> entry : notes) {
+            if (sb.length() > 0) sb.append("\n\n");
+            sb.append(entry.getKey()).append('\n').append(entry.getValue());
+        }
+        android.content.ClipboardManager clipboard =
+                (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null || sb.length() == 0) return;
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("复盘", sb.toString()));
+        Toast.makeText(this, "已复制 " + notes.size() + " 天复盘", Toast.LENGTH_SHORT).show();
     }
 
     private String friendlyDay(String key) {
