@@ -205,6 +205,22 @@ final class FocusStore {
         return ids;
     }
 
+    /** 这条规则是不是「现在」页记下的想法（只存在想法列表，不算提醒事项）。 */
+    static boolean isIdeaRule(Context context, int ruleId) {
+        return ruleId >= 0 && ideaRuleIds(context).contains(ruleId);
+    }
+
+    /** 过滤掉想法规则的提醒列表。 */
+    static List<ReminderSettings.Rule> withoutIdeas(Context context, List<ReminderSettings.Rule> rules) {
+        List<Integer> ideaIds = ideaRuleIds(context);
+        if (ideaIds.isEmpty()) return rules;
+        List<ReminderSettings.Rule> kept = new ArrayList<>();
+        for (ReminderSettings.Rule rule : rules) {
+            if (!ideaIds.contains(rule.id)) kept.add(rule);
+        }
+        return kept;
+    }
+
     static void addIdea(Context context, String title, int ruleId) {
         String value = title == null ? "" : title.trim();
         if (value.isEmpty()) return;
@@ -229,6 +245,16 @@ final class FocusStore {
         List<Idea> kept = new ArrayList<>();
         for (Idea idea : ideas(context)) {
             if (!idea.id.equals(id)) kept.add(idea);
+        }
+        save(context, kept);
+    }
+
+    /** 真的丢掉这条想法：连带删除它背后那条规则，免得变成孤儿跑到提醒事项里。 */
+    static void deleteIdea(Context context, String id) {
+        List<Idea> kept = new ArrayList<>();
+        for (Idea idea : ideas(context)) {
+            if (!idea.id.equals(id)) kept.add(idea);
+            else if (idea.ruleId >= 0) ReminderSettings.deleteRule(context, idea.ruleId);
         }
         save(context, kept);
     }

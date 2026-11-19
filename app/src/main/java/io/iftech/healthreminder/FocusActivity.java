@@ -1210,7 +1210,7 @@ public final class FocusActivity extends Activity {
                 .setMessage(idea.title)
                 .setNegativeButton("留着", null)
                 .setPositiveButton("删掉", (d, w) -> {
-                    FocusStore.removeIdea(this, idea.id);
+                    FocusStore.deleteIdea(this, idea.id);
                     render();
                 })
                 .create();

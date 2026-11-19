@@ -107,7 +107,8 @@ public final class ItemsActivity extends Activity {
 
     private void renderItems() {
         list.removeAllViews();
-        List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
+        // 现在页记下的想法不算提醒事项，不要混进来
+        List<ReminderSettings.Rule> rules = FocusStore.withoutIdeas(this, ReminderSettings.rules(this));
         boolean itemLimitReached = MembershipPolicy.requiresMembershipForNewItem(rules.size());
         addFabPro.setVisibility(itemLimitReached ? View.VISIBLE : View.GONE);
         addFab.setBackground(circle(itemLimitReached ? UiPalette.MUTED : MINT));
@@ -312,7 +313,8 @@ public final class ItemsActivity extends Activity {
     }
 
     private void editRule(ReminderSettings.Rule existing) {
-        if (existing == null && MembershipPolicy.requiresMembershipForNewItem(ReminderSettings.rules(this).size())) {
+        if (existing == null && MembershipPolicy.requiresMembershipForNewItem(
+                FocusStore.withoutIdeas(this, ReminderSettings.rules(this)).size())) {
             MembershipAccess.requirePremium(this, "免费版最多可新建 3 个事项", active -> {
                 if (active) editRuleInternal(null);
             });

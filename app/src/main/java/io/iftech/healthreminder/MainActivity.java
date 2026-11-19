@@ -137,7 +137,8 @@ public final class MainActivity extends Activity {
         top.addView(settingsButton);
         body.addView(top);
 
-        List<ReminderSettings.Rule> rules = ReminderSettings.rules(this);
+        // 现在页记下的想法只存想法列表，首页只展示真正的提醒事项
+        List<ReminderSettings.Rule> rules = FocusStore.withoutIdeas(this, ReminderSettings.rules(this));
         addTodayStatusCard(rules);
         addDailyBodyNote();
         addPermissionBanner();
