@@ -1052,7 +1052,7 @@ public final class TaskActivity extends Activity {
             cb.setBackground(cbShape);
             LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(15), dp(15));
             subBox.addView(cb, cbParams);
-            cb.setOnClickListener(v -> toggleSubtask(parentId, sub, subDone, dayStart));
+            cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
 
             TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
             if (subDone) subTitle.setPaintFlags(subTitle.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
@@ -1060,7 +1060,7 @@ public final class TaskActivity extends Activity {
             subParams.leftMargin = dp(7);
             subBox.addView(subTitle, subParams);
 
-            subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, subDone, dayStart));
+            subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
             
             // 长按拖动排序
             subBox.setOnLongClickListener(v -> {
@@ -1153,13 +1153,18 @@ public final class TaskActivity extends Activity {
 
     private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart, boolean allSubDone) {
         if (done) {
+            // 取消大任务时，子任务也跟着回到未完成，免得只撤一半
+            for (ReminderSettings.Rule sub : Subtasks.of(this, task.id)) {
+                if (Subtasks.doneToday(this, task.id, sub.title, dayStart)) {
+                    Subtasks.toggleQuiet(this, task.id, sub.title, true, dayStart);
+                }
+            }
             ReminderRecord.deleteCompletion(this, module, task.title, dayStart);
             ReminderSettings.unmarkCompleted(this, task.id);
         } else {
-            // 勾选大任务时，自动把所有子任务一并勾选
-            List<ReminderSettings.Rule> subtasks = Subtasks.of(this, task.id);
-            if (!subtasks.isEmpty()) {
-                for (ReminderSettings.Rule sub : subtasks) {
+            // 勾选大任务时，把还没勾的子任务一并勾上
+            for (ReminderSettings.Rule sub : Subtasks.of(this, task.id)) {
+                if (!Subtasks.doneToday(this, task.id, sub.title, dayStart)) {
                     Subtasks.toggleQuiet(this, task.id, sub.title, false, dayStart);
                 }
             }

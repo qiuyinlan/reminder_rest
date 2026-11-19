@@ -503,8 +503,8 @@ public final class MainActivity extends Activity {
             return count;
         } else {
             // 间隔模式：计算时间窗口内还剩多少个间隔
-            int startSec = rule.startMinute * 60;
-            int endSec = rule.endMinute * 60;
+            int startSec = rule.start * 60;
+            int endSec = rule.end * 60;
             if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
             long windowStart = dayStart + startSec * 1000L;
             long windowEnd = dayStart + endSec * 1000L;

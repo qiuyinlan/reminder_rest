@@ -56,12 +56,7 @@ public final class BoardActivity extends Activity {
     private void migrateLegacy() {
         List<BoardStore.Item> legacy = BoardStore.load(this);
         if (legacy.isEmpty()) return;
-        // 如果加载回来的是旧日期的数据（不应该发生，因为 BoardStore.load 会清空），直接丢弃
         String today = BoardStore.todayKey();
-        if (!today.equals(prefs().getString(BoardStore.KEY_DAY, ""))) {
-            BoardStore.clear(this);
-            return;
-        }
         for (BoardStore.Item item : legacy) {
             ArrayList<Integer> points = new ArrayList<>();
             points.add(9 * 3600);
@@ -89,10 +84,6 @@ public final class BoardActivity extends Activity {
             }
         }
         BoardStore.clear(this);
-    }
-
-    private android.content.SharedPreferences prefs() {
-        return getSharedPreferences(BoardStore.PREFS, Context.MODE_PRIVATE);
     }
 
     // -------------------------------------------------------------- 页面骨架
