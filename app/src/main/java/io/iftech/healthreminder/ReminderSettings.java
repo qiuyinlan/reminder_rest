@@ -453,16 +453,19 @@ final class ReminderSettings {
         return result;
     }
 
-    /** 列表页（首页 / 事项页）只展示在「事项」里建的那些（module=body）。
-     *  任务、白板、子任务、复盘、想法、总览提醒都有自己的入口，一律不混进来。 */
+    /** 列表页（首页 / 事项页）展示的条目：每日复盘永远排第一，后面是在事项里建的（module=body）。
+     *  任务、白板、子任务、想法、总览提醒都有自己的入口，一律不混进来。 */
     static List<Rule> listedRules(Context context) {
         List<Integer> ideaIds = FocusStore.ideaRuleIds(context);
-        ArrayList<Rule> kept = new ArrayList<>();
+        ArrayList<Rule> reviews = new ArrayList<>();
+        ArrayList<Rule> body = new ArrayList<>();
         for (Rule rule : rules(context)) {
-            if (!MODULE_BODY.equals(rule.module)) continue;
             if (ideaIds.contains(rule.id)) continue;
-            kept.add(rule);
+            if (rule.isReviewModule()) reviews.add(rule);
+            else if (MODULE_BODY.equals(rule.module)) body.add(rule);
         }
+        ArrayList<Rule> kept = new ArrayList<>(reviews);
+        kept.addAll(body);
         return kept;
     }
 

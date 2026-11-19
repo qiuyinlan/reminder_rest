@@ -124,6 +124,8 @@ public final class ReviewReminderActivity extends Activity {
         ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "每日复盘",
                 ReminderRecord.KIND_DONE, now, now, note, ReminderSettings.MODULE_REVIEW);
         ReminderSettings.markCompleted(this, id, 1);
+        // 写完立刻刷新下次提醒时间，不必等下一次重排
+        ReminderScheduler.update(this);
         finish();
     }
 

@@ -107,13 +107,12 @@ public final class ItemsActivity extends Activity {
 
     private void renderItems() {
         list.removeAllViews();
-        // 现在页的想法、每日复盘的固定规则都不当普通事项列出来
+        // 复盘排第一，后面是在事项里建的提醒
         List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
         boolean itemLimitReached = MembershipPolicy.requiresMembershipForNewItem(rules.size());
         addFabPro.setVisibility(itemLimitReached ? View.VISIBLE : View.GONE);
         addFab.setBackground(circle(itemLimitReached ? UiPalette.MUTED : MINT));
         addFab.setContentDescription(itemLimitReached ? "添加提醒事项，PRO" : "添加提醒事项");
-        list.addView(buildReviewCard());
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("今日行动", 26, INK, true);
@@ -223,8 +222,16 @@ public final class ItemsActivity extends Activity {
             card.addView(details);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2); params.bottomMargin = dp(10);
             list.addView(card, params);
-            card.setOnClickListener(v -> editRule(rule));
-            card.setOnLongClickListener(v -> { showItemHistory(rule); return true; });
+            card.setOnClickListener(v -> {
+                if (rule.isReviewModule()) openReview(rule.id);
+                else editRule(rule);
+            });
+            if (rule.isReviewModule()) {
+                // 长按改时间/开关，点一下直接去写
+                card.setOnLongClickListener(v -> { editRule(rule); return true; });
+            } else {
+                card.setOnLongClickListener(v -> { showItemHistory(rule); return true; });
+            }
         }
         if (rules.isEmpty()) {
             TextView empty = text("", 15, MUTED, true);
@@ -293,51 +300,6 @@ public final class ItemsActivity extends Activity {
         return UiPalette.categoryStroke(UiPalette.categoryKind(title));
     }
 
-    /** 事项页最上面的复盘卡片：开关 + 跟普通事项同一套时间设置。 */
-    private LinearLayout buildReviewCard() {
-        final ReminderSettings.Rule review = ReviewStore.rule(this);
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(12), dp(16), dp(12));
-        card.setBackground(round(Color.WHITE, 16));
-        card.setElevation(dp(1));
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.bottomMargin = dp(12);
-        card.setLayoutParams(cardParams);
-
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(text("每日复盘", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
-
-        String summary = review == null ? "未设置" : scheduleSummary(review);
-        TextView timing = text(summary, 12, GREEN, true);
-        timing.setGravity(Gravity.CENTER);
-        timing.setPadding(dp(10), dp(6), dp(10), dp(6));
-        timing.setBackground(round(MINT_LIGHT, 12));
-        timing.setContentDescription("复盘提醒时间");
-        timing.setOnClickListener(v -> editRule(ReviewStore.ensureRule(this)));
-        LinearLayout.LayoutParams timingParams = new LinearLayout.LayoutParams(-2, -2);
-        timingParams.rightMargin = dp(10);
-        row.addView(timing, timingParams);
-
-        Switch toggle = new Switch(this);
-        toggle.setFocusable(false);
-        toggle.setFocusableInTouchMode(false);
-        toggle.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{Color.WHITE, Color.WHITE}));
-        toggle.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{MINT, UiPalette.DISABLED}));
-        toggle.setChecked(ReviewStore.enabled(this));
-        toggle.setContentDescription("开启每日复盘提醒");
-        toggle.setOnCheckedChangeListener((button, checked) -> {
-            ReviewStore.setEnabled(this, checked);
-            renderItems();
-        });
-        row.addView(toggle);
-        card.addView(row);
-        card.setOnClickListener(v -> ReviewDialogs.showToday(this, this::renderItems));
-        return card;
-    }
 
     private GradientDrawable surface(int[] colors, int radius, int stroke) {
         GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
@@ -357,6 +319,11 @@ public final class ItemsActivity extends Activity {
             summary.append(timePointText(rule.timePointsSeconds.get(i)));
         }
         return summary.toString();
+    }
+
+    private void openReview(int ruleId) {
+        startActivity(new Intent(this, ReviewReminderActivity.class)
+                .putExtra("rule_id", ruleId));
     }
 
     private void editRule(ReminderSettings.Rule existing) {

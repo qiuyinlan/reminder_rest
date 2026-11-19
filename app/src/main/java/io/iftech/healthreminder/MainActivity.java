@@ -993,7 +993,14 @@ public final class MainActivity extends Activity {
         itemProgressParams.topMargin = dp(14);
         item.addView(itemProgress, itemProgressParams);
 
-        item.setOnClickListener(v -> openItemEditor(rule.id));
+        item.setOnClickListener(v -> {
+            if (rule.isReviewModule()) {
+                startActivity(new Intent(this, ReviewReminderActivity.class)
+                        .putExtra("rule_id", rule.id));
+            } else {
+                openItemEditor(rule.id);
+            }
+        });
         item.setOnLongClickListener(v -> { openItemEditor(rule.id); return true; });
         LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-1, -2);
         itemParams.bottomMargin = dp(12);
