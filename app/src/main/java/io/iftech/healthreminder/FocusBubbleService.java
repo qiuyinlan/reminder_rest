@@ -21,6 +21,7 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -484,9 +485,21 @@ public final class FocusBubbleService extends Service {
         private int startX;
         private int startY;
         private boolean dragging;
+        private final int slop;
 
         BubbleCard(Context context) {
             super(context);
+            slop = ViewConfiguration.get(context).getScaledTouchSlop();
+        }
+
+        /**
+         * 收起态不接受子视图的「别拦我」请求：小窗里几乎每行都能点，
+         * 那个可点区域会把拖动手势吞掉，导致只有边角能拖。
+         * 展开态保持默认，竖向滑动继续交给 ScrollView。
+         */
+        @Override
+        public void requestDisallowInterceptTouchEvent(boolean disallow) {
+            if (expanded) super.requestDisallowInterceptTouchEvent(disallow);
         }
 
         @Override
@@ -501,12 +514,15 @@ public final class FocusBubbleService extends Service {
                     dragging = false;
                     return false;
                 case MotionEvent.ACTION_MOVE: {
-                    float dx = Math.abs(event.getRawX() - downX);
-                    float dy = Math.abs(event.getRawY() - downY);
-                    // 展开态：横向拖窗口，竖向留给 ScrollView
+                    float dx = event.getRawX() - downX;
+                    float dy = event.getRawY() - downY;
+                    float ax = Math.abs(dx);
+                    float ay = Math.abs(dy);
+                    // 展开态：只有明显横向才拖窗口，竖向留给 ScrollView
+                    // 收起态：任一方向超过系统滑动阈值就开始拖，避免把点击误判成拖
                     boolean grab = expanded
-                            ? (dx > dp(12) && dx > dy)
-                            : (dx > dp(10) || dy > dp(10));
+                            ? (ax > slop * 2 && ax > ay * 1.5f)
+                            : (ax > slop || ay > slop);
                     if (grab) {
                         dragging = true;
                         return true;
@@ -626,8 +642,15 @@ public final class FocusBubbleService extends Service {
 
     /** 点半个圆 → 恢复成卡片，停在原来那条边上。 */
     private void restoreFromEdge() {
+        int sw = screenWidth();
+        int w = card != null && card.getWidth() > 0 ? card.getWidth() : dp(160);
+        int x = edgeSide < 0 ? dp(14) : Math.max(dp(14), sw - w - dp(14));
+        restoreFromEdgeAt(x, peekParams != null ? peekParams.y : params.y);
+    }
+
+    /** 把半圆还原成小窗，放到指定位置（从边缘拉出来时用）。 */
+    private void restoreFromEdgeAt(int x, int y) {
         if (card == null) return;
-        int prevY = peekParams != null ? peekParams.y : params.y;
         if (peekView != null && windowManager != null) {
             try {
                 windowManager.removeView(peekView);
@@ -640,8 +663,8 @@ public final class FocusBubbleService extends Service {
         int sh = screenHeight();
         int w = card.getWidth() > 0 ? card.getWidth() : dp(160);
         int h = card.getHeight() > 0 ? card.getHeight() : dp(56);
-        params.x = edgeSide < 0 ? dp(14) : Math.max(dp(14), sw - w - dp(14));
-        params.y = clampY(prevY, h, sh);
+        params.x = Math.max(0, Math.min(x, sw - w));
+        params.y = clampY(y, h, sh);
         edgeSide = 0;
         card.setVisibility(View.VISIBLE);
         updateLayout();
@@ -691,10 +714,12 @@ public final class FocusBubbleService extends Service {
     }
 
     private void attachPeekTouch(final View circle, final int h) {
+        final int slop = ViewConfiguration.get(this).getScaledTouchSlop();
         circle.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
             private float downY;
+            private int startX;
             private int startY;
-            private long downAt;
             private boolean moved;
 
             @Override
@@ -702,30 +727,42 @@ public final class FocusBubbleService extends Service {
                 if (peekParams == null) return false;
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
+                        downX = event.getRawX();
                         downY = event.getRawY();
+                        startX = peekParams.x;
                         startY = peekParams.y;
-                        downAt = System.currentTimeMillis();
                         moved = false;
                         return true;
                     case MotionEvent.ACTION_MOVE: {
+                        int dx = (int) (event.getRawX() - downX);
                         int dy = (int) (event.getRawY() - downY);
-                        if (Math.abs(dy) > dp(8)) moved = true;
-                        if (!moved) return true;
+                        if (!moved && Math.abs(dx) <= slop && Math.abs(dy) <= slop) return true;
+                        moved = true;
+                        // 横竖都能拖，拖离边缘再松手就还原成小窗
+                        peekParams.x = startX + dx;
                         peekParams.y = clampY(startY + dy, h, screenHeight());
                         try {
                             windowManager.updateViewLayout(circle, peekParams);
                         } catch (RuntimeException ignored) { }
                         return true;
                     }
-                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_UP: {
                         if (!moved) {
                             // 贴边点一下：直接展开大窗（进 App 只走放大镜）
                             restoreFromEdge();
                             if (!expanded) toggleExpand();
-                        } else {
-                            persistPos();
+                            return true;
                         }
+                        int sw = screenWidth();
+                        int x = peekParams.x;
+                        boolean pulledOut = peekSide < 0
+                                ? x > dp(40)
+                                : x < sw - dp(PEEK_W) - dp(40);
+                        if (pulledOut) restoreFromEdgeAt(x, peekParams.y);
+                        else snapToEdge(peekSide < 0 ? -1 : 1, peekParams.y);
+                        persistPos();
                         return true;
+                    }
                     default:
                         return false;
                 }
