@@ -133,7 +133,7 @@ public final class MainActivity extends Activity {
         moodButton.setBackground(outline(UiPalette.SOFT, UiPalette.BORDER, 18));
         moodButton.setElevation(dp(1));
         moodButton.setContentDescription("记一下现在的心情");
-        moodButton.setOnClickListener(v -> MoodDialogs.add(this, this::render));
+        moodButton.setOnClickListener(v -> MoodDialogs.showToday(this, this::render));
         LinearLayout.LayoutParams moodParams = new LinearLayout.LayoutParams(-2, -2);
         moodParams.rightMargin = dp(8);
         top.addView(moodButton, moodParams);

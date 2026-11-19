@@ -335,7 +335,7 @@ public final class ItemsActivity extends Activity {
         });
         row.addView(toggle);
         card.addView(row);
-        card.setOnClickListener(v -> editRule(ReviewStore.ensureRule(this)));
+        card.setOnClickListener(v -> ReviewDialogs.showToday(this, this::renderItems));
         return card;
     }
 
