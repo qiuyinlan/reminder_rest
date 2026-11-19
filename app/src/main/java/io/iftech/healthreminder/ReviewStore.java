@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -26,6 +27,33 @@ final class ReviewStore {
 
     static String read(Context context) {
         return prefs(context).getString(dayKey(), "");
+    }
+
+    static String read(Context context, String key) {
+        return prefs(context).getString(key, "");
+    }
+
+    /** 所有复盘记录，按日期倒序（dayKey -> 内容）。 */
+    static List<java.util.Map.Entry<String, String>> all(Context context) {
+        List<java.util.Map.Entry<String, String>> result = new ArrayList<>();
+        for (java.util.Map.Entry<String, ?> entry : prefs(context).getAll().entrySet()) {
+            String key = entry.getKey();
+            if (key == null || key.length() != 10) continue;
+            Object raw = entry.getValue();
+            if (!(raw instanceof String)) continue;
+            String note = ((String) raw).trim();
+            if (note.isEmpty()) continue;
+            result.add(new java.util.AbstractMap.SimpleEntry<>(key, note));
+        }
+        result.sort((a, b) -> b.getKey().compareTo(a.getKey()));
+        return result;
+    }
+
+    /** 按日期保存（统计页编辑某一天用）。 */
+    static void save(Context context, String key, String note) {
+        String value = note == null ? "" : note.trim();
+        if (value.isEmpty()) prefs(context).edit().remove(key).apply();
+        else prefs(context).edit().putString(key, value).apply();
     }
 
     static void save(Context context, String note) {

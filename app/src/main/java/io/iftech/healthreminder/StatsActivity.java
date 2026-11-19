@@ -140,6 +140,7 @@ public final class StatsActivity extends Activity {
 
     private String helpText() {
         if (ReminderSettings.MODULE_TASK.equals(moduleFilter)) return "任务完成情况与每日打卡";
+        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) return "每天一句复盘";
         return "看看自己每天照顾身体的时刻";
     }
 
@@ -227,7 +228,8 @@ public final class StatsActivity extends Activity {
         moduleRow.setPadding(0, dp(8), 0, 0);
         String[][] modules = {
                 {ReminderSettings.MODULE_BODY, "身体"},
-                {ReminderSettings.MODULE_TASK, "任务"}};
+                {ReminderSettings.MODULE_TASK, "任务"},
+                {ReminderSettings.MODULE_REVIEW, "复盘"}};
         for (int i = 0; i < modules.length; i++) {
             final String value = modules[i][0];
             TextView chip = text(modules[i][1], 13, moduleFilter.equals(value) ? Color.WHITE : INK, true);
@@ -260,6 +262,12 @@ public final class StatsActivity extends Activity {
         scroll.addView(content);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
+
+        // 复盘分区：只列每天那一句，点一条改一条
+        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) {
+            content.addView(buildReviewListCard());
+            return;
+        }
 
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
@@ -1094,6 +1102,90 @@ public final class StatsActivity extends Activity {
             emptyParams.topMargin = dp(6);
             content.addView(empty, emptyParams);
         }
+    }
+
+    /** 复盘分区：每天一句的列表，点一条改一天。 */
+    private LinearLayout buildReviewListCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(round(Color.WHITE, 16));
+        lift(card);
+
+        List<java.util.Map.Entry<String, String>> notes = ReviewStore.all(this);
+        card.addView(text(notes.isEmpty() ? "还没有复盘" : "共 " + notes.size() + " 天", 12, MUTED, false));
+        if (notes.isEmpty()) {
+            TextView empty = text("到点弹出的复盘页里写一句，就会记在这里。", 13, MUTED, false);
+            empty.setPadding(0, dp(8), 0, 0);
+            card.addView(empty);
+            return card;
+        }
+        int shown = 0;
+        for (final java.util.Map.Entry<String, String> entry : notes) {
+            if (shown >= 60) break;
+            shown++;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(0, dp(10), 0, 0);
+            row.addView(text(friendlyDay(entry.getKey()), 12, GREEN, true));
+            TextView note = text(entry.getValue(), 14, INK, false);
+            note.setLineSpacing(dp(4), 1f);
+            note.setPadding(0, dp(4), 0, 0);
+            note.setMaxLines(4);
+            note.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.addView(note);
+            row.setOnClickListener(v -> editReview(entry.getKey(), entry.getValue()));
+            card.addView(row);
+        }
+        return card;
+    }
+
+    private String friendlyDay(String key) {
+        try {
+            Date date = new SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).parse(key);
+            return date == null ? key : new SimpleDateFormat("M月d日 EEE", Locale.CHINA).format(date);
+        } catch (Exception ignored) {
+            return key;
+        }
+    }
+
+    private void editReview(final String dayKey, String note) {
+        final EditText input = FormKit.input(this, android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        input.setGravity(Gravity.TOP | Gravity.LEFT);
+        input.setMinLines(4);
+        input.setMaxLines(10);
+        input.setText(note);
+        if (input.getText() != null) input.setSelection(input.getText().length());
+
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(20), dp(6), dp(20), 0);
+        box.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        final AlertDialog dialog = new AlertDialog.Builder(dialogContext())
+                .setTitle(friendlyDay(dayKey))
+                .setView(box)
+                .setNegativeButton("取消", null)
+                .setNeutralButton("清空", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String value = input.getText() == null ? "" : input.getText().toString().trim();
+                    if (value.isEmpty()) {
+                        Toast.makeText(this, "写一句再保存", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReviewStore.save(this, dayKey, value);
+                    dialog.dismiss();
+                    render();
+                }));
+        dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "清空", (d, which) -> {
+            ReviewStore.save(this, dayKey, "");
+            dialog.dismiss();
+            render();
+        });
+        showStyledDialog(dialog);
     }
 
     /** 心情记录：今天几条、本月几条，最近几条可点开修改。 */
