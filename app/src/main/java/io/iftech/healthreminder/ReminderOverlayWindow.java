@@ -35,11 +35,9 @@ final class ReminderOverlayWindow {
         final boolean bodyModule = rule == null || rule.isBodyModule();
         final Class<?> target = rule != null && rule.isTaskAllModule() ? TaskOverviewReminderActivity.class
                 : rule != null && rule.isTaskModule() ? TaskReminderActivity.class
-                : rule != null && rule.isCardModule() ? CardReminderActivity.class
                 : ReminderActivity.class;
         final String overlineText = bodyModule ? "哪怕做一秒，身体也会舒服一点！\n求求主人了。"
                 : rule != null && rule.isTaskAllModule() ? "该看今天的清单了"
-                : rule != null && rule.isCardModule() ? "到时间看一张卡片了"
                 : "该做这件事了";
         final String primaryLabel = bodyModule ? "好，我去做" : "去看看";
         final String heading;
@@ -103,8 +101,6 @@ final class ReminderOverlayWindow {
             message = rule.reminderMessage;
         } else if (rule.isTaskAllModule()) {
             message = "还有没做完的，看一眼勾掉。";
-        } else if (rule.isCardModule()) {
-            message = "到时间了，看一张卡片。";
         } else {
             message = "现在就做，做完勾掉。";
         }

@@ -18,7 +18,6 @@ final class ReminderSettings {
     static final String[] TYPES = {"喝水", "护眼", "走动", "放松颈椎"};
     static final String MODULE_BODY = "body";
     static final String MODULE_TASK = "task";
-    static final String MODULE_CARD = "card";
     /** 任务总览提醒：一个独立规则，到点弹一页列出全部任务。 */
     static final String MODULE_TASK_ALL = "task_all";
     /** 子任务：挂在某个任务下的小条目，不单独排闹钟。 */
@@ -163,7 +162,6 @@ final class ReminderSettings {
         boolean isTaskModule() { return MODULE_TASK.equals(module); }
         boolean isTaskAllModule() { return MODULE_TASK_ALL.equals(module); }
         boolean isSubtaskModule() { return MODULE_SUBTASK.equals(module); }
-        boolean isCardModule() { return MODULE_CARD.equals(module); }
 
         /** 单次提醒（指定日期时间，只响一次）。 */
         boolean isOnceSchedule() { return onceAt > 0L; }

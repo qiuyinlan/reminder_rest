@@ -140,11 +140,10 @@ public final class StatsActivity extends Activity {
 
     private String helpText() {
         if (ReminderSettings.MODULE_TASK.equals(moduleFilter)) return "任务完成情况与每日打卡";
-        if (ReminderSettings.MODULE_CARD.equals(moduleFilter)) return "卡片展示与答题记录";
         return "看看自己每天照顾身体的时刻";
     }
 
-    /** 卡片分区的答题概览。 */
+    /** 身体分区的答题概览。 */
     private LinearLayout quizSummary() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -228,8 +227,7 @@ public final class StatsActivity extends Activity {
         moduleRow.setPadding(0, dp(8), 0, 0);
         String[][] modules = {
                 {ReminderSettings.MODULE_BODY, "身体"},
-                {ReminderSettings.MODULE_TASK, "任务"},
-                {ReminderSettings.MODULE_CARD, "卡片"}};
+                {ReminderSettings.MODULE_TASK, "任务"}};
         for (int i = 0; i < modules.length; i++) {
             final String value = modules[i][0];
             TextView chip = text(modules[i][1], 13, moduleFilter.equals(value) ? Color.WHITE : INK, true);
@@ -262,10 +260,6 @@ public final class StatsActivity extends Activity {
         scroll.addView(content);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
-
-        if (ReminderSettings.MODULE_CARD.equals(moduleFilter)) {
-            content.addView(quizSummary(), 0, new LinearLayout.LayoutParams(-1, -2));
-        }
 
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
@@ -1425,7 +1419,6 @@ public final class StatsActivity extends Activity {
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.STATS,
                 () -> { finish(); overridePendingTransition(0, 0); },
                 () -> { startActivity(new Intent(this, TaskActivity.class)); overridePendingTransition(0, 0); finish(); },
-                () -> { startActivity(new Intent(this, CardActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, ItemsActivity.class)); overridePendingTransition(0, 0); finish(); },
                 () -> { startActivity(new Intent(this, CompanionLandingActivity.class)); overridePendingTransition(0, 0); finish(); },
                 null);
