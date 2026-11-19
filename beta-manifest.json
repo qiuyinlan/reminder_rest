@@ -1,7 +1,7 @@
 {
-    "versionCode": 126,
-    "versionName": "0.3.0-beta109",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta109/rest-bean.apk",
-    "sha256": "e8420268daf8c9a9e499b91e09733639185e7a22a56372518c53f1d3c0287310",
-    "notes": "首页提醒卡片的完成数也按已生效提醒统计，提醒关闭时不出数字"
+    "versionCode": 127,
+    "versionName": "0.3.0-beta110",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta110/rest-bean.apk",
+    "sha256": "dad2a53873d375f07bcd32456352ffd4e1a2de62ba68812befaa2fbca90fec2e",
+    "notes": "统计页新增复盘分区，任务右边一栏"
 }
