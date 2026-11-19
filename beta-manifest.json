@@ -1,7 +1,7 @@
 {
-    "versionCode": 124,
-    "versionName": "0.3.0-beta106",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta106/rest-bean.apk",
-    "sha256": "529dd18bbf095bc75975aef2e33d4ebff9012a0c037676db07b496ca49760e45",
-    "notes": "现在页记的想法不再混进提醒事项；悬浮窗整块都能拖"
+    "versionCode": 125,
+    "versionName": "0.3.0-beta107",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta107/rest-bean.apk",
+    "sha256": "57e878c255cc5e1b4e0b0e77f6684f9c5639956712ac764ea0d967201b300bb9",
+    "notes": "事项页顶部新增每日复盘提醒，到点弹整页写一句才能继续"
 }
