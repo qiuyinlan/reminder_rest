@@ -170,6 +170,8 @@ public final class TaskActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 白板页每次进入都要清掉昨天的条目，避免隔天还看到旧任务
+        if (ReminderSettings.MODULE_BOARD.equals(module)) purgeStaleBoard();
         reload();
         int editId = getIntent().getIntExtra(EXTRA_EDIT_RULE_ID, -1);
         if (editId >= 0) {
@@ -1051,7 +1053,7 @@ public final class TaskActivity extends Activity {
             cb.setBackground(cbShape);
             LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(15), dp(15));
             subBox.addView(cb, cbParams);
-            cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
+            cb.setOnClickListener(v -> toggleSubtask(parentId, sub, subDone, dayStart));
 
             TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
             if (subDone) subTitle.setPaintFlags(subTitle.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
@@ -1059,7 +1061,7 @@ public final class TaskActivity extends Activity {
             subParams.leftMargin = dp(7);
             subBox.addView(subTitle, subParams);
 
-            subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
+            subBox.setOnClickListener(v -> toggleSubtask(parentId, sub, subDone, dayStart));
             
             // 长按拖动排序
             subBox.setOnLongClickListener(v -> {

@@ -412,9 +412,13 @@ public final class MainActivity extends Activity {
     private void addTodayStatusCard(List<ReminderSettings.Rule> rules) {
         int completed = 0;
         int target = 0;
+        int remainingReminders = 0;
+        long now = System.currentTimeMillis();
+        long dayStart = ReminderRecord.dayStart(now);
         for (ReminderSettings.Rule rule : rules) {
             completed += ReminderSettings.completedToday(this, rule.id);
             target += rule.dailyTarget;
+            remainingReminders += countRemainingReminders(rule, now, dayStart);
         }
 
         LinearLayout card = new LinearLayout(this);
@@ -464,7 +468,7 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams completionParams = new LinearLayout.LayoutParams(0, -2, 1);
         completionParams.leftMargin = dp(14);
-        metrics.addView(statusMetric("提醒事项", rules.size() + " 项"), completionParams);
+        metrics.addView(statusMetric("待完成提醒", remainingReminders + " 次"), completionParams);
         card.addView(metrics);
 
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -481,6 +485,37 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams cardParams = full();
         cardParams.bottomMargin = dp(14);
         body.addView(card, cardParams);
+    }
+
+    /** 计算某个规则今天还剩多少次提醒没触发（已过时间点不算）。 */
+    private int countRemainingReminders(ReminderSettings.Rule rule, long now, long dayStart) {
+        if (!rule.enabled) return 0;
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.specificTimeMode) {
+            // 特定时间模式：数今天还没到的时间点
+            int count = 0;
+            for (int pointSec : rule.timePointsSeconds) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(dayStart);
+                cal.add(Calendar.SECOND, pointSec);
+                long pointMillis = cal.getTimeInMillis();
+                if (pointMillis > now && pointMillis < dayEnd) count++;
+            }
+            return count;
+        } else {
+            // 间隔模式：计算时间窗口内还剩多少个间隔
+            int startSec = rule.startMinute * 60;
+            int endSec = rule.endMinute * 60;
+            if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
+            long windowStart = dayStart + startSec * 1000L;
+            long windowEnd = dayStart + endSec * 1000L;
+            if (windowEnd > dayEnd) windowEnd = dayEnd;
+            if (now >= windowEnd) return 0; // 窗口已过期
+            long effectiveStart = Math.max(now, windowStart);
+            long span = windowEnd - effectiveStart;
+            int interval = Math.max(1, rule.intervalSeconds);
+            return (int) (span / (interval * 1000L)) + 1;
+        }
     }
 
     private LinearLayout statusMetric(String title, String value) {
