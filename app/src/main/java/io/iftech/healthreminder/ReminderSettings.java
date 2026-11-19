@@ -453,13 +453,13 @@ final class ReminderSettings {
         return result;
     }
 
-    /** 列表页（首页 / 事项页）只展示真正的事项：身体提醒和任务。
-     *  白板、子任务、每日复盘、想法、总览提醒都有自己的入口，不混进来。 */
+    /** 列表页（首页 / 事项页）只展示在「事项」里建的那些（module=body）。
+     *  任务、白板、子任务、复盘、想法、总览提醒都有自己的入口，一律不混进来。 */
     static List<Rule> listedRules(Context context) {
         List<Integer> ideaIds = FocusStore.ideaRuleIds(context);
         ArrayList<Rule> kept = new ArrayList<>();
         for (Rule rule : rules(context)) {
-            if (!MODULE_BODY.equals(rule.module) && !MODULE_TASK.equals(rule.module)) continue;
+            if (!MODULE_BODY.equals(rule.module)) continue;
             if (ideaIds.contains(rule.id)) continue;
             kept.add(rule);
         }
