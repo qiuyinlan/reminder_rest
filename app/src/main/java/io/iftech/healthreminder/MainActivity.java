@@ -409,6 +409,7 @@ public final class MainActivity extends Activity {
     }
 
     private void addTodayStatusCard(List<ReminderSettings.Rule> rules) {
+        boolean remindersOn = ReminderSettings.enabled(this);
         int completed = 0;
         int target = 0;
         int remainingReminders = 0;
@@ -417,7 +418,8 @@ public final class MainActivity extends Activity {
         for (ReminderSettings.Rule rule : rules) {
             completed += ReminderSettings.completedToday(this, rule.id);
             target += rule.dailyTarget;
-            remainingReminders += countRemainingReminders(rule, now, dayStart);
+            // 总开关关了就不算提醒次数，开了才统计待完成的
+            if (remindersOn) remainingReminders += countRemainingReminders(rule, now, dayStart);
         }
 
         LinearLayout card = new LinearLayout(this);
@@ -467,7 +469,7 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams completionParams = new LinearLayout.LayoutParams(0, -2, 1);
         completionParams.leftMargin = dp(14);
-        metrics.addView(statusMetric("待完成提醒", remainingReminders + " 次"), completionParams);
+        metrics.addView(statusMetric("待完成提醒", remindersOn ? remainingReminders + " 次" : "—"), completionParams);
         card.addView(metrics);
 
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -486,35 +488,49 @@ public final class MainActivity extends Activity {
         body.addView(card, cardParams);
     }
 
-    /** 计算某个规则今天还剩多少次提醒没触发（已过时间点不算）。 */
+    /** 今天还剩多少次提醒：取「还没到的时间点」和「还没完成的数量」中小的那个。 */
     private int countRemainingReminders(ReminderSettings.Rule rule, long now, long dayStart) {
         if (!rule.enabled) return 0;
+        // 子任务不单独排闹钟，白板不提醒，都不计入
+        if (rule.isSubtaskModule()) return 0;
+        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
+        // 单次 / 每周：不是今天就归零
+        if (rule.isOnceSchedule()) {
+            if (rule.onceAt < dayStart || rule.onceAt >= dayStart + 24 * 60 * 60 * 1000L) return 0;
+        } else if (rule.isWeeklySchedule()) {
+            if (!rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) return 0;
+        }
+        int upcoming = 0;
+        int total = 0;
         long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
         if (rule.specificTimeMode) {
-            // 特定时间模式：数今天还没到的时间点
-            int count = 0;
             for (int pointSec : rule.timePointsSeconds) {
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(dayStart);
                 cal.add(Calendar.SECOND, pointSec);
                 long pointMillis = cal.getTimeInMillis();
-                if (pointMillis > now && pointMillis < dayEnd) count++;
+                if (pointMillis >= dayEnd) continue;
+                total++;
+                if (pointMillis > now) upcoming++;
             }
-            return count;
         } else {
-            // 间隔模式：计算时间窗口内还剩多少个间隔
             int startSec = rule.start * 60;
             int endSec = rule.end * 60;
             if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
             long windowStart = dayStart + startSec * 1000L;
-            long windowEnd = dayStart + endSec * 1000L;
-            if (windowEnd > dayEnd) windowEnd = dayEnd;
-            if (now >= windowEnd) return 0; // 窗口已过期
+            long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
+            if (windowEnd > windowStart) {
+                int interval = Math.max(1, rule.intervalSeconds);
+                total = (int) ((windowEnd - windowStart) / (interval * 1000L)) + 1;
+            }
             long effectiveStart = Math.max(now, windowStart);
-            long span = windowEnd - effectiveStart;
-            int interval = Math.max(1, rule.intervalSeconds);
-            return (int) (span / (interval * 1000L)) + 1;
+            if (windowEnd > effectiveStart) {
+                int interval = Math.max(1, rule.intervalSeconds);
+                upcoming = (int) ((windowEnd - effectiveStart) / (interval * 1000L)) + 1;
+            }
         }
+        int undone = Math.max(0, total - ReminderSettings.completedToday(this, rule.id));
+        return Math.min(upcoming, undone);
     }
 
     private LinearLayout statusMetric(String title, String value) {
