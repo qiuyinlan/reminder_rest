@@ -654,20 +654,30 @@ public final class ItemsActivity extends Activity {
         settings.setBackground(round(MINT_PALE, 12));
         LinearLayout targetRow = new LinearLayout(this);
         targetRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView targetLabel = text("每日目标", 14, INK, true);
-        targetRow.addView(targetLabel, new LinearLayout.LayoutParams(0, -2, 1));
-        Button targetButton = new Button(this);
-        styleControlButton(targetButton);
-        targetButton.setMinHeight(dp(40));
-        targetButton.setText("" + target[0] + " 次  ›");
-        targetButton.setOnClickListener(v -> {
-            EditText input = styledInput(android.text.InputType.TYPE_CLASS_NUMBER);
-            input.setText(String.valueOf(target[0]));
-            AlertDialog goalDialog = new AlertDialog.Builder(dialogContext()).setTitle("每天想完成几次").setView(input).setNegativeButton("取消", null)
-                    .setPositiveButton("确定", (dialog, which) -> { try { target[0] = Math.max(1, Integer.parseInt(input.getText().toString())); targetButton.setText(target[0] + " 次  ›"); } catch (NumberFormatException ignored) { } }).create();
-            showStyledDialog(goalDialog);
+        targetRow.addView(text("每日目标", 14, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView targetMinus = text("−", 18, INK, true);
+        final TextView targetValue = text(target[0] + " 次", 15, INK, true);
+        TextView targetPlus = text("＋", 18, INK, true);
+        targetMinus.setGravity(Gravity.CENTER);
+        targetPlus.setGravity(Gravity.CENTER);
+        targetMinus.setBackground(round(MINT_LIGHT, 11));
+        targetPlus.setBackground(round(MINT_LIGHT, 11));
+        targetMinus.setContentDescription("每日目标减一次");
+        targetPlus.setContentDescription("每日目标加一次");
+        targetValue.setGravity(Gravity.CENTER);
+        targetValue.setMinWidth(dp(56));
+        targetMinus.setOnClickListener(v -> {
+            target[0] = Math.max(1, target[0] - 1);
+            targetValue.setText(target[0] + " 次");
         });
-        targetRow.addView(targetButton);
+        targetPlus.setOnClickListener(v -> {
+            target[0] = Math.min(50, target[0] + 1);
+            targetValue.setText(target[0] + " 次");
+        });
+        targetRow.addView(targetMinus, new LinearLayout.LayoutParams(dp(34), dp(34)));
+        targetRow.addView(targetValue, new LinearLayout.LayoutParams(-2, -2));
+        targetRow.addView(targetPlus, new LinearLayout.LayoutParams(dp(34), dp(34)));
         settings.addView(targetRow);
         TextView goalLabel = text("达标后继续", 13, MUTED, true);
         goalLabel.setPadding(0, dp(6), 0, dp(2));

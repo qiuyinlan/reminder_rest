@@ -714,7 +714,7 @@ public final class FocusBubbleService extends Service {
         shape.setGravity(Gravity.CENTER);
         shape.setBackground(peekBackground(side, h));
         shape.setElevation(dp(6));
-        shape.setContentDescription("展开悬浮窗");
+        shape.setContentDescription("还原悬浮小窗");
 
         View dot = new View(this);
         GradientDrawable dotShape = new GradientDrawable();
@@ -784,9 +784,8 @@ public final class FocusBubbleService extends Service {
                     }
                     case MotionEvent.ACTION_UP: {
                         if (!moved) {
-                            // 贴边点一下：直接展开大窗（进 App 只走放大镜）
+                            // 贴边点一下：先还原成小窗，再点一下才展开大窗
                             restoreFromEdge();
-                            if (!expanded) toggleExpand();
                             return true;
                         }
                         int sw = screenWidth();
