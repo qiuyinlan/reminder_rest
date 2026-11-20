@@ -145,6 +145,50 @@ public final class StatsActivity extends Activity {
         return "看看自己每天照顾身体的时刻";
     }
 
+    /** 喝水：选中那天共喝了多少，以及每一次的记录。 */
+    private void addWaterCard(LinearLayout content) {
+        if (!WaterLog.enabled(this)) return;
+        List<WaterLog.Entry> entries = WaterLog.entries(this, selected);
+        int total = 0;
+        for (WaterLog.Entry entry : entries) total += entry.ml;
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(round(Color.WHITE, 16));
+        lift(card);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text("喝水", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        head.addView(text(total + " ml", 13, GREEN, true));
+        card.addView(head);
+
+        if (entries.isEmpty()) {
+            TextView empty = text("这一天还没记喝水。", 13, MUTED, false);
+            empty.setPadding(0, dp(8), 0, 0);
+            card.addView(empty);
+        } else {
+            SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.CHINA);
+            int shown = 0;
+            for (WaterLog.Entry entry : entries) {
+                if (shown >= 12) break;
+                shown++;
+                LinearLayout row = new LinearLayout(this);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(0, dp(7), 0, 0);
+                String time = entry.at > 0 ? clock.format(new Date(entry.at)) : "补记";
+                row.addView(text(time, 12, MUTED, false), new LinearLayout.LayoutParams(0, -2, 1));
+                row.addView(text(entry.ml + " ml", 14, INK, true));
+                card.addView(row);
+            }
+        }
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        content.addView(card, params);
+    }
+
     /** 身体分区的答题概览。 */
     private LinearLayout quizSummary() {
         LinearLayout card = new LinearLayout(this);
@@ -353,6 +397,11 @@ public final class StatsActivity extends Activity {
         bodyNoteParams.bottomMargin = dp(12);
         content.addView(bodyNote, bodyNoteParams);
         if (ReminderSettings.MODULE_BODY.equals(moduleFilter)) {
+            try {
+                addWaterCard(content);
+            } catch (Throwable error) {
+                CrashLog.save(this, error);
+            }
             try {
                 addMoodCard(content);
             } catch (Throwable error) {

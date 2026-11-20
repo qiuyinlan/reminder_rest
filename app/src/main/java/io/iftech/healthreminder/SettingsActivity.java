@@ -257,6 +257,29 @@ public final class SettingsActivity extends Activity {
         reviewSwitch.setOnCheckedChangeListener((button, checked) -> ReviewStore.setVisible(this, checked));
         reviewCard.addView(reviewSwitch);
 
+        LinearLayout waterCard = new LinearLayout(this);
+        waterCard.setGravity(Gravity.CENTER_VERTICAL);
+        waterCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        waterCard.setBackground(round(Color.WHITE, 17));
+        waterCard.setElevation(dp(1));
+        LinearLayout.LayoutParams waterCardParams = new LinearLayout.LayoutParams(-1, -2);
+        waterCardParams.topMargin = dp(9);
+        page.addView(waterCard, waterCardParams);
+
+        LinearLayout waterCopy = new LinearLayout(this);
+        waterCopy.setOrientation(LinearLayout.VERTICAL);
+        waterCopy.addView(text("喝水记录", 16, INK, true));
+        TextView waterDetail = text("关掉后首页水杯和统计里的喝水都不显示", 12, MUTED, false);
+        waterDetail.setPadding(0, dp(5), 0, 0);
+        waterCopy.addView(waterDetail);
+        waterCard.addView(waterCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        Switch waterSwitch = new Switch(this);
+        waterSwitch.setChecked(WaterLog.enabled(this));
+        waterSwitch.setContentDescription("显示并记录喝水");
+        waterSwitch.setOnCheckedChangeListener((button, checked) -> WaterLog.setEnabled(this, checked));
+        waterCard.addView(waterSwitch);
+
         LinearLayout diagnostics = new LinearLayout(this);
         diagnostics.setGravity(Gravity.CENTER_VERTICAL);
         diagnostics.setPadding(dp(15), dp(14), dp(14), dp(14));

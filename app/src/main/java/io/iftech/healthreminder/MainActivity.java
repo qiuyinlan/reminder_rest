@@ -249,10 +249,28 @@ public final class MainActivity extends Activity {
 
     private void addDailyBodyNote() {
         LinearLayout card = columnCard();
+        LinearLayout titleRow = row();
         TextView title = label("今天身体怎么样？", 17, INK, true);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        if (WaterLog.enabled(this)) {
+            TextView cup = label("🥛", 18, INK, false);
+            cup.setGravity(Gravity.CENTER);
+            cup.setPadding(dp(4), 0, dp(4), 0);
+            cup.setContentDescription("记一下喝了多少水");
+            cup.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
+            titleRow.addView(cup);
+            TextView drank = label("今日已喝：" + WaterLog.todayTotal(this) + "ml", 12, MUTED, true);
+            drank.setSingleLine(true);
+            drank.setPadding(dp(2), 0, 0, 0);
+            drank.setContentDescription("今日已喝 " + WaterLog.todayTotal(this) + " 毫升");
+            drank.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
+            titleRow.addView(drank);
+        }
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.bottomMargin = dp(10);
-        card.addView(title, titleParams);
+        card.addView(titleRow, titleParams);
         EditText note = new EditText(this);
         note.setTextSize(15);
         note.setTextColor(INK);
