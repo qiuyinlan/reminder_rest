@@ -1,7 +1,7 @@
 {
-    "versionCode": 142,
-    "versionName": "0.3.0-beta126",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta126/rest-bean.apk",
-    "sha256": "af3c0dab2e4e8d303da35596dec39a36744148d78e2a05901598306b2fad6557",
-    "notes": "复盘改成一条一条记，每条有自己的时间，长按单条就能改"
+    "versionCode": 143,
+    "versionName": "0.3.0-beta127",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta127/rest-bean.apk",
+    "sha256": "6f727511c1aaf045308ac47e77fcad7d82b865e01aa57d968af33b3a0f3871e5",
+    "notes": "大任务一点完成，底下子任务默认全部打勾"
 }
