@@ -1,7 +1,7 @@
 {
-    "versionCode": 136,
-    "versionName": "0.3.0-beta120",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta120/rest-bean.apk",
-    "sha256": "50ea58ceeebe989b3f03dee2ece86625383746fa5464e14a4aeb23579dba53ad",
-    "notes": "复盘能接着写，悬浮窗也能记；去掉 done"
+    "versionCode": 137,
+    "versionName": "0.3.0-beta121",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta121/rest-bean.apk",
+    "sha256": "1a11a7e4515a324e9ae3e3d280e48a29384811c9cbceeb675853eeb20a3c9b74",
+    "notes": "复盘写完不用退出了，原地接着写下一条"
 }
