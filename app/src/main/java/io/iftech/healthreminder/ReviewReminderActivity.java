@@ -51,15 +51,15 @@ public final class ReviewReminderActivity extends Activity {
         headBg.setCornerRadii(new float[]{0, 0, 0, 0, radius, radius, radius, radius});
         head.setBackground(headBg);
 
-        // 第一行：左边「复盘」，右上角「复制全部」
+        // 第一行：左边「复盘」，右上角「复制」（只复制今天）
         LinearLayout topRow = new LinearLayout(this);
         topRow.setGravity(Gravity.CENTER_VERTICAL);
         topRow.addView(text("复盘", 12, UiPalette.MUTED, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView copyAll = text("复制全部", 12, UiPalette.ACCENT, true);
+        TextView copyAll = text("复制", 12, UiPalette.ACCENT, true);
         copyAll.setPadding(dp(10), dp(4), dp(2), dp(4));
-        copyAll.setContentDescription("复制全部复盘");
-        copyAll.setOnClickListener(v -> ReviewDialogs.copyAll(this));
+        copyAll.setContentDescription("复制今天的复盘");
+        copyAll.setOnClickListener(v -> ReviewDialogs.copyToday(this));
         topRow.addView(copyAll);
         head.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
 

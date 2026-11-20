@@ -39,13 +39,13 @@ final class ReviewDialogs {
         head.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         TextView copy = new TextView(activity);
-        copy.setText("复制全部");
+        copy.setText("复制");
         copy.setTextSize(12);
         copy.setTextColor(UiPalette.ACCENT);
         copy.setPaintFlags(copy.getPaintFlags() | Paint.FAKE_BOLD_TEXT_FLAG);
         copy.setPadding(FormKit.dp(activity, 10), FormKit.dp(activity, 4),
                 FormKit.dp(activity, 2), FormKit.dp(activity, 4));
-        copy.setOnClickListener(v -> copyAll(activity));
+        copy.setOnClickListener(v -> copyToday(activity));
         head.addView(copy);
         panel.addView(head, new LinearLayout.LayoutParams(-1, -2));
 
@@ -90,7 +90,7 @@ final class ReviewDialogs {
         FormKit.showStyled(activity, dialog);
     }
 
-    /** 复制全部复盘（首页/事项页面板右上角和悬浮窗共用）。 */
+    /** 复制全部复盘（完整历史，导出去玩的时候用）。 */
     static void copyAll(Context context) {
         String text = ReviewStore.allAsText(context);
         if (text.isEmpty()) {
@@ -103,6 +103,20 @@ final class ReviewDialogs {
         clipboard.setPrimaryClip(ClipData.newPlainText("复盘", text));
         Toast.makeText(context, "已复制 " + ReviewStore.all(context).size() + " 天复盘",
                 Toast.LENGTH_SHORT).show();
+    }
+
+    /** 只复制今天那一句（复盘页、悬浮窗的「复制」用）。 */
+    static void copyToday(Context context) {
+        String note = ReviewStore.read(context).trim();
+        if (note.isEmpty()) {
+            Toast.makeText(context, "今天还没写", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager clipboard =
+                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText("复盘", note));
+        Toast.makeText(context, "已复制今天的复盘", Toast.LENGTH_SHORT).show();
     }
 
     static void edit(final Activity activity, final String dayKey, String note, final OnSaved onSaved) {

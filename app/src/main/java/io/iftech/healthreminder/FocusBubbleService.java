@@ -1290,8 +1290,8 @@ public final class FocusBubbleService extends Service {
                 new LinearLayout.LayoutParams(0, -2, 1f));
         TextView copy = FormKit.text(this, "复制", 10, UiPalette.ACCENT, true);
         copy.setPadding(dp(6), dp(4), dp(2), dp(4));
-        copy.setContentDescription("复制全部复盘");
-        copy.setOnClickListener(v -> ReviewDialogs.copyAll(this));
+        copy.setContentDescription("复制今天的复盘");
+        copy.setOnClickListener(v -> ReviewDialogs.copyToday(this));
         head.addView(copy);
         slotBox.addView(head, new LinearLayout.LayoutParams(-1, -2));
 
