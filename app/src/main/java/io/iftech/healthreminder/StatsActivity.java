@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -140,7 +141,7 @@ public final class StatsActivity extends Activity {
 
     private String helpText() {
         if (ReminderSettings.MODULE_TASK.equals(moduleFilter)) return "任务完成情况与每日打卡";
-        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) return "每天一句复盘";
+        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) return "日历选一天，看那天的复盘";
         return "看看自己每天照顾身体的时刻";
     }
 
@@ -263,12 +264,6 @@ public final class StatsActivity extends Activity {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
 
-        // 复盘分区：只列每天那一句，点一条改一条
-        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) {
-            content.addView(buildReviewListCard());
-            return;
-        }
-
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
         calendar.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -315,6 +310,12 @@ public final class StatsActivity extends Activity {
             CrashLog.save(this, error);
         }
         content.addView(calendar);
+
+        // 复盘：日历不隐藏，日历下面只显示选中那一天
+        if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) {
+            addReviewDayCard(content);
+            return;
+        }
 
         TextView dayHeading = text(DateFormat.getDateInstance(DateFormat.FULL).format(selected.getTime()), 16, INK, true);
         dayHeading.setPadding(dp(2), dp(18), dp(2), dp(9));
@@ -1104,51 +1105,50 @@ public final class StatsActivity extends Activity {
         }
     }
 
-    /** 复盘分区：每天一句的列表，点一条改一天。 */
-    private LinearLayout buildReviewListCard() {
+    /** 复盘分区：日历下面只看选中那一天，复制也只复制这一天。 */
+    private void addReviewDayCard(LinearLayout content) {
+        final String key = PeriodLog.dayKey(selected);
+        final String note = ReviewStore.read(this, key).trim();
+
+        TextView heading = text(DateFormat.getDateInstance(DateFormat.FULL)
+                .format(selected.getTime()), 16, INK, true);
+        heading.setPadding(dp(2), dp(18), dp(2), dp(9));
+        content.addView(heading);
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(14), dp(16), dp(14));
         card.setBackground(round(Color.WHITE, 16));
         lift(card);
 
-        List<java.util.Map.Entry<String, String>> notes = ReviewStore.all(this);
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(text(notes.isEmpty() ? "还没有复盘" : "共 " + notes.size() + " 天", 12, MUTED, false),
-                new LinearLayout.LayoutParams(0, -2, 1f));
-        if (!notes.isEmpty()) {
-            TextView copy = text("复制全部", 12, GREEN, true);
+        head.addView(text("复盘", 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        if (!note.isEmpty()) {
+            TextView copy = text("复制", 12, GREEN, true);
             copy.setPadding(dp(10), dp(6), dp(2), dp(6));
-            copy.setContentDescription("复制全部复盘");
-            copy.setOnClickListener(v -> ReviewDialogs.copyAll(this));
+            copy.setContentDescription("复制这一天的复盘");
+            copy.setOnClickListener(v -> copyReviewDay(key, note));
             head.addView(copy);
         }
         card.addView(head);
-        if (notes.isEmpty()) {
-            TextView empty = text("到点弹出的复盘页里写一句，就会记在这里。", 13, MUTED, false);
-            empty.setPadding(0, dp(8), 0, 0);
-            card.addView(empty);
-            return card;
-        }
-        int shown = 0;
-        for (final java.util.Map.Entry<String, String> entry : notes) {
-            if (shown >= 60) break;
-            shown++;
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.VERTICAL);
-            row.setPadding(0, dp(10), 0, 0);
-            row.addView(text(friendlyDay(entry.getKey()), 12, GREEN, true));
-            TextView note = text(entry.getValue(), 14, INK, false);
-            note.setLineSpacing(dp(4), 1f);
-            note.setPadding(0, dp(4), 0, 0);
-            note.setMaxLines(4);
-            note.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            row.addView(note);
-            row.setOnClickListener(v -> editReview(entry.getKey(), entry.getValue()));
-            card.addView(row);
-        }
-        return card;
+
+        TextView body = text(note.isEmpty() ? "这一天还没写。点一下补一句。" : note,
+                14, note.isEmpty() ? MUTED : INK, false);
+        body.setPadding(0, dp(8), 0, 0);
+        body.setLineSpacing(dp(4), 1f);
+        card.addView(body);
+
+        card.setOnClickListener(v -> editReview(key, note));
+        content.addView(card);
+    }
+
+    /** 只复制选中那一天的复盘。 */
+    private void copyReviewDay(String key, String note) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText("复盘", note));
+        Toast.makeText(this, "已复制 " + friendlyDay(key) + " 的复盘", Toast.LENGTH_SHORT).show();
     }
 
     private String friendlyDay(String key) {
