@@ -962,6 +962,10 @@ public final class MainActivity extends Activity {
         complete.setElevation(dp(1));
         complete.setOnClickListener(v -> {
             long now = System.currentTimeMillis();
+            // 任务类事项：大任务一点完成，底下子任务默认全部打勾
+            if (ReminderSettings.MODULE_TASK.equals(rule.module)) {
+                Subtasks.completeAll(this, rule.id, ReminderRecord.dayStart(now));
+            }
             ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
             ReminderScheduler.resetNext(this, rule.id);
             String recordId = java.util.UUID.randomUUID().toString();

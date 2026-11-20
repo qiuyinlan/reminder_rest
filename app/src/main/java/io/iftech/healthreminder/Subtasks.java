@@ -70,6 +70,24 @@ final class Subtasks {
         toggle(context, parentId, title, done, dayStart, true);
     }
 
+    /** 大任务完成时，把还没勾的子任务一并勾上。 */
+    static void completeAll(Context context, int parentId, long dayStart) {
+        for (ReminderSettings.Rule sub : of(context, parentId)) {
+            if (!doneToday(context, parentId, sub.title, dayStart)) {
+                toggleQuiet(context, parentId, sub.title, false, dayStart);
+            }
+        }
+    }
+
+    /** 大任务取消完成时，子任务也跟着撤回去。 */
+    static void revertAll(Context context, int parentId, long dayStart) {
+        for (ReminderSettings.Rule sub : of(context, parentId)) {
+            if (doneToday(context, parentId, sub.title, dayStart)) {
+                toggleQuiet(context, parentId, sub.title, true, dayStart);
+            }
+        }
+    }
+
     /**
      * 批量勾选场景用的安静版：只改子任务，不联动大任务。
      * （大任务自己那边已经在写了，再联动会重复计数）

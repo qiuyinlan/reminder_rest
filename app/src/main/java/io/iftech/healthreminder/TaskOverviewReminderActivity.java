@@ -138,10 +138,15 @@ public final class TaskOverviewReminderActivity extends Activity {
     private void toggle(ReminderSettings.Rule task, boolean done) {
         if (done) {
             ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, task.title, dayStart);
+            ReminderSettings.unmarkCompleted(this, task.id);
+            Subtasks.revertAll(this, task.id, dayStart);
         } else {
             long now = System.currentTimeMillis();
             ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), task.title,
                     ReminderRecord.KIND_DONE, now, now, "总览页勾选", ReminderSettings.MODULE_TASK);
+            // 大任务勾上，子任务也跟着全部打勾
+            Subtasks.completeAll(this, task.id, dayStart);
+            ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
         }
         renderTasks();
     }

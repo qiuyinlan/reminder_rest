@@ -270,6 +270,9 @@ public final class ReminderActivity extends Activity {
         ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_DONE, startedAt, ended, note);
         for (ReminderSettings.Rule rule : ReminderSettings.scheduledRules(this)) {
             if (rule.title.equals(action)) {
+                if (ReminderSettings.MODULE_TASK.equals(rule.module)) {
+                    Subtasks.completeAll(this, rule.id, ReminderRecord.dayStart(ended));
+                }
                 ReminderSettings.markCompleted(this, rule.id, rule.dailyTarget);
                 ReminderScheduler.resetNext(this, rule.id);
                 ReminderScheduler.update(this);
