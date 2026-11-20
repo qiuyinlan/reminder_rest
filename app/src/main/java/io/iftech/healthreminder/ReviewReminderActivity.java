@@ -8,6 +8,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -22,6 +23,9 @@ public final class ReviewReminderActivity extends Activity {
     private int ruleId = -1;
     private EditText input;
     private TextView continueButton;
+    private TextView noteView;
+    private TextView headerTitle;
+    private TextView headerHint;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -59,16 +63,16 @@ public final class ReviewReminderActivity extends Activity {
         topRow.addView(copyAll);
         head.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView title = text(note.isEmpty() ? "今天过得怎么样？" : "今天记的这一句", 24,
+        headerTitle = text(note.isEmpty() ? "今天过得怎么样？" : "今天记的这一句", 24,
                 UiPalette.INK, true);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = dp(6);
-        head.addView(title, titleParams);
-        TextView hint = text(note.isEmpty() ? "写一句就行，写完才能继续。" : "下面接着写，会接在后面。",
+        head.addView(headerTitle, titleParams);
+        headerHint = text(note.isEmpty() ? "写一句就行，写完接着写。" : "下面接着写，会接在后面。",
                 13, UiPalette.MUTED, false);
         LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
         hintParams.topMargin = dp(6);
-        head.addView(hint, hintParams);
+        head.addView(headerHint, hintParams);
         page.addView(head, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
@@ -77,16 +81,15 @@ public final class ReviewReminderActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(20), dp(16), dp(20), dp(20));
 
-        // 今天已经记下的：只读展示
-        if (!note.isEmpty()) {
-            TextView shown = text(note, 15, UiPalette.INK, false);
-            shown.setLineSpacing(dp(4), 1f);
-            shown.setPadding(dp(14), dp(12), dp(14), dp(12));
-            shown.setBackground(FormKit.round(this, UiPalette.PALE, 14));
-            LinearLayout.LayoutParams shownParams = new LinearLayout.LayoutParams(-1, -2);
-            shownParams.bottomMargin = dp(14);
-            body.addView(shown, shownParams);
-        }
+        // 今天已经记下的：只读展示（保存后原地刷新，不退出页面）
+        noteView = text(note, 15, UiPalette.INK, false);
+        noteView.setLineSpacing(dp(4), 1f);
+        noteView.setPadding(dp(14), dp(12), dp(14), dp(12));
+        noteView.setBackground(FormKit.round(this, UiPalette.PALE, 14));
+        noteView.setVisibility(note.isEmpty() ? View.GONE : View.VISIBLE);
+        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
+        noteParams.bottomMargin = dp(14);
+        body.addView(noteView, noteParams);
 
         input = new EditText(this);
         input.setTextSize(16);
@@ -142,15 +145,28 @@ public final class ReviewReminderActivity extends Activity {
             return;
         }
         String today = ReviewStore.read(this);
+        boolean firstOfDay = today.isEmpty();
         // 接着写：拼在今天那句后面，不覆盖
-        String note = today.isEmpty() ? extra : today + "\n" + extra;
+        String note = firstOfDay ? extra : today + "\n" + extra;
         ReviewStore.save(this, note);
-        long now = System.currentTimeMillis();
-        int id = ruleId >= 0 ? ruleId : ReviewStore.RULE_ID;
-        ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "复盘",
-                ReminderRecord.KIND_DONE, now, now, note, ReminderSettings.MODULE_REVIEW);
-        ReviewStore.markDone(this, id);
-        finish();
+        // 只有今天第一条才记完成、推明天，避免多写几条把完成次数刷高
+        if (firstOfDay) {
+            long now = System.currentTimeMillis();
+            int id = ruleId >= 0 ? ruleId : ReviewStore.RULE_ID;
+            ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), "复盘",
+                    ReminderRecord.KIND_DONE, now, now, note, ReminderSettings.MODULE_REVIEW);
+            ReviewStore.markDone(this, id);
+        }
+        // 不退出页面：上面刷新成刚写好的内容，下面清空接着写下一条
+        noteView.setText(note);
+        noteView.setVisibility(View.VISIBLE);
+        headerTitle.setText("今天记的这一句");
+        headerHint.setText("下面接着写，会接在后面。");
+        input.setText("");
+        input.setHint("接着写点什么…");
+        input.requestFocus();
+        refreshButton();
+        Toast.makeText(this, "已记下", Toast.LENGTH_SHORT).show();
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
