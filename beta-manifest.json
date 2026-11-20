@@ -1,7 +1,7 @@
 {
-    "versionCode": 140,
-    "versionName": "0.3.0-beta124",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta124/rest-bean.apk",
-    "sha256": "a4ab04a0a308667df86d6625a2cc07d0ae36d6aff95769b7630074c96080116c",
-    "notes": "贴边半圆点一下先回到小窗，再点才展开；每日目标换成加减步进器"
+    "versionCode": 141,
+    "versionName": "0.3.0-beta125",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta125/rest-bean.apk",
+    "sha256": "b2fcc31568838625d306a7b5abbd35f2a2681344698203774bc8ed0171654649",
+    "notes": "首页能记喝水了：水杯滚轮 10–500ml，统计身体里能看到记录"
 }
