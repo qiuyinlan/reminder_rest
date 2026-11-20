@@ -317,7 +317,7 @@ public final class SettingsActivity extends Activity {
         exportCard.setPadding(dp(15), dp(14), dp(14), dp(14));
         exportCard.setBackground(round(Color.WHITE, 17));
         exportCard.setElevation(dp(1));
-        exportCard.setContentDescription("导出身体数据，按日期范围、月份或全部导出 CSV");
+        exportCard.setContentDescription("全部数据备份，把提醒、任务、复盘、喝水等打包成一个文件");
         exportCard.setOnClickListener(v -> startActivity(new Intent(this, BodyExportActivity.class)));
         page.addView(exportCard, new LinearLayout.LayoutParams(-1, -2));
         TextView exportMark = text("出", 16, GREEN, true);
@@ -328,9 +328,10 @@ public final class SettingsActivity extends Activity {
         exportCard.addView(exportMark, exportMarkParams);
         LinearLayout exportCopy = new LinearLayout(this);
         exportCopy.setOrientation(LinearLayout.VERTICAL);
-        exportCopy.addView(text("导出身体数据", 16, INK, true));
-        TextView exportDetail = text("", 12, MUTED, false);
+        exportCopy.addView(text("全部数据备份", 16, INK, true));
+        TextView exportDetail = text("提醒、任务、复盘、喝水…打包成一个文件", 12, MUTED, false);
         exportDetail.setPadding(0, dp(5), 0, 0);
+        exportCopy.addView(exportDetail);
         exportCard.addView(exportCopy, new LinearLayout.LayoutParams(0, -2, 1));
         exportCard.addView(text("›", 25, GREEN, false));
 
@@ -339,7 +340,7 @@ public final class SettingsActivity extends Activity {
         importCard.setPadding(dp(15), dp(14), dp(14), dp(14));
         importCard.setBackground(round(Color.WHITE, 17));
         importCard.setElevation(dp(1));
-        importCard.setContentDescription("导入身体数据，从另一台设备的 CSV 恢复");
+        importCard.setContentDescription("恢复全部数据，用备份文件还原并覆盖本机");
         importCard.setOnClickListener(v -> startActivity(new Intent(this, BodyImportActivity.class)));
         LinearLayout.LayoutParams importCardParams = new LinearLayout.LayoutParams(-1, -2);
         importCardParams.topMargin = dp(9);
@@ -352,8 +353,8 @@ public final class SettingsActivity extends Activity {
         importCard.addView(importMark, importMarkParams);
         LinearLayout importCopy = new LinearLayout(this);
         importCopy.setOrientation(LinearLayout.VERTICAL);
-        importCopy.addView(text("导入身体数据", 16, INK, true));
-        TextView importDetail = text("从另一台设备导出的 CSV 恢复", 12, MUTED, false);
+        importCopy.addView(text("恢复全部数据", 16, INK, true));
+        TextView importDetail = text("用备份文件还原，会覆盖本机数据", 12, MUTED, false);
         importDetail.setPadding(0, dp(5), 0, 0);
         importCard.addView(importCopy, new LinearLayout.LayoutParams(0, -2, 1));
         importCard.addView(text("›", 25, GREEN, false));

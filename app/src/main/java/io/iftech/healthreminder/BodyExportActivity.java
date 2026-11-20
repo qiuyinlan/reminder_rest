@@ -1,7 +1,6 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -9,10 +8,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.ContextThemeWrapper;
 import android.view.Gravity;
-import android.view.View;
-import android.view.Window;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -20,16 +16,10 @@ import android.widget.Toast;
 
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
 
-/** 选择日期范围 / 月份 / 全部，把身体记录导出成 CSV。 */
+/** 全部数据备份：把 App 里的所有记录和设置打包成一个 JSON 文件。 */
 public final class BodyExportActivity extends Activity {
     private static final int REQUEST_EXPORT = 4610;
-    private static final String MODE_RANGE = "range";
-    private static final String MODE_MONTH = "month";
-    private static final String MODE_ALL = "all";
 
     private int GREEN = UiPalette.ACCENT;
     private int MINT_LIGHT = UiPalette.SOFT;
@@ -38,18 +28,11 @@ public final class BodyExportActivity extends Activity {
     private int MUTED = UiPalette.MUTED;
     private int BORDER = UiPalette.BORDER;
 
-    private String mode = MODE_RANGE;
-    private final Calendar rangeStart = Calendar.getInstance();
-    private final Calendar rangeEnd = Calendar.getInstance();
-    private final Calendar month = Calendar.getInstance();
-
-    private String pendingCsv;
+    private String pendingJson;
     private String pendingName;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        rangeStart.set(Calendar.DAY_OF_MONTH, 1);
-        month.set(Calendar.DAY_OF_MONTH, 1);
         render();
     }
 
@@ -77,8 +60,8 @@ public final class BodyExportActivity extends Activity {
         LinearLayout heading = new LinearLayout(this);
         heading.setOrientation(LinearLayout.VERTICAL);
         heading.setPadding(dp(12), 0, 0, 0);
-        heading.addView(text("导出身体数据", 22, INK, true));
-        heading.addView(text("CSV", 12, MUTED, false));
+        heading.addView(text("全部数据备份", 22, INK, true));
+        heading.addView(text("一个文件带走所有记录", 12, MUTED, false));
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         screen.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
@@ -92,21 +75,19 @@ public final class BodyExportActivity extends Activity {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
 
-        page.addView(scopeCard(), new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
-        summaryParams.topMargin = dp(12);
-        page.addView(summaryCard(), summaryParams);
+        page.addView(whatCard(), new LinearLayout.LayoutParams(-1, -2));
 
-        TextView export = text("导出 CSV 文件", 16, Color.WHITE, true);
+        TextView export = text("导出备份文件", 16, Color.WHITE, true);
         export.setGravity(Gravity.CENTER);
         export.setBackground(round(GREEN, 15));
-        export.setContentDescription("导出 CSV 文件");
+        export.setContentDescription("导出全部数据备份文件");
         export.setOnClickListener(v -> export());
         LinearLayout.LayoutParams exportParams = new LinearLayout.LayoutParams(-1, dp(50));
         exportParams.topMargin = dp(18);
         page.addView(export, exportParams);
 
-        TextView note = text("导出范围包含每日身体记录和经期记录。文件保存位置由系统的文件选择器决定，不会上传到任何服务器。",
+        TextView note = text("文件存到哪儿由系统的文件选择器决定，不会上传到任何服务器。"
+                        + "恢复时用同一份文件，会把本机数据全部换成备份里的内容。",
                 12, MUTED, false);
         note.setLineSpacing(dp(3), 1f);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
@@ -114,161 +95,50 @@ public final class BodyExportActivity extends Activity {
         page.addView(note, noteParams);
     }
 
-    private LinearLayout scopeCard() {
+    private LinearLayout whatCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(15), dp(16), dp(15));
         card.setBackground(round(Color.WHITE, 17));
         card.setElevation(dp(1));
 
-        card.addView(text("导出范围", 16, INK, true));
-
-        LinearLayout group = new LinearLayout(this);
-        group.setPadding(dp(4), dp(4), dp(4), dp(4));
-        group.setBackground(round(MINT_PALE, 13));
-        String[][] options = {{MODE_RANGE, "日期范围"}, {MODE_MONTH, "月份"}, {MODE_ALL, "全部"}};
-        for (int index = 0; index < options.length; index++) {
-            final String value = options[index][0];
-            boolean selected = value.equals(mode);
-            TextView chip = text(options[index][1], 13, selected ? Color.WHITE : INK, true);
-            chip.setGravity(Gravity.CENTER);
-            chip.setPadding(0, dp(8), 0, dp(8));
-            GradientDrawable background = new GradientDrawable();
-            background.setColor(selected ? GREEN : Color.TRANSPARENT);
-            background.setCornerRadius(dp(10));
-            chip.setBackground(background);
-            chip.setOnClickListener(v -> {
-                mode = value;
-                render();
-            });
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
-            if (index > 0) params.leftMargin = dp(3);
-            group.addView(chip, params);
-        }
-        LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(-1, -2);
-        groupParams.topMargin = dp(11);
-        card.addView(group, groupParams);
-
-        card.addView(modeControls(), new LinearLayout.LayoutParams(-1, -2));
-        return card;
-    }
-
-    private LinearLayout modeControls() {
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = dp(13);
-
-        if (MODE_RANGE.equals(mode)) {
-            controls.addView(dateChipRow("开始", rangeStart, picked -> {
-                rangeStart.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH),
-                        picked.get(Calendar.DAY_OF_MONTH));
-                if (rangeStart.after(rangeEnd)) {
-                    rangeEnd.set(rangeStart.get(Calendar.YEAR), rangeStart.get(Calendar.MONTH),
-                            rangeStart.get(Calendar.DAY_OF_MONTH));
-                }
-                render();
-            }), new LinearLayout.LayoutParams(-1, -2));
-            controls.addView(dateChipRow("结束", rangeEnd, picked -> {
-                rangeEnd.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH),
-                        picked.get(Calendar.DAY_OF_MONTH));
-                if (rangeEnd.before(rangeStart)) {
-                    rangeStart.set(rangeEnd.get(Calendar.YEAR), rangeEnd.get(Calendar.MONTH),
-                            rangeEnd.get(Calendar.DAY_OF_MONTH));
-                }
-                render();
-            }), new LinearLayout.LayoutParams(-1, -2));
-        } else if (MODE_MONTH.equals(mode)) {
+        card.addView(text("备份包含", 16, INK, true));
+        String[][] items = {
+                {"提醒事项与设置", "含息屏、白名单、提醒开关"},
+                {"任务与子任务", "含分类、完成记录"},
+                {"复盘", "每天的每一条，带时间"},
+                {"喝水", "每天每次喝的量"},
+                {"心情与经期", "记录和统计"},
+                {"身体记录", "每天那句身体情况"},
+                {"白板、想法、专注记录", "现在页和悬浮窗里的内容"}};
+        for (String[] item : items) {
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.addView(text("月份", 14, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
-            TextView chip = text(monthLabel(), 13, GREEN, true);
-            chip.setGravity(Gravity.CENTER);
-            chip.setPadding(dp(12), dp(7), dp(12), dp(7));
-            chip.setBackground(round(MINT_LIGHT, 10));
-            chip.setOnClickListener(v -> WheelPicker.month(dialogContext(), "选择导出月份", month, picked -> {
-                month.set(picked.get(Calendar.YEAR), picked.get(Calendar.MONTH), 1);
-                render();
-            }).show());
-            row.addView(chip);
-            controls.addView(row);
-        } else {
+            row.setPadding(0, dp(8), 0, 0);
+            TextView name = text(item[0], 14, INK, true);
+            row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView detail = text(item[1], 11, MUTED, false);
+            row.addView(detail);
+            card.addView(row);
         }
-        controls.setLayoutParams(params);
-        return controls;
-    }
 
-    private interface OnDayPicked { void onPicked(Calendar value); }
-
-    private LinearLayout dateChipRow(String label, Calendar value, final OnDayPicked onPicked) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(6), 0, 0);
-        TextView caption = text(label, 14, INK, true);
-        row.addView(caption, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView chip = text(new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(value.getTime()) + "  ›",
-                13, GREEN, true);
-        chip.setGravity(Gravity.CENTER);
-        chip.setPadding(dp(12), dp(7), dp(12), dp(7));
-        chip.setBackground(round(MINT_LIGHT, 10));
-        chip.setOnClickListener(v -> WheelPicker.date(dialogContext(), "选择" + label + "日期", value, picked -> {
-            onPicked.onPicked(picked);
-        }).show());
-        row.addView(chip);
-        return row;
-    }
-
-    private LinearLayout summaryCard() {
-        BodyDataExporter.Snapshot snapshot = snapshot();
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
-        card.setBackground(round(MINT_LIGHT, 17));
-        card.setElevation(dp(1));
-
-        card.addView(text("将导出", 13, MUTED, true));
-        TextView count = text(snapshot.notes + " 条身体记录 · " + snapshot.periods + " 段经期记录",
-                17, INK, true);
-        count.setPadding(0, dp(5), 0, 0);
+        TextView count = text("共 " + AppBackup.prefCount(this) + " 组数据", 12, MUTED, false);
+        count.setPadding(0, dp(12), 0, 0);
         card.addView(count);
-        TextView range = text(snapshot.empty() ? "这个范围里还没有数据。" : "范围：" + scopeLabel(),
-                12, MUTED, false);
-        range.setPadding(0, dp(6), 0, 0);
-        card.addView(range);
         return card;
-    }
-
-    private String scopeLabel() {
-        if (MODE_ALL.equals(mode)) return "全部记录";
-        if (MODE_MONTH.equals(mode)) return monthLabel();
-        return PeriodLog.dayKey(rangeStart) + " 至 " + PeriodLog.dayKey(rangeEnd);
-    }
-
-    private BodyDataExporter.Snapshot snapshot() {
-        if (MODE_ALL.equals(mode)) return BodyDataExporter.collect(this, null, null);
-        if (MODE_MONTH.equals(mode)) {
-            Calendar from = (Calendar) month.clone();
-            Calendar to = (Calendar) month.clone();
-            to.set(Calendar.DAY_OF_MONTH, to.getActualMaximum(Calendar.DAY_OF_MONTH));
-            return BodyDataExporter.collect(this, PeriodLog.dayKey(from), PeriodLog.dayKey(to));
-        }
-        return BodyDataExporter.collect(this, PeriodLog.dayKey(rangeStart), PeriodLog.dayKey(rangeEnd));
     }
 
     private void export() {
-        BodyDataExporter.Snapshot snapshot = snapshot();
-        if (snapshot.empty()) {
-            Toast.makeText(this, "所选范围里还没有身体数据", Toast.LENGTH_SHORT).show();
+        try {
+            pendingJson = AppBackup.exportJson(this);
+            pendingName = AppBackup.fileName();
+        } catch (Exception error) {
+            Toast.makeText(this, "打包失败：" + error.getMessage(), Toast.LENGTH_LONG).show();
             return;
         }
-        pendingCsv = "\uFEFF" + BodyDataExporter.csv(snapshot);
-        pendingName = BodyDataExporter.fileName(mode,
-                MODE_MONTH.equals(mode) ? monthLabel().replace("年", "-").replace("月", "") : null,
-                PeriodLog.dayKey(rangeStart), PeriodLog.dayKey(rangeEnd));
-
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("text/csv")
+                .setType("application/json")
                 .putExtra(Intent.EXTRA_TITLE, pendingName);
         startActivityForResult(intent, REQUEST_EXPORT);
     }
@@ -277,23 +147,15 @@ public final class BodyExportActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQUEST_EXPORT || resultCode != RESULT_OK || data == null) return;
         Uri uri = data.getData();
-        if (uri == null || pendingCsv == null) return;
+        if (uri == null || pendingJson == null) return;
         try (OutputStream out = getContentResolver().openOutputStream(uri, "wt")) {
             if (out == null) throw new IllegalStateException("无法写入所选文件");
-            out.write(pendingCsv.getBytes(StandardCharsets.UTF_8));
+            out.write(pendingJson.getBytes(StandardCharsets.UTF_8));
             out.flush();
             Toast.makeText(this, "已导出 " + pendingName, Toast.LENGTH_LONG).show();
         } catch (Exception error) {
             Toast.makeText(this, "导出失败：" + error.getMessage(), Toast.LENGTH_LONG).show();
         }
-    }
-
-    private String monthLabel() {
-        return new SimpleDateFormat("yyyy年M月", Locale.CHINA).format(month.getTime());
-    }
-
-    private Context dialogContext() {
-        return new ContextThemeWrapper(this, R.style.ItemsDialogTheme);
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
