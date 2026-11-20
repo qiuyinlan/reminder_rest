@@ -1154,10 +1154,10 @@ public final class StatsActivity extends Activity {
         }
     }
 
-    /** 复盘分区：日历下面只看选中那一天，复制也只复制这一天。 */
+    /** 复盘分区：日历下面只看选中那一天，一条一条列，长按某条单独改；复制也只复制这一天。 */
     private void addReviewDayCard(LinearLayout content) {
         final String key = PeriodLog.dayKey(selected);
-        final String note = ReviewStore.read(this, key).trim();
+        final List<ReviewStore.Entry> dayEntries = ReviewStore.entries(this, key);
 
         TextView heading = text(DateFormat.getDateInstance(DateFormat.FULL)
                 .format(selected.getTime()), 16, INK, true);
@@ -1173,31 +1173,54 @@ public final class StatsActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.addView(text("复盘", 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        if (!note.isEmpty()) {
+        if (!dayEntries.isEmpty()) {
             TextView copy = text("复制", 12, GREEN, true);
             copy.setPadding(dp(10), dp(6), dp(2), dp(6));
             copy.setContentDescription("复制这一天的复盘");
-            copy.setOnClickListener(v -> copyReviewDay(key, note));
+            copy.setOnClickListener(v -> ReviewDialogs.copyDay(StatsActivity.this, key));
             head.addView(copy);
         }
+        TextView add = text("＋", 15, GREEN, true);
+        add.setGravity(Gravity.CENTER);
+        add.setPadding(dp(10), dp(2), dp(10), dp(2));
+        add.setBackground(round(MINT_LIGHT, 10));
+        add.setContentDescription("给这一天补一条复盘");
+        add.setOnClickListener(v -> ReviewDialogs.addEntry(StatsActivity.this, key, this::render));
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-2, -2);
+        addParams.leftMargin = dp(4);
+        head.addView(add, addParams);
         card.addView(head);
 
-        TextView body = text(note.isEmpty() ? "这一天还没写。点一下补一句。" : note,
-                14, note.isEmpty() ? MUTED : INK, false);
-        body.setPadding(0, dp(8), 0, 0);
-        body.setLineSpacing(dp(4), 1f);
-        card.addView(body);
+        if (dayEntries.isEmpty()) {
+            TextView empty = text("这一天还没写。点一下补一条。", 14, MUTED, false);
+            empty.setPadding(0, dp(8), 0, 0);
+            card.addView(empty);
+            card.setOnClickListener(v ->
+                    ReviewDialogs.addEntry(StatsActivity.this, key, this::render));
+        } else {
+            for (int i = 0; i < dayEntries.size(); i++) {
+                final int index = i;
+                final ReviewStore.Entry entry = dayEntries.get(i);
+                LinearLayout entryRow = new LinearLayout(this);
+                entryRow.setOrientation(LinearLayout.VERTICAL);
+                entryRow.setPadding(0, dp(10), 0, 0);
+                entryRow.setContentDescription("复盘记录，长按编辑");
+                if (entry.at > 0) {
+                    entryRow.addView(text(ReviewStore.clock(entry.at), 11, GREEN, true));
+                }
+                TextView line = text(entry.text, 14, INK, false);
+                line.setLineSpacing(dp(4), 1f);
+                line.setPadding(0, dp(3), 0, 0);
+                entryRow.addView(line);
+                entryRow.setOnLongClickListener(v -> {
+                    ReviewDialogs.editEntry(StatsActivity.this, key, index, entry.text, this::render);
+                    return true;
+                });
+                card.addView(entryRow);
+            }
+        }
 
-        card.setOnClickListener(v -> editReview(key, note));
         content.addView(card);
-    }
-
-    /** 只复制选中那一天的复盘。 */
-    private void copyReviewDay(String key, String note) {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (clipboard == null) return;
-        clipboard.setPrimaryClip(ClipData.newPlainText("复盘", note));
-        Toast.makeText(this, "已复制 " + friendlyDay(key) + " 的复盘", Toast.LENGTH_SHORT).show();
     }
 
     private String friendlyDay(String key) {
@@ -1207,45 +1230,6 @@ public final class StatsActivity extends Activity {
         } catch (Exception ignored) {
             return key;
         }
-    }
-
-    private void editReview(final String dayKey, String note) {
-        final EditText input = FormKit.input(this, android.text.InputType.TYPE_CLASS_TEXT
-                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        input.setGravity(Gravity.TOP | Gravity.LEFT);
-        input.setMinLines(4);
-        input.setMaxLines(10);
-        input.setText(note);
-        if (input.getText() != null) input.setSelection(input.getText().length());
-
-        LinearLayout box = new LinearLayout(this);
-        box.setPadding(dp(20), dp(6), dp(20), 0);
-        box.addView(input, new LinearLayout.LayoutParams(-1, -2));
-
-        final AlertDialog dialog = new AlertDialog.Builder(dialogContext())
-                .setTitle(friendlyDay(dayKey))
-                .setView(box)
-                .setNegativeButton("取消", null)
-                .setNeutralButton("清空", null)
-                .setPositiveButton("保存", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    String value = input.getText() == null ? "" : input.getText().toString().trim();
-                    if (value.isEmpty()) {
-                        Toast.makeText(this, "写一句再保存", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    ReviewStore.save(this, dayKey, value);
-                    dialog.dismiss();
-                    render();
-                }));
-        dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "清空", (d, which) -> {
-            ReviewStore.save(this, dayKey, "");
-            dialog.dismiss();
-            render();
-        });
-        showStyledDialog(dialog);
     }
 
     /** 心情记录：今天几条、本月几条，最近几条可点开修改。 */

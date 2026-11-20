@@ -1349,8 +1349,7 @@ public final class FocusBubbleService extends Service {
             Toast.makeText(this, "先写一句", Toast.LENGTH_SHORT).show();
             return;
         }
-        String today = ReviewStore.read(this);
-        ReviewStore.save(this, today.isEmpty() ? text : today + "\n" + text);
+        ReviewStore.add(this, text);
         ReviewStore.markDone(this, ReviewStore.RULE_ID);
         reviewInput.setText("");
         dropWindowFocus();

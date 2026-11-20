@@ -3,15 +3,22 @@ package io.iftech.healthreminder;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.text.SimpleDateFormat;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
- * 每日复盘：一条固定规则（module=review）+ 每天一句话。
- * 规则不放进事项列表，只从「事项」页顶部的复盘卡片控制。
+ * 每日复盘：一条固定规则（module=review）+ 每天一条一条的小记录。
+ * 每条带自己的时间，互不合并；长按某条可以单独改或删。
+ * 旧版本存的是「一天一段纯文本」，读到时自动迁移成一条。
  */
 final class ReviewStore {
     static final int RULE_ID = 1000010;
@@ -19,57 +26,158 @@ final class ReviewStore {
     /** 默认 21:30。 */
     private static final int DEFAULT_SECONDS = 21 * 3600 + 30 * 60;
 
+    /** 复盘里的一条小记录。at=0 表示从旧版本迁移过来的，没有具体时间。 */
+    static final class Entry {
+        final long at;
+        final String text;
+
+        Entry(long at, String text) {
+            this.at = at;
+            this.text = text;
+        }
+    }
+
     private ReviewStore() { }
 
     static String dayKey() {
-        return new SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(new Date());
+        return dayKey(Calendar.getInstance());
+    }
+
+    static String dayKey(Calendar day) {
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(day.getTime());
+    }
+
+    /** 某条记录的时间，显示成 21:30。 */
+    static String clock(long at) {
+        return new SimpleDateFormat("HH:mm", Locale.CHINA).format(new Date(at));
+    }
+
+    /** 某天的全部记录，按时间正序（先写的在上）。 */
+    static List<Entry> entries(Context context, String key) {
+        List<Entry> result = new ArrayList<>();
+        SharedPreferences p = prefs(context);
+        String raw = p.getString(key, null);
+        if (raw == null || raw.trim().isEmpty()) return result;
+        String trimmed = raw.trim();
+        if (!trimmed.startsWith("[")) {
+            // 旧格式（一天一段纯文本）：迁移成一条，原 key 改存 JSON
+            result.add(new Entry(0L, trimmed));
+            write(context, key, result);
+            return result;
+        }
+        try {
+            JSONArray array = new JSONArray(trimmed);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) continue;
+                String text = item.optString("text", "").trim();
+                if (text.isEmpty()) continue;
+                result.add(new Entry(item.optLong("at", 0L), text));
+            }
+        } catch (Exception ignored) {
+            return result;
+        }
+        result.sort((a, b) -> Long.compare(a.at, b.at));
+        return result;
+    }
+
+    static List<Entry> today(Context context) {
+        return entries(context, dayKey());
+    }
+
+    static int count(Context context, String key) {
+        return entries(context, key).size();
+    }
+
+    /** 今天再记一条。 */
+    static void add(Context context, String text) {
+        add(context, dayKey(), text);
+    }
+
+    static void add(Context context, String key, String text) {
+        String value = text == null ? "" : text.trim();
+        if (value.isEmpty()) return;
+        List<Entry> list = new ArrayList<>(entries(context, key));
+        list.add(new Entry(System.currentTimeMillis(), value));
+        write(context, key, list);
+    }
+
+    /** 改某一条；改成空就等于删掉这条。 */
+    static void update(Context context, String key, int index, String text) {
+        List<Entry> list = new ArrayList<>(entries(context, key));
+        if (index < 0 || index >= list.size()) return;
+        String value = text == null ? "" : text.trim();
+        if (value.isEmpty()) list.remove(index);
+        else list.set(index, new Entry(list.get(index).at, value));
+        write(context, key, list);
+    }
+
+    static void remove(Context context, String key, int index) {
+        List<Entry> list = new ArrayList<>(entries(context, key));
+        if (index < 0 || index >= list.size()) return;
+        list.remove(index);
+        write(context, key, list);
+    }
+
+    /** 某天全部记录拼成纯文本，每条前面带 HH:mm。 */
+    static String read(Context context, String key) {
+        return join(entries(context, key));
     }
 
     static String read(Context context) {
-        return prefs(context).getString(dayKey(), "");
+        return read(context, dayKey());
     }
 
-    static String read(Context context, String key) {
-        return prefs(context).getString(key, "");
+    static String join(List<Entry> list) {
+        StringBuilder sb = new StringBuilder();
+        for (Entry entry : list) {
+            if (sb.length() > 0) sb.append('\n');
+            if (entry.at > 0) sb.append(clock(entry.at)).append(' ');
+            sb.append(entry.text);
+        }
+        return sb.toString();
     }
 
-    /** 所有复盘记录，按日期倒序（dayKey -> 内容）。 */
-    static List<java.util.Map.Entry<String, String>> all(Context context) {
-        List<java.util.Map.Entry<String, String>> result = new ArrayList<>();
-        for (java.util.Map.Entry<String, ?> entry : prefs(context).getAll().entrySet()) {
+    /** 所有复盘记录，按日期倒序（dayKey -> 全部内容）。 */
+    static List<Map.Entry<String, String>> all(Context context) {
+        List<Map.Entry<String, String>> result = new ArrayList<>();
+        for (Map.Entry<String, ?> entry : prefs(context).getAll().entrySet()) {
             String key = entry.getKey();
             if (key == null || key.length() != 10) continue;
-            Object raw = entry.getValue();
-            if (!(raw instanceof String)) continue;
-            String note = ((String) raw).trim();
+            if (!(entry.getValue() instanceof String)) continue;
+            String note = read(context, key).trim();
             if (note.isEmpty()) continue;
-            result.add(new java.util.AbstractMap.SimpleEntry<>(key, note));
+            result.add(new AbstractMap.SimpleEntry<>(key, note));
         }
         result.sort((a, b) -> b.getKey().compareTo(a.getKey()));
         return result;
     }
 
-    /** 按日期保存（统计页编辑某一天用）。 */
-    static void save(Context context, String key, String note) {
-        String value = note == null ? "" : note.trim();
-        if (value.isEmpty()) prefs(context).edit().remove(key).apply();
-        else prefs(context).edit().putString(key, value).apply();
-    }
-
-    static void save(Context context, String note) {
-        String value = note == null ? "" : note.trim();
-        if (value.isEmpty()) prefs(context).edit().remove(dayKey()).apply();
-        else prefs(context).edit().putString(dayKey(), value).apply();
-    }
-
     /** 全部复盘拼成一段纯文本：日期 + 换行 + 内容，段与段空一行。 */
     static String allAsText(Context context) {
         StringBuilder sb = new StringBuilder();
-        for (java.util.Map.Entry<String, String> entry : all(context)) {
+        for (Map.Entry<String, String> entry : all(context)) {
             if (sb.length() > 0) sb.append("\n\n");
             sb.append(entry.getKey()).append('\n').append(entry.getValue());
         }
         return sb.toString();
+    }
+
+    private static void write(Context context, String key, List<Entry> list) {
+        if (list.isEmpty()) {
+            prefs(context).edit().remove(key).apply();
+            return;
+        }
+        JSONArray array = new JSONArray();
+        for (Entry entry : list) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("at", entry.at);
+                item.put("text", entry.text);
+                array.put(item);
+            } catch (Exception ignored) { }
+        }
+        prefs(context).edit().putString(key, array.toString()).apply();
     }
 
     /** 记完今天这一句：算今天已完成，并把下次提醒推到明天。 */
@@ -102,7 +210,6 @@ final class ReviewStore {
         return null;
     }
 
-
     static boolean enabled(Context context) {
         ReminderSettings.Rule rule = rule(context);
         return rule != null && rule.enabled;
@@ -122,8 +229,6 @@ final class ReviewStore {
         rule = rule == null ? build(context, DEFAULT_SECONDS, on) : rule.withEnabled(on);
         ReminderSettings.upsertRule(context, rule);
     }
-
-
 
     private static ReminderSettings.Rule build(Context context, int seconds, boolean enabled) {
         int safe = ((seconds % 86400) + 86400) % 86400;
