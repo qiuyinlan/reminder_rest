@@ -113,7 +113,8 @@ public final class FocusBubbleService extends Service {
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
-            render();
+            // 用户正在输入时先不重绘，不然敲到一半的输入框会重建
+            if (!hasFocusedInput()) render();
             handler.postDelayed(this, 30 * 1000L);
         }
     };
@@ -441,6 +442,7 @@ public final class FocusBubbleService extends Service {
         modeParams.rightMargin = dp(6);
         row.addView(modeView, modeParams);
 
+        ideaDraft = liveText(ideaInput, ideaDraft);
         ideaInput = new EditText(this);
         ideaInput.setHint("记一件，别现在做");
         ideaInput.setTextSize(12);
@@ -452,9 +454,11 @@ public final class FocusBubbleService extends Service {
         ideaInput.setHintTextColor(UiPalette.MUTED);
         ideaInput.setPadding(dp(8), dp(6), dp(8), dp(6));
         ideaInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        ideaInput.setText(ideaDraft);
+        if (!ideaDraft.isEmpty()) ideaInput.setSelection(ideaDraft.length());
         ideaInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) grabWindowFocus();
-            else dropWindowFocus();
+            else onInputBlur();
         });
         ideaInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -1173,6 +1177,7 @@ public final class FocusBubbleService extends Service {
         rowParams.topMargin = dp(6);
         row.setLayoutParams(rowParams);
 
+        taskDraft = liveText(taskInput, taskDraft);
         taskInput = new EditText(this);
         taskInput.setHint("加一个任务");
         taskInput.setTextSize(12);
@@ -1183,9 +1188,11 @@ public final class FocusBubbleService extends Service {
         taskInput.setHintTextColor(UiPalette.MUTED);
         taskInput.setPadding(dp(8), dp(6), dp(8), dp(6));
         taskInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        taskInput.setText(taskDraft);
+        if (!taskDraft.isEmpty()) taskInput.setSelection(taskDraft.length());
         taskInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) grabWindowFocus();
-            else dropWindowFocus();
+            else onInputBlur();
         });
         taskInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -1219,6 +1226,7 @@ public final class FocusBubbleService extends Service {
                         points, 1, true, false)
                 .withModule(ReminderSettings.MODULE_TASK);
         ReminderSettings.upsertRule(this, rule);
+        taskDraft = "";
         taskInput.setText("");
         dropWindowFocus();
         render();
@@ -1309,6 +1317,7 @@ public final class FocusBubbleService extends Service {
         rowParams.topMargin = dp(6);
         row.setLayoutParams(rowParams);
 
+        reviewDraft = liveText(reviewInput, reviewDraft);
         reviewInput = new EditText(this);
         reviewInput.setHint(note.isEmpty() ? "写一句今天" : "接着写");
         reviewInput.setTextSize(12);
@@ -1318,9 +1327,11 @@ public final class FocusBubbleService extends Service {
         reviewInput.setHintTextColor(UiPalette.MUTED);
         reviewInput.setPadding(dp(8), dp(6), dp(8), dp(6));
         reviewInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        reviewInput.setText(reviewDraft);
+        if (!reviewDraft.isEmpty()) reviewInput.setSelection(reviewDraft.length());
         reviewInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) grabWindowFocus();
-            else dropWindowFocus();
+            else onInputBlur();
         });
         reviewInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -1351,6 +1362,7 @@ public final class FocusBubbleService extends Service {
         }
         ReviewStore.add(this, text);
         ReviewStore.markDone(this, ReviewStore.RULE_ID);
+        reviewDraft = "";
         reviewInput.setText("");
         dropWindowFocus();
         Toast.makeText(this, "记下了", Toast.LENGTH_SHORT).show();
@@ -1385,6 +1397,7 @@ public final class FocusBubbleService extends Service {
         rowParams.topMargin = dp(6);
         row.setLayoutParams(rowParams);
 
+        boardDraft = liveText(boardInput, boardDraft);
         boardInput = new EditText(this);
         boardInput.setHint("往白板记一条");
         boardInput.setTextSize(12);
@@ -1395,9 +1408,11 @@ public final class FocusBubbleService extends Service {
         boardInput.setHintTextColor(UiPalette.MUTED);
         boardInput.setPadding(dp(8), dp(6), dp(8), dp(6));
         boardInput.setBackground(UiPalette.inputBackground(this, UiPalette.PALE, 10));
+        boardInput.setText(boardDraft);
+        if (!boardDraft.isEmpty()) boardInput.setSelection(boardDraft.length());
         boardInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) grabWindowFocus();
-            else dropWindowFocus();
+            else onInputBlur();
         });
         boardInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -1434,6 +1449,7 @@ public final class FocusBubbleService extends Service {
                 .withModule(ReminderSettings.MODULE_BOARD)
                 .withDeck(today, false);
         ReminderSettings.upsertRule(this, rule);
+        boardDraft = "";
         boardInput.setText("");
         dropWindowFocus();
         render();
@@ -1640,6 +1656,7 @@ public final class FocusBubbleService extends Service {
             FocusStore.addIdea(this, text, rule != null ? rule.id : -1);
             Toast.makeText(this, "记下了", Toast.LENGTH_SHORT).show();
         }
+        ideaDraft = "";
         ideaInput.setText("");
         dropWindowFocus();
         render();
@@ -1807,8 +1824,33 @@ public final class FocusBubbleService extends Service {
     private EditText taskInput;
     /** 复盘分区输入框的引用。 */
     private EditText reviewInput;
+    /** 四个输入框里敲到一半的字，重建视图时用来恢复，不能丢。 */
+    private String ideaDraft = "";
+    private String taskDraft = "";
+    private String boardDraft = "";
+    private String reviewDraft = "";
     /** 白板已完成区是否展开。 */
     private boolean boardDoneOpen;
+
+    /** 输入框里现在的字；视图还没建出来就用上次的草稿。 */
+    private String liveText(EditText field, String draft) {
+        if (field != null && field.getText() != null) return field.getText().toString();
+        return draft;
+    }
+
+    /** 有输入框正在输入中（键盘弹着）。 */
+    private boolean hasFocusedInput() {
+        for (EditText field : new EditText[]{ideaInput, taskInput, boardInput, reviewInput}) {
+            if (field != null && field.hasFocus()) return true;
+        }
+        return false;
+    }
+
+    /** 输入框失焦：收键盘 + 补一次重绘，把期间攒下的变化补上。 */
+    private void onInputBlur() {
+        dropWindowFocus();
+        render();
+    }
 
     /** 放大键：跟随当前 tab 进对应页面。 */
     private void openCurrentTab() {
@@ -1819,7 +1861,7 @@ public final class FocusBubbleService extends Service {
             intent = new Intent(this, TaskActivity.class)
                     .putExtra("module", ReminderSettings.MODULE_BOARD);
         } else if (boardTab == 3) {
-            intent = new Intent(this, StatsActivity.class);
+            intent = new Intent(this, ReviewReminderActivity.class);
         } else {
             intent = new Intent(this, FocusActivity.class);
         }
