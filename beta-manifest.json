@@ -1,7 +1,7 @@
 {
-    "versionCode": 137,
-    "versionName": "0.3.0-beta121",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta121/rest-bean.apk",
-    "sha256": "1a11a7e4515a324e9ae3e3d280e48a29384811c9cbceeb675853eeb20a3c9b74",
-    "notes": "复盘写完不用退出了，原地接着写下一条"
+    "versionCode": 138,
+    "versionName": "0.3.0-beta122",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta122/rest-bean.apk",
+    "sha256": "4717ed1ecdf1683ee312413d93c80a99b2035d4a5acc9c34b8eea45e098404a4",
+    "notes": "统计页复盘也带日历了，复制只复制选中的那一天"
 }
