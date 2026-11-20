@@ -109,6 +109,8 @@ public final class FocusBubbleService extends Service {
     /** 0 = 记想法，1 = 给当前这件事加步骤。 */
     private int inputMode;
 
+    private static final int REVIEW_TIME_INK = 0xff4859b0;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
         @Override
@@ -1287,7 +1289,7 @@ public final class FocusBubbleService extends Service {
         slotBox.addView(buildBoardInputRow(), new LinearLayout.LayoutParams(-1, -2));
     }
 
-    /** 复盘分区：今天写的那一句 + 底下接着写。 */
+    /** 复盘分区：今天记的一条一条（时间蓝字小字） + 底下接着写。 */
     private void fillReview() {
         final String note = ReviewStore.read(this);
 
@@ -1302,13 +1304,38 @@ public final class FocusBubbleService extends Service {
         head.addView(copy);
         slotBox.addView(head, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView body = FormKit.text(this, note.isEmpty() ? "今天还没写。" : note, 12,
-                note.isEmpty() ? UiPalette.MUTED : UiPalette.INK, false);
-        body.setLineSpacing(dp(3), 1f);
-        body.setPadding(0, dp(4), 0, dp(2));
-        body.setMaxLines(8);
-        body.setEllipsize(TextUtils.TruncateAt.END);
-        slotBox.addView(body);
+        List<ReviewStore.Entry> entries = ReviewStore.today(this);
+        if (entries.isEmpty()) {
+            TextView empty = FormKit.text(this, "今天还没写。", 12, UiPalette.MUTED, false);
+            empty.setPadding(0, dp(4), 0, dp(2));
+            slotBox.addView(empty);
+        } else {
+            // 地方小，最多摆最近 5 条，长按进复盘页改
+            int from = Math.max(0, entries.size() - 5);
+            for (int i = from; i < entries.size(); i++) {
+                ReviewStore.Entry entry = entries.get(i);
+                LinearLayout line = new LinearLayout(this);
+                line.setGravity(Gravity.CENTER_VERTICAL);
+                line.setPadding(0, dp(4), 0, 0);
+                line.setContentDescription("复盘记录，长按打开复盘页");
+                if (entry.at > 0) {
+                    TextView time = FormKit.text(this, ReviewStore.clock(entry.at), 9,
+                            REVIEW_TIME_INK, true);
+                    LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(-2, -2);
+                    timeParams.rightMargin = dp(6);
+                    line.addView(time, timeParams);
+                }
+                TextView text = FormKit.text(this, entry.text, 12, UiPalette.INK, false);
+                text.setMaxLines(2);
+                text.setEllipsize(TextUtils.TruncateAt.END);
+                line.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
+                line.setOnLongClickListener(v -> {
+                    openCurrentTab();
+                    return true;
+                });
+                slotBox.addView(line, new LinearLayout.LayoutParams(-1, -2));
+            }
+        }
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -1319,7 +1346,7 @@ public final class FocusBubbleService extends Service {
 
         reviewDraft = liveText(reviewInput, reviewDraft);
         reviewInput = new EditText(this);
-        reviewInput.setHint(note.isEmpty() ? "写一句今天" : "接着写");
+        reviewInput.setHint(entries.isEmpty() ? "写一句今天" : "接着写");
         reviewInput.setTextSize(12);
         reviewInput.setInputType(InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
