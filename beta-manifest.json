@@ -1,7 +1,7 @@
 {
-    "versionCode": 145,
-    "versionName": "0.3.0-beta129",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta129/rest-bean.apk",
-    "sha256": "ff754c4222736e1bb6463f8622fb20928dd3632b9fe502e4c874f3616e61ad99",
-    "notes": "备份改成全部数据，不再只是身体数据"
+    "versionCode": 146,
+    "versionName": "0.3.0-beta130",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta130/rest-bean.apk",
+    "sha256": "1bcdfa47ab965b28cfd3919675ed15a7326f8193caa9d81fd637134264fcb06d",
+    "notes": "悬浮窗复盘改成一条一条，时间蓝字小字"
 }
