@@ -1121,16 +1121,16 @@ public final class FocusBubbleService extends Service {
             slotBox.addView(empty);
         }
         for (final ReminderSettings.Rule task : pending) {
-            slotBox.addView(buildTaskBoardRow(task.title, v -> completeTaskRule(task)));
+            slotBox.addView(buildTaskBoardRow(task.title, task.id, v -> completeTaskRule(task)));
         }
         for (final Habits.Habit habit : habits) {
-            slotBox.addView(buildTaskBoardRow(habit.title, v -> completeHabit(habit)));
+            slotBox.addView(buildTaskBoardRow(habit.title, -1, v -> completeHabit(habit)));
         }
 
         slotBox.addView(buildTaskInputRow(), new LinearLayout.LayoutParams(-1, -2));
     }
 
-    private View buildTaskBoardRow(String title, View.OnClickListener onCheck) {
+    private View buildTaskBoardRow(String title, final int ruleId, View.OnClickListener onCheck) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -1145,6 +1145,20 @@ public final class FocusBubbleService extends Service {
         LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
         nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
+
+        // 右边箭头：设为当前主线任务并切换到「现在」分区
+        if (ruleId >= 0) {
+            TextView toNow = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+            toNow.setGravity(Gravity.CENTER);
+            toNow.setPadding(dp(6), 0, dp(6), 0);
+            toNow.setContentDescription("设为现在正在做的事");
+            toNow.setOnClickListener(v -> {
+                FocusStore.setMain(FocusBubbleService.this, title, ruleId, 0);
+                boardTab = 0;
+                render();
+            });
+            row.addView(toNow, new LinearLayout.LayoutParams(dp(24), dp(34)));
+        }
         return row;
     }
 
@@ -1214,17 +1228,6 @@ public final class FocusBubbleService extends Service {
             return false;
         });
         row.addView(taskInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
-
-        // 右边箭头：切换到「现在做的事」
-        TextView toNowTask = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
-        toNowTask.setGravity(Gravity.CENTER);
-        toNowTask.setPadding(dp(6), 0, dp(6), 0);
-        toNowTask.setContentDescription("切换到现在做的事");
-        toNowTask.setOnClickListener(v -> {
-            boardTab = 0;
-            render();
-        });
-        row.addView(toNowTask, new LinearLayout.LayoutParams(dp(24), dp(34)));
 
         TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
         plus.setGravity(Gravity.CENTER);
@@ -1433,6 +1436,18 @@ public final class FocusBubbleService extends Service {
         LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1f);
         nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
+
+        // 右边箭头：设为当前主线任务并切换到「现在」分区
+        TextView toNow = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+        toNow.setGravity(Gravity.CENTER);
+        toNow.setPadding(dp(6), 0, dp(6), 0);
+        toNow.setContentDescription("设为现在正在做的事");
+        toNow.setOnClickListener(v -> {
+            FocusStore.setMain(FocusBubbleService.this, rule.title, rule.id, 0);
+            boardTab = 0;
+            render();
+        });
+        row.addView(toNow, new LinearLayout.LayoutParams(dp(24), dp(34)));
         return row;
     }
 
@@ -1470,17 +1485,6 @@ public final class FocusBubbleService extends Service {
             return false;
         });
         row.addView(boardInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
-
-        // 右边箭头：切换到「现在做的事」
-        TextView toNowBoard = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
-        toNowBoard.setGravity(Gravity.CENTER);
-        toNowBoard.setPadding(dp(6), 0, dp(6), 0);
-        toNowBoard.setContentDescription("切换到现在做的事");
-        toNowBoard.setOnClickListener(v -> {
-            boardTab = 0;
-            render();
-        });
-        row.addView(toNowBoard, new LinearLayout.LayoutParams(dp(24), dp(34)));
 
         TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
         plus.setGravity(Gravity.CENTER);
