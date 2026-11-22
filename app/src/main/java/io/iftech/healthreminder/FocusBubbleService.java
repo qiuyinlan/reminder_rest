@@ -868,8 +868,12 @@ public final class FocusBubbleService extends Service {
         render();
     }
 
+    private boolean rendering; // 防止 render 重入导致 View 状态不一致
+
     private void render() {
-        if (card == null) return;
+        if (card == null || rendering) return;
+        rendering = true;
+        try {
 
         // 显示 3 个槽位的状态（主线 + 支线 1 + 支线 2）
         FocusStore.TaskSlot main = FocusStore.getMain(this);
@@ -933,13 +937,17 @@ public final class FocusBubbleService extends Service {
         }
         updateLayout();
         updatePeek();
+        } finally {
+            rendering = false;
+        }
     }
 
     /** 收起态：只列任务名，点一下展开大窗（小窗不放进 App 的按钮）。 */
     private void fillMiniBox(FocusStore.TaskSlot main, FocusStore.TaskSlot sub1,
                              FocusStore.TaskSlot sub2) {
         if (miniBox == null) return;
-        miniBox.removeAllViews();
+        miniBox.clearFocus();
+        miniBox.removeAllViewsInLayout();
 
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
@@ -1029,7 +1037,8 @@ public final class FocusBubbleService extends Service {
     /** 展开态任务区：槽位任务 + 今日待办 + 微习惯，可滑动，勾掉即消失。 */
     private void fillSlotStatus() {
         if (slotBox == null) return;
-        slotBox.removeAllViews();
+        slotBox.clearFocus();
+        slotBox.removeAllViewsInLayout();
         if (boardTab == 1) {
             fillTaskBoard();
             return;
@@ -1068,7 +1077,8 @@ public final class FocusBubbleService extends Service {
     /** 顶部三个切换片。 */
     private void fillTabBar() {
         if (tabBar == null) return;
-        tabBar.removeAllViews();
+        tabBar.clearFocus();
+        tabBar.removeAllViewsInLayout();
         String[] names = {"现在", "任务", "白板", "复盘"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
@@ -1536,8 +1546,12 @@ public final class FocusBubbleService extends Service {
 
     private void fillIdeas() {
         if (ideaContainer == null) return;
-        ideaContainer.removeAllViews();
-        if (doneBox != null) doneBox.removeAllViews();
+        ideaContainer.clearFocus();
+        ideaContainer.removeAllViewsInLayout();
+        if (doneBox != null) {
+            doneBox.clearFocus();
+            doneBox.removeAllViewsInLayout();
+        }
 
         List<FocusStore.Idea> ideas = FocusStore.ideas(this);
         long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
@@ -1716,7 +1730,8 @@ public final class FocusBubbleService extends Service {
     /** 展开时的那一小条步骤：能勾，和主任务是同一份数据。 */
     private void fillSteps() {
         if (stepBox == null) return;
-        stepBox.removeAllViews();
+        stepBox.clearFocus();
+        stepBox.removeAllViewsInLayout();
 
         int ruleId = FocusStore.currentRuleId(this);
         boolean has = FocusStore.hasCurrent(this) && ruleId >= 0;
