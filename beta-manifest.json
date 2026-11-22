@@ -1,7 +1,7 @@
 {
-    "versionCode": 148,
-    "versionName": "0.3.0-beta132",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta132/rest-bean.apk",
-    "sha256": "c6000e20e07087c69874e50de6be6cc4a1f69f10ba71e009d77957f166f9c7ff",
-    "notes": "任务和白板每个条目右边加「设为现在正在做」箭头，点击即变成当前主线任务并切换到现在分区"
+    "versionCode": 149,
+    "versionName": "0.3.0-beta133",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta133/rest-bean.apk",
+    "sha256": "31b186ca07c739bb223969d56d0249bd11ac574700dcb9a08c8f2ea905e63c21",
+    "notes": "统一任务/白板箭头样式，完成后显示撤回按钮（支持任务和白板）"
 }
