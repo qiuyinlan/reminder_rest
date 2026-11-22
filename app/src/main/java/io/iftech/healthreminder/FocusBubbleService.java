@@ -1215,6 +1215,17 @@ public final class FocusBubbleService extends Service {
         });
         row.addView(taskInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
 
+        // 右边箭头：切换到「现在做的事」
+        TextView toNowTask = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+        toNowTask.setGravity(Gravity.CENTER);
+        toNowTask.setPadding(dp(6), 0, dp(6), 0);
+        toNowTask.setContentDescription("切换到现在做的事");
+        toNowTask.setOnClickListener(v -> {
+            boardTab = 0;
+            render();
+        });
+        row.addView(toNowTask, new LinearLayout.LayoutParams(dp(24), dp(34)));
+
         TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
         plus.setGravity(Gravity.CENTER);
         plus.setBackground(FormKit.round(this, UiPalette.ACCENT, 9));
@@ -1459,6 +1470,17 @@ public final class FocusBubbleService extends Service {
             return false;
         });
         row.addView(boardInput, new LinearLayout.LayoutParams(0, dp(34), 1f));
+
+        // 右边箭头：切换到「现在做的事」
+        TextView toNowBoard = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+        toNowBoard.setGravity(Gravity.CENTER);
+        toNowBoard.setPadding(dp(6), 0, dp(6), 0);
+        toNowBoard.setContentDescription("切换到现在做的事");
+        toNowBoard.setOnClickListener(v -> {
+            boardTab = 0;
+            render();
+        });
+        row.addView(toNowBoard, new LinearLayout.LayoutParams(dp(24), dp(34)));
 
         TextView plus = FormKit.text(this, "＋", 15, Color.WHITE, true);
         plus.setGravity(Gravity.CENTER);
