@@ -1146,20 +1146,65 @@ public final class FocusBubbleService extends Service {
         nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
 
-        // 右边箭头：设为当前主线任务并切换到「现在」分区
+        // 右边箭头：设为当前主线任务并切换到「现在」分区（样式跟底部已完成区的展开箭头统一）
         if (ruleId >= 0) {
-            TextView toNow = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+            TextView toNow = FormKit.text(this, "›", 11, UiPalette.MUTED, true);
             toNow.setGravity(Gravity.CENTER);
-            toNow.setPadding(dp(6), 0, dp(6), 0);
+            toNow.setPadding(dp(4), 0, dp(2), 0);
             toNow.setContentDescription("设为现在正在做的事");
             toNow.setOnClickListener(v -> {
                 FocusStore.setMain(FocusBubbleService.this, title, ruleId, 0);
                 boardTab = 0;
                 render();
             });
-            row.addView(toNow, new LinearLayout.LayoutParams(dp(24), dp(34)));
+            row.addView(toNow, new LinearLayout.LayoutParams(dp(20), dp(28)));
         }
         return row;
+    }
+
+    /** 最后完成的任务（用于撤回） */
+    private ReminderSettings.Rule lastCompletedRule;
+    private long lastCompletedDayStart;
+
+    /** 显示带撤回按钮的 Toast */
+    private void showUndoToast(String message, final ReminderSettings.Rule rule) {
+        final android.widget.Toast toast = new android.widget.Toast(this);
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        layout.setPadding(dp(16), dp(10), dp(16), dp(10));
+        layout.setBackground(FormKit.round(this, Color.parseColor("#333333"), 12));
+
+        android.widget.TextView text = new android.widget.TextView(this);
+        text.setText(message);
+        text.setTextColor(Color.WHITE);
+        text.setTextSize(13);
+        layout.addView(text, new android.widget.LinearLayout.LayoutParams(-2, -2));
+
+        android.widget.TextView undo = new android.widget.TextView(this);
+        undo.setText(" 撤回");
+        undo.setTextColor(UiPalette.ACCENT);
+        undo.setTextSize(13);
+        undo.setPadding(dp(8), 0, 0, 0);
+        undo.setOnClickListener(v -> {
+            undoTask(rule);
+            toast.cancel();
+        });
+        layout.addView(undo, new android.widget.LinearLayout.LayoutParams(-2, -2));
+
+        toast.setView(layout);
+        toast.setDuration(android.widget.Toast.LENGTH_LONG);
+        toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, dp(80));
+        toast.show();
+    }
+
+    /** 撤回完成的任务 */
+    private void undoTask(ReminderSettings.Rule rule) {
+        if (rule == null) return;
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        ReminderRecord.deleteCompletion(this, ReminderSettings.MODULE_TASK, rule.title, dayStart);
+        ReminderSettings.unmarkCompleted(this, rule.id);
+        Toast.makeText(this, "已撤回", Toast.LENGTH_SHORT).show();
+        render();
     }
 
     /** 悬浮窗勾掉一条任务，顺带把子任务和它占的槽位一起处理。 */
@@ -1183,6 +1228,13 @@ public final class FocusBubbleService extends Service {
                 FocusStore.clearSlot(this, key);
             }
         }
+
+        // 记录最后完成的任务，用于撤回
+        lastCompletedRule = task;
+        lastCompletedDayStart = dayStart;
+
+        // 显示带撤回按钮的 Toast
+        showUndoToast("任务已完成", task);
         render();
     }
 
@@ -1437,17 +1489,17 @@ public final class FocusBubbleService extends Service {
         nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
 
-        // 右边箭头：设为当前主线任务并切换到「现在」分区
-        TextView toNow = FormKit.text(this, "›", 14, UiPalette.ACCENT, true);
+        // 右边箭头：设为当前主线任务并切换到「现在」分区（样式跟底部已完成区的展开箭头统一）
+        TextView toNow = FormKit.text(this, "›", 11, UiPalette.MUTED, true);
         toNow.setGravity(Gravity.CENTER);
-        toNow.setPadding(dp(6), 0, dp(6), 0);
+        toNow.setPadding(dp(4), 0, dp(2), 0);
         toNow.setContentDescription("设为现在正在做的事");
         toNow.setOnClickListener(v -> {
             FocusStore.setMain(FocusBubbleService.this, rule.title, rule.id, 0);
             boardTab = 0;
             render();
         });
-        row.addView(toNow, new LinearLayout.LayoutParams(dp(24), dp(34)));
+        row.addView(toNow, new LinearLayout.LayoutParams(dp(20), dp(28)));
         return row;
     }
 
@@ -1536,6 +1588,11 @@ public final class FocusBubbleService extends Service {
             ReminderRecord.finish(this, java.util.UUID.randomUUID().toString(), rule.title,
                     ReminderRecord.KIND_DONE, now, now, "白板勾选", ReminderSettings.MODULE_BOARD);
             ReminderSettings.markCompleted(this, rule.id, 1);
+
+            // 记录最后完成的白板条目，用于撤回
+            lastCompletedRule = rule;
+            lastCompletedDayStart = dayStart;
+            showUndoToast("白板条目已完成", rule);
         }
         render();
     }
