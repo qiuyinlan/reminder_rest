@@ -59,7 +59,7 @@ fun GameHomeScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++
         }
         hostActivity?.lifecycle?.addObserver(observer)
-        androidx.compose.runtime.onDispose {
+        onDispose {
             hostActivity?.lifecycle?.removeObserver(observer)
         }
     }
