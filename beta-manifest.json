@@ -1,7 +1,7 @@
 {
-    "versionCode": 168,
-    "versionName": "0.3.0-beta152",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta152/rest-bean.apk",
-    "sha256": "6611c2fa8c49b3108ae8553d4b6406ba59de40ef34f9893cf96e6c38ce1d6771",
-    "notes": "恢复原首页为默认启动页；游戏化首页仍保留在「设置 → 游戏化首页（预览）」入口，供对比查看"
+    "versionCode": 169,
+    "versionName": "0.3.0-beta153",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta153/rest-bean.apk",
+    "sha256": "98e97c2c19a0f3f284316e2de6bc0c0157788843b94ea0ef0f156f7cfbc805af",
+    "notes": "宝箱改用自绘图形（箱体+箱盖+锁扣+高光），金色解锁带光晕，不再依赖 emoji 渲染"
 }
