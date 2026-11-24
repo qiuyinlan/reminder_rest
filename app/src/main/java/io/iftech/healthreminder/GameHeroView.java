@@ -71,9 +71,9 @@ final class GameHeroView extends View {
         if (w <= 0 || h <= 0) return;
 
         float cy = h / 2f;
-        float ringR = Math.min(h / 2f - dp(3), dp(42)); // 直径 ≈ 84dp
+        float ringR = Math.min(h / 2f - dp(2), dp(45)); // 直径 ≈ 90dp
         float cx = ringR + dp(2);
-        float ringStroke = dp(7);
+        float ringStroke = dp(8);
 
         // 轨道：加深浅绿
         stroke.setStrokeWidth(ringStroke);

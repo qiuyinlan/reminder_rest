@@ -299,35 +299,34 @@ public final class MainActivity extends Activity {
         int level = DailyQuest.level(this);
         int sproutLevel = GameSettings.levelIndex(streak);
 
-        // 唯一的视觉主角：今日任务卡
         LinearLayout questCard = columnCard();
-        questCard.setPadding(dp(16), dp(12), dp(16), dp(16));
+        questCard.setPadding(dp(14), dp(12), dp(14), dp(14));
 
-        // 英雄区：豆芽吉祥物 + 大环形进度（首屏第一焦点）
+        // ---------- 英雄区：极淡绿白渐变底 ----------
         LinearLayout heroRow = new LinearLayout(this);
         heroRow.setGravity(Gravity.CENTER_VERTICAL);
+        heroRow.setPadding(dp(10), dp(8), dp(12), dp(8));
+        GradientDrawable heroBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xfff2faf5, 0xffe6f4ec});
+        heroBg.setCornerRadius(dp(16));
+        heroRow.setBackground(heroBg);
 
-        SproutMascotView mascot = new SproutMascotView(this);
-        int mood;
-        if (completed <= 0) mood = SproutMascotView.SLEEPY;
-        else if (total > 0 && completed >= total) mood = SproutMascotView.CELEBRATE;
-        else mood = SproutMascotView.AWAKE;
-        mascot.setMood(mood);
+        HomeMascotView mascot = new HomeMascotView(this);
         heroRow.addView(mascot, new LinearLayout.LayoutParams(dp(84), dp(84)));
 
         GameHeroView status = new GameHeroView(this);
         status.setData(completed, total, streak, sproutLevel);
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(0, dp(92), 1);
-        statusParams.leftMargin = dp(4);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(0, dp(96), 1);
+        statusParams.leftMargin = dp(2);
         heroRow.addView(status, statusParams);
 
         android.widget.FrameLayout heroWrap = new android.widget.FrameLayout(this);
         heroWrap.addView(heroRow, new android.widget.FrameLayout.LayoutParams(-1, -2));
-        final CelebrationView fx = new CelebrationView(this);
-        heroWrap.addView(fx, new android.widget.FrameLayout.LayoutParams(-1, dp(96)));
+        final CelebrationView heroFx = new CelebrationView(this);
+        heroWrap.addView(heroFx, new android.widget.FrameLayout.LayoutParams(-1, dp(96)));
         questCard.addView(heroWrap, new LinearLayout.LayoutParams(-1, -2));
 
-        // 完成数变多：豆芽弹跳 + 粒子爆开
+        // 完成数变多 → 豆芽弹跳 + 星星
         final String dayKey = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
                 .format(new java.util.Date());
         android.content.SharedPreferences fxPrefs = getSharedPreferences("game_fx", MODE_PRIVATE);
@@ -336,21 +335,17 @@ public final class MainActivity extends Activity {
         if (prevCompleted >= 0 && completed > prevCompleted) {
             heroWrap.post(() -> {
                 mascot.bounce();
-                fx.burst(GREEN);
+                heroFx.burst(GREEN);
                 SoundKit.tick(this);
             });
         }
         fxPrefs.edit().putString("last_day", dayKey).putInt("last_completed", completed).apply();
 
-        View divider = new View(this);
-        divider.setBackgroundColor(UiPalette.BORDER);
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
-        dividerParams.topMargin = dp(10);
-        questCard.addView(divider, dividerParams);
-
+        // ---------- 标题行 ----------
         LinearLayout head = row();
         LinearLayout.LayoutParams headParams = new LinearLayout.LayoutParams(-1, -2);
-        headParams.topMargin = dp(12);
+        headParams.topMargin = dp(14);
+        headParams.leftMargin = dp(4);
         questCard.addView(head, headParams);
         head.addView(label("今日任务", 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
         TextView lvBadge = label("Lv." + level, 10, UiPalette.ACCENT, true);
@@ -358,42 +353,112 @@ public final class MainActivity extends Activity {
         lvBadge.setBackground(round(UiPalette.PALE, 9));
         head.addView(lvBadge);
 
+        // ---------- 任务行：可点果冻豆圆圈 ----------
         int index = 0;
-        for (DailyQuest.Quest quest : DailyQuest.quests()) {
+        for (final DailyQuest.Quest quest : DailyQuest.quests()) {
             int progress = Math.min(DailyQuest.questProgress(this, quest), quest.target);
-            boolean done = progress >= quest.target;
+            final boolean done = progress >= quest.target;
 
-            LinearLayout questRow = new LinearLayout(this);
-            questRow.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-            rowParams.topMargin = dp(13);
-            questCard.addView(questRow, rowParams);
+            android.widget.FrameLayout rowWrap = new android.widget.FrameLayout(this);
+            LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(-1, -2);
+            wrapParams.topMargin = dp(12);
+            questCard.addView(rowWrap, wrapParams);
 
-            MiniGlyphView glyph = new MiniGlyphView(this);
-            int kind = index == 0 ? MiniGlyphView.BOOK
-                    : (index == 1 ? MiniGlyphView.CHECKLIST : MiniGlyphView.CARDS);
-            glyph.setKind(kind, done ? UiPalette.MUTED : UiPalette.ACCENT);
-            questRow.addView(glyph, new LinearLayout.LayoutParams(dp(20), dp(20)));
+            LinearLayout rowBody = new LinearLayout(this);
+            rowBody.setOrientation(LinearLayout.VERTICAL);
 
-            TextView questTitle = label(quest.title, 14, done ? MUTED : INK, done);
+            LinearLayout topLine = new LinearLayout(this);
+            topLine.setGravity(Gravity.CENTER_VERTICAL);
+            rowBody.addView(topLine, new LinearLayout.LayoutParams(-1, -2));
+
+            // 果冻豆打卡点
+            TextView bean = jellyBean(done);
+            topLine.addView(bean, new LinearLayout.LayoutParams(dp(22), dp(22)));
+
+            final TextView questTitle = label(quest.title, 14, done ? UiPalette.MUTED : INK, done);
             questTitle.setPadding(dp(10), 0, 0, 0);
             if (done) {
                 questTitle.setPaintFlags(questTitle.getPaintFlags()
                         | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
             }
-            questRow.addView(questTitle, new LinearLayout.LayoutParams(0, -2, 1));
+            topLine.addView(questTitle, new LinearLayout.LayoutParams(0, -2, 1));
 
-            TextView state = label(done ? "已完成" : progress + "/" + quest.target,
-                    12, done ? Color.WHITE : MUTED, true);
+            final TextView state = label(done ? "已完成" : progress + "/" + quest.target,
+                    12, done ? Color.WHITE : UiPalette.MUTED, true);
             if (done) {
                 state.setPadding(dp(9), dp(3), dp(9), dp(3));
                 state.setBackground(round(GREEN, 10));
             }
-            questRow.addView(state);
+            topLine.addView(state);
+
+            // 多格任务：行底细分段进度条
+            if (quest.target > 1) {
+                SegmentBarView bar = new SegmentBarView(this);
+                bar.setSegments(quest.target, progress, 0xff4caf7d, 0xffddede3);
+                LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(4));
+                barParams.topMargin = dp(6);
+                barParams.leftMargin = dp(32);
+                rowBody.addView(bar, barParams);
+            }
+
+            rowWrap.addView(rowBody, new android.widget.FrameLayout.LayoutParams(-1, -2));
+            final CelebrationView rowFx = new CelebrationView(this);
+            rowWrap.addView(rowFx, new android.widget.FrameLayout.LayoutParams(-1, dp(56)));
+
+            // 点圆圈：填充 + 打勾 + 星星 + 跳去做
+            final int questIndex = index;
+            bean.setOnClickListener(v -> {
+                if (done) {
+                    startActivity(new Intent(this, TaskActivity.class));
+                    return;
+                }
+                applyBean(bean, true);
+                AnimKit.pop(bean, 1.35f);
+                rowFx.burst(GREEN);
+                SoundKit.tick(this);
+                questTitle.setTextColor(UiPalette.MUTED);
+                questTitle.setPaintFlags(questTitle.getPaintFlags()
+                        | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+                questTitle.postDelayed(
+                        () -> startActivity(new Intent(this, TaskActivity.class)), 380);
+            });
             index++;
         }
 
-        // 底部：奖励按钮 / 还差几个 / 推荐
+        // ---------- 宝箱进度：🎁 + 分段条 ----------
+        final int questTotal = DailyQuest.quests().size();
+        final int questDone = DailyQuest.doneQuestCount(this);
+        final boolean chestFull = questDone >= questTotal;
+
+        LinearLayout chestRow = new LinearLayout(this);
+        chestRow.setGravity(Gravity.CENTER_VERTICAL);
+        chestRow.setBackground(round(UiPalette.PALE, 12));
+        chestRow.setPadding(dp(10), dp(9), dp(10), dp(9));
+        LinearLayout.LayoutParams chestRowParams = new LinearLayout.LayoutParams(-1, -2);
+        chestRowParams.topMargin = dp(16);
+        questCard.addView(chestRow, chestRowParams);
+
+        final TextView gift = label("\uD83C\uDF81", 19, INK, false);
+        chestRow.addView(gift);
+
+        SegmentBarView chestBar = new SegmentBarView(this);
+        chestBar.setSegments(questTotal, questDone, 0xff4caf7d, 0xffddede3);
+        LinearLayout.LayoutParams chestBarParams = new LinearLayout.LayoutParams(0, dp(6), 1);
+        chestBarParams.leftMargin = dp(10);
+        chestBarParams.rightMargin = dp(10);
+        chestRow.addView(chestBar, chestBarParams);
+
+        chestRow.addView(label(chestFull ? "可以领奖啦" : "还剩 " + (questTotal - questDone) + " 个",
+                12, chestFull ? GREEN : MUTED, chestFull));
+
+        if (chestFull && DailyQuest.bonusAvailable(this)) {
+            gift.postDelayed(() -> {
+                AnimKit.shake(gift);
+                AnimKit.pop(gift, 1.3f);
+            }, 300);
+        }
+
+        // ---------- 领取按钮 ----------
         if (DailyQuest.bonusAvailable(this)) {
             TextView claim = label("领取完成奖励  +40 经验", 14, Color.WHITE, true);
             claim.setGravity(Gravity.CENTER);
@@ -412,21 +477,16 @@ public final class MainActivity extends Activity {
                             : (chestText.contains("银") ? "银" : "铜");
                     ChestDialog.show(MainActivity.this, name, chestText);
                 } else {
+                    SoundKit.levelUp(this);
                     Toast.makeText(MainActivity.this, "已领取，冲刺模式开启", Toast.LENGTH_SHORT).show();
                 }
             });
             AnimKit.press(claim);
             LinearLayout.LayoutParams claimParams = new LinearLayout.LayoutParams(-1, -2);
-            claimParams.topMargin = dp(16);
+            claimParams.topMargin = dp(12);
             questCard.addView(claim, claimParams);
 
         } else if (!DailyQuest.allQuestsDone(this)) {
-            int questsLeft = DailyQuest.quests().size() - DailyQuest.doneQuestCount(this);
-            TextView hint = label("还剩 " + questsLeft + " 个就开箱 \uD83C\uDF81", 13, MUTED, true);
-            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-            hintParams.topMargin = dp(14);
-            questCard.addView(hint, hintParams);
-
             ReminderSettings.Rule recommend = pickRecommendation();
             if (recommend != null) {
                 LinearLayout tip = new LinearLayout(this);
@@ -434,7 +494,7 @@ public final class MainActivity extends Activity {
                 tip.setPadding(dp(12), dp(7), dp(7), dp(7));
                 tip.setBackground(round(UiPalette.PALE, 14));
                 LinearLayout.LayoutParams tipParams = new LinearLayout.LayoutParams(-1, -2);
-                tipParams.topMargin = dp(8);
+                tipParams.topMargin = dp(10);
                 questCard.addView(tip, tipParams);
 
                 TextView tipText = label("推荐  " + recommend.title, 12, INK, false);
@@ -452,14 +512,14 @@ public final class MainActivity extends Activity {
             }
         }
 
-        // 冲刺阶段：卡内一行，不抢主角
+        // ---------- 冲刺 ----------
         if (DailyQuest.sprintUnlocked(this)) {
             LinearLayout sprint = new LinearLayout(this);
             sprint.setGravity(Gravity.CENTER_VERTICAL);
             sprint.setPadding(dp(12), dp(9), dp(12), dp(9));
             sprint.setBackground(round(UiPalette.PALE, 12));
             LinearLayout.LayoutParams sprintParams = new LinearLayout.LayoutParams(-1, -2);
-            sprintParams.topMargin = dp(12);
+            sprintParams.topMargin = dp(10);
             questCard.addView(sprint, sprintParams);
 
             sprint.addView(label("\u26A1 冲刺 " + DailyQuest.todayActions(this) + " 次",
@@ -478,6 +538,24 @@ public final class MainActivity extends Activity {
         body.addView(questCard, cardParams);
         if (!gameZoneAnimated) AnimKit.waveIn(questCard, 0);
         gameZoneAnimated = true;
+    }
+
+    /** 果冻豆打卡点：空心圆 / 实心绿打勾。 */
+    private TextView jellyBean(boolean done) {
+        TextView bean = label("", 11, Color.WHITE, true);
+        bean.setGravity(Gravity.CENTER);
+        applyBean(bean, done);
+        return bean;
+    }
+
+    private void applyBean(TextView bean, boolean done) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.OVAL);
+        shape.setColor(done ? 0xff4caf7d : Color.TRANSPARENT);
+        if (!done) shape.setStroke(dp(2), UiPalette.DISABLED);
+        bean.setText(done ? "\u2713" : "");
+        bean.setBackground(shape);
+        bean.setContentDescription(done ? "已完成" : "去完成");
     }
 
     /** 从今天还没做的任务里随机挑一个，给「去做」用。 */

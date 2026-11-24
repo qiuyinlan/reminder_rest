@@ -110,6 +110,18 @@ final class AnimKit {
                 .start();
     }
 
+    /** 宝箱抖动：左右摆几下再停（弹簧曲线）。 */
+    static void shake(final View view) {
+        if (view == null) return;
+        view.animate().cancel();
+        view.setRotation(0f);
+        android.animation.ObjectAnimator anim = android.animation.ObjectAnimator
+                .ofFloat(view, "rotation", 0f, -9f, 9f, -6f, 6f, -3f, 0f);
+        anim.setDuration(620);
+        anim.setInterpolator(SPRING);
+        anim.start();
+    }
+
     /** 轻轻的呼吸：只给同屏一个循环元素用。 */
     static ValueAnimator breathe(final View view, long periodMs) {
         final ValueAnimator animator = ValueAnimator.ofFloat(1f, 1.03f, 1f);
