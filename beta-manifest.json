@@ -1,7 +1,7 @@
 {
-    "versionCode": 153,
-    "versionName": "0.3.0-beta137",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta137/rest-bean.apk",
-    "sha256": "d3626600d3b7101afda7dfa93f10e78cdc5baa3de6193332a994029e7183363f",
-    "notes": "首页激励面板重做：每日 3 个任务（跨天归零）+ 全完成奖励 + 冲刺模式 5 阶段（4/7/10/14/19 次）+ 经验等级；全局 Q 弹动效（弹簧曲线、卡片波浪入场、按钮按压回弹、打卡圆点爆开、宝箱蹦入开盖飘彩带）"
+    "versionCode": 154,
+    "versionName": "0.3.0-beta138",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta138/rest-bean.apk",
+    "sha256": "a477af4f66e1af0c4d3bbaff422bf68aa5830fbf268cd9501f76b1d975243fb9",
+    "notes": "UI 重做：淡绿底白卡配色（#EAF6EF / #4CAF7D）、今日任务卡升为唯一主角（环形进度+嫩芽连胜状态条）、提醒卡降级、身体记录折叠、经期移出首页、emoji 换线性图标、打卡延时打钩+音效开关"
 }
