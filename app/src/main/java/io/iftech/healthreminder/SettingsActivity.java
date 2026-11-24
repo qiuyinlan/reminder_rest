@@ -75,6 +75,32 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams membershipParams = new LinearLayout.LayoutParams(-1, -2);
         membershipParams.topMargin = dp(16);
         page.addView(membership, membershipParams);
+
+        // 新版首页（Compose）预览入口
+        LinearLayout preview = new LinearLayout(this);
+        preview.setGravity(Gravity.CENTER_VERTICAL);
+        preview.setPadding(dp(15), dp(13), dp(14), dp(13));
+        preview.setBackground(round(Color.WHITE, 17));
+        preview.setElevation(dp(1));
+        preview.setOnClickListener(v ->
+                startActivity(new Intent(this, ComposeHomeActivity.class)));
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1, -2);
+        previewParams.topMargin = dp(9);
+        page.addView(preview, previewParams);
+        TextView pvMark = text("新", 15, GREEN, true);
+        pvMark.setGravity(Gravity.CENTER);
+        pvMark.setBackground(round(MINT_PALE, 12));
+        LinearLayout.LayoutParams pvMarkParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        pvMarkParams.rightMargin = dp(12);
+        preview.addView(pvMark, pvMarkParams);
+        LinearLayout pvCopy = new LinearLayout(this);
+        pvCopy.setOrientation(LinearLayout.VERTICAL);
+        pvCopy.addView(text("新版首页（预览）", 15, INK, true));
+        TextView pvDetail = text("Compose 重写版 · 薄荷露珠风格", 12, MUTED, false);
+        pvDetail.setPadding(0, dp(4), 0, 0);
+        pvCopy.addView(pvDetail);
+        preview.addView(pvCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        preview.addView(text("›", 23, GREEN, false));
         TextView memberMark = text("会", 17, GREEN, true);
         memberMark.setGravity(Gravity.CENTER);
         memberMark.setBackground(round(MINT_PALE, 12));
