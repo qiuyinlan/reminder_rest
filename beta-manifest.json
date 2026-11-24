@@ -1,7 +1,7 @@
 {
-    "versionCode": 159,
-    "versionName": "0.3.0-beta143",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta143/rest-bean.apk",
-    "sha256": "4b28e2bab23e3f3f30d6cbaeffa7c6a4c0209caa3bc54f19969a0bb361be16a7",
-    "notes": "风格升级：卡片分层（L2 内嵌层浮起）、新极简（去装饰线、字号对比拉大）、粉彩点缀（等级徽章奶油色、宝箱行藕粉）；规范文档新增第 11 节风格锚点"
+    "versionCode": 160,
+    "versionName": "0.3.0-beta144",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta144/rest-bean.apk",
+    "sha256": "9e517d60d36761d54dc483048e772bbb91b0c00213226712a0e23cc4a2808547",
+    "notes": "旧版首页排布收紧，向新版看齐：标题 26sp、卡片内边距与行间距压缩、豆芽与状态条缩小、按钮更小；提醒运行卡与身体记录保持原样"
 }
