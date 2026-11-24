@@ -371,3 +371,63 @@ implementation "androidx.compose.ui:ui"
 ```
 
 迁移期两套 UI 并存，配色以本规范为准，View 侧的 `UiPalette` 按第 1 节同步改值，保证视觉一致。
+
+---
+
+## 11. 风格锚点：Card-based / Layered / Neo-minimal / Pastel
+
+四个关键词落地成可执行的规则，不是形容词。
+
+### 11.1 分层（Layered）：一屏最多四层
+
+| 层 | 名称 | 填充 | 阴影 | 用途 |
+|---|---|---|---|---|
+| L0 | 背景层 | `Bg #F0F7F4` + 噪点 0.05 | 无 | 页面底 |
+| L1 | 主卡层 | 白 75% + 渐变 | 4dp 绿调 | 今日任务卡 |
+| L2 | 内嵌层 | 白 62%（或 Primary@8%） | 2dp，无边框 | 卡内分区：英雄区、宝箱行 |
+| L3 | 元素层 | Accent / Primary@12% | 无（靠色块） | 按钮、标签、进度条 |
+
+规则：
+
+- **相邻两层必须有色差或阴影差**，否则等于没分层
+- 层与层之间内边距 10-12dp，不要贴边
+- 阴影只允许出现在 L1 和 L2，L3 一律不加阴影（极简）
+- 一屏内不要出现两层同 elevation 的卡片
+
+### 11.2 新极简（Neo-minimal）
+
+- 装饰性分割线能删就删，用间距代替
+- 一个屏只保留一个视觉重心（这里就是任务卡）
+- 字号对比拉大：主标题 26sp 对正文 15sp，不做 16/18 这种含混对比
+- 图标只用线条，线宽统一 1.6dp，端点圆头
+- 不使用投影文字、不使用渐变边框、不使用描边图标
+
+### 11.3 粉彩（Pastel）
+
+主绿已经是粉彩，另外只允许两个辅助粉彩，且**单屏面积合计不超过 10%**：
+
+| 名称 | 值 | 唯一用途 |
+|---|---|---|
+| PastelCream | `#FBF3E3` | 等级徽章、里程碑小标签 |
+| PastelBlush | `#F7EAEA` | 宝箱行底、提醒提示底 |
+
+禁用：粉彩紫、粉彩蓝（会和"无蓝紫"禁令冲突）、正粉。
+
+### 11.4 落地对照
+
+```kotlin
+// L2 内嵌层
+Modifier
+    .clip(Dew.ShapeCard)
+    .background(
+        Brush.linearGradient(listOf(Color.White.copy(0.88f), Color.White.copy(0.66f)))
+    )
+    .shadow(2.dp, Dew.ShapeCard, ambientColor = Dew.ShadowAmbient, spotColor = Dew.ShadowSpot)
+    .padding(10.dp)
+```
+
+自检追加三条：
+
+- [ ] 卡片内至少有一处 L2 内嵌层（体现分层）
+- [ ] 粉彩色只出现在徽章和宝箱这类小面积
+- [ ] 没有多余的分割线与描边

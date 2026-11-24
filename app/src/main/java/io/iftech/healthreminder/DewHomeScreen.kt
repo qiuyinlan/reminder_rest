@@ -186,30 +186,48 @@ private fun QuestCard(
     onOpenTasks: () -> Unit
 ) {
     GlassCard {
-        // 英雄区：极淡渐变 + 豆芽 + 圆环 + 连胜
-        Row(
+        // L2 内嵌层：外层浅绿托盘 + 内层白色浮起，做出纵深
+        Box(
             Modifier
                 .fillMaxWidth()
-                .clip(Dew.ShapeCard)
+                .clip(RoundedCornerShape(18.dp))
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFFF5FBF7), Color(0xFFE4F3EA))
+                        listOf(Color(0xFFEDF8F1), Color(0xFFDDF0E6))
                     )
                 )
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(7.dp)
         ) {
-            Image(
-                painter = painterResource(R.drawable.home_mascot),
-                contentDescription = "豆芽",
-                modifier = Modifier.size(84.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            ProgressRing(
-                done = totalDone.coerceAtMost(totalTarget),
-                total = totalTarget,
-                modifier = Modifier.weight(1f).height(92.dp)
-            )
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = RoundedCornerShape(14.dp),
+                        ambientColor = Dew.ShadowAmbient,
+                        spotColor = Dew.ShadowSpot
+                    )
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Dew.LayerFillTop, Dew.LayerFillBottom)
+                        )
+                    )
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.home_mascot),
+                    contentDescription = "豆芽",
+                    modifier = Modifier.size(84.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                ProgressRing(
+                    done = totalDone.coerceAtMost(totalTarget),
+                    total = totalTarget,
+                    modifier = Modifier.weight(1f).height(92.dp)
+                )
+            }
         }
 
         Spacer(Modifier.height(14.dp))
@@ -221,7 +239,7 @@ private fun QuestCard(
             Box(
                 Modifier
                     .clip(Dew.ShapeSmall)
-                    .background(Dew.Tint)
+                    .background(Dew.PastelCream)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
@@ -254,7 +272,7 @@ private fun QuestCard(
             Modifier
                 .fillMaxWidth()
                 .clip(Dew.ShapeCard)
-                .background(Dew.Tint.copy(alpha = 0.55f))
+                .background(Dew.PastelBlush.copy(alpha = 0.85f))
                 .padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

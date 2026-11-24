@@ -34,6 +34,14 @@ object Dew {
     val WarnSoft = Color(0xFFFBF3E8)
     val WarnInk = Color(0xFF9A7B52)
 
+    // 粉彩辅助色：只允许极小面积点缀（单屏合计 <= 10%）
+    val PastelCream = Color(0xFFFBF3E3)
+    val PastelBlush = Color(0xFFF7EAEA)
+
+    // 分层：L2 内嵌层填充
+    val LayerFillTop get() = Color.White.copy(alpha = 0.88f)
+    val LayerFillBottom get() = Color.White.copy(alpha = 0.66f)
+
     // 透明度阶梯
     const val ALPHA_GLASS = 0.75f
     const val ALPHA_BORDER = 0.30f
