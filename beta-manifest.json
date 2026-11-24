@@ -1,7 +1,7 @@
 {
-    "versionCode": 157,
-    "versionName": "0.3.0-beta141",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta141/rest-bean.apk",
-    "sha256": "12ad6f0f8120fc34d1d5a80c40ef99866139b787861a1b70b04dd527313521d6",
-    "notes": "提醒运行卡移到首页最下方并加深字色；任务行左侧改跳转按钮（不再是勾选框）；环内数字与文字居中对齐；单任务也显示分段进度条；完成标签/领取按钮改亮绿渐变、环形进度加发光、粒子改亮绿，整体更 Q 弹闪亮"
+    "versionCode": 158,
+    "versionName": "0.3.0-beta142",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta142/rest-bean.apk",
+    "sha256": "4aa0dc9f6ac005e24fdaf095b41b64f1218cb62139b23d13f8018c8c45b714ec",
+    "notes": "新增 Compose 风格规范文档；接入 Kotlin 2.0 + Compose，新增薄荷露珠风格的新版首页（今日任务卡/圆环/豆芽/分段进度/玻璃卡/噪点/弹簧动效），设置页可进入预览"
 }
