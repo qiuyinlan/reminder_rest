@@ -293,104 +293,212 @@ public final class MainActivity extends Activity {
 
     /** 游戏化激励卡片：连胜、宝箱、今日进度 */
     private void addGamificationCard() {
+        DailyQuest.ensureDay(this);
         long dayStart = GameProgress.dayStart(System.currentTimeMillis());
 
-        int completedToday = 0;
-        int totalToday = 0;
+        int completed = 0;
+        int total = 0;
         for (Habits.Habit habit : Habits.all(this)) {
             if (habit.isScheduledForToday()) {
-                totalToday++;
-                if (Habits.isCompletedToday(this, habit.id, dayStart)) completedToday++;
+                total++;
+                if (Habits.isCompletedToday(this, habit.id, dayStart)) completed++;
             }
         }
         for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
             if (rule.isTaskModule() && rule.enabled) {
-                totalToday++;
-                if (ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) completedToday++;
+                total++;
+                if (ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) completed++;
             }
         }
-        int remainingToday = Math.max(0, totalToday - completedToday);
+
         int streak = GameProgress.getGlobalStreak(this);
+        int exp = DailyQuest.exp(this);
+        int doubles = DailyQuest.doubles(this);
+        int level = DailyQuest.level(this);
 
         LinearLayout zone = new LinearLayout(this);
         zone.setOrientation(LinearLayout.VERTICAL);
 
-        // ---- 英雄卡：环形进度 + 连胜火焰 + 等级 ----
+        // ---- 英雄卡 + 粒子层 ----
+        android.widget.FrameLayout heroWrap = new android.widget.FrameLayout(this);
         GameHeroView hero = new GameHeroView(this);
-        hero.setData(completedToday, totalToday, streak, GameSettings.levelTitle(streak));
-        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, dp(132));
-        zone.addView(hero, heroParams);
+        hero.setData(completed, total, streak, "Lv." + level);
+        heroWrap.addView(hero, new android.widget.FrameLayout.LayoutParams(-1, dp(132)));
+        CelebrationView fx = new CelebrationView(this);
+        heroWrap.addView(fx, new android.widget.FrameLayout.LayoutParams(-1, dp(132)));
+        zone.addView(heroWrap, new LinearLayout.LayoutParams(-1, dp(132)));
 
-        // ---- 鼓励文案 ----
-        String cheer;
-        if (totalToday == 0) {
-            cheer = "今天还没安排，去加一个小目标吧";
-        } else if (remainingToday == 0) {
-            cheer = "全部完成，今天满分 🎉";
-        } else if (remainingToday == 1) {
-            cheer = "就差最后一个了，冲！";
-        } else if (remainingToday <= 3) {
-            cheer = "还剩 " + remainingToday + " 个，马上就做完了";
-        } else {
-            cheer = "还剩 " + remainingToday + " 个，一个一个来";
+        // 今日完成数变多 → 放一次粒子
+        final String dayKey = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
+                .format(new java.util.Date());
+        android.content.SharedPreferences fxPrefs =
+                getSharedPreferences("game_fx", MODE_PRIVATE);
+        boolean sameDay = dayKey.equals(fxPrefs.getString("last_day", ""));
+        int prevCompleted = sameDay ? fxPrefs.getInt("last_completed", -1) : -1;
+        if (prevCompleted >= 0 && completed > prevCompleted) {
+            heroWrap.post(() -> fx.burst(GREEN));
         }
-        TextView cheerLine = label(cheer, 13, GREEN, true);
-        LinearLayout.LayoutParams cheerParams = new LinearLayout.LayoutParams(-1, -2);
-        cheerParams.topMargin = dp(10);
-        cheerParams.leftMargin = dp(4);
-        zone.addView(cheerLine, cheerParams);
+        fxPrefs.edit().putString("last_day", dayKey).putInt("last_completed", completed).apply();
 
-        // ---- 宝箱关卡轨道 ----
-        LinearLayout chestCard = columnCard();
-        chestCard.setPadding(dp(6), dp(12), dp(6), dp(6));
+        // ---- 今日任务 ----
+        LinearLayout questCard = columnCard();
+        questCard.setPadding(dp(16), dp(14), dp(16), dp(12));
 
-        LinearLayout chestHead = row();
-        chestHead.setPadding(dp(12), 0, dp(12), 0);
-        TextView chestTitle = label("宝箱进度", 14, INK, true);
-        chestHead.addView(chestTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView chestTip = label("坚持越久，宝箱越大", 11, MUTED, false);
-        chestHead.addView(chestTip);
-        chestCard.addView(chestHead, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout qHead = row();
+        qHead.addView(label("今日任务", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        qHead.addView(label(DailyQuest.doneQuestCount(this) + "/" + DailyQuest.quests().size(),
+                14, GREEN, true));
+        questCard.addView(qHead, new LinearLayout.LayoutParams(-1, -2));
 
-        ChestTrackView track = new ChestTrackView(this);
-        track.setStreak(streak);
-        LinearLayout.LayoutParams trackParams = new LinearLayout.LayoutParams(-1, dp(96));
-        trackParams.topMargin = dp(4);
-        chestCard.addView(track, trackParams);
+        TextView stats = label("Lv." + level + "  ·  经验 " + exp + "  ·  双倍 " + doubles + " 次",
+                12, MUTED, false);
+        LinearLayout.LayoutParams statsParams = new LinearLayout.LayoutParams(-1, -2);
+        statsParams.topMargin = dp(4);
+        questCard.addView(stats, statsParams);
 
-        // 可领取宝箱
-        final int claimable = firstClaimable(streak);
-        if (claimable > 0) {
-            TextView claim = label(GameSettings.CHEST_ICONS[Math.min(
-                    GameSettings.chestIndex(claimable), GameSettings.CHEST_ICONS.length - 1)]
-                    + "  宝箱可以领取了，点我打开", 14, 0xffc1870f, true);
+        for (DailyQuest.Quest quest : DailyQuest.quests()) {
+            int progress = DailyQuest.questProgress(this, quest);
+            boolean done = progress >= quest.target;
+
+            LinearLayout line = new LinearLayout(this);
+            line.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(-1, -2);
+            lineParams.topMargin = dp(11);
+            questCard.addView(line, lineParams);
+
+            TextView icon = label(quest.icon, 16, INK, false);
+            icon.setGravity(Gravity.CENTER);
+            line.addView(icon, new LinearLayout.LayoutParams(dp(26), dp(26)));
+
+            TextView title = label(quest.title, 14, done ? MUTED : INK, done);
+            title.setPadding(dp(8), 0, 0, 0);
+            if (done) {
+                title.setPaintFlags(title.getPaintFlags()
+                        | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+            }
+            line.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+
+            line.addView(label(Math.min(progress, quest.target) + "/" + quest.target,
+                    13, done ? GREEN : MUTED, true));
+        }
+
+        // 奖励按钮 / 推荐 / 状态
+        if (DailyQuest.bonusAvailable(this)) {
+            TextView claim = label("\uD83C\uDFC6 领取完成奖励：+40 经验 · 3 次双倍", 14, Color.WHITE, true);
             claim.setGravity(Gravity.CENTER);
-            claim.setPadding(dp(12), dp(11), dp(12), dp(11));
-            claim.setBackground(round(0xfffff3d6, 14));
-            claim.setOnClickListener(v -> showChestRewardDialog(claimable));
+            claim.setPadding(dp(12), dp(12), dp(12), dp(12));
+            claim.setBackground(round(GREEN, 14));
+            claim.setOnClickListener(v -> {
+                DailyQuest.claimAllBonus(this);
+                DailyQuest.advanceSprint(this);
+                Toast.makeText(this, "已领取，冲刺模式开启！", Toast.LENGTH_SHORT).show();
+                render();
+            });
             LinearLayout.LayoutParams claimParams = new LinearLayout.LayoutParams(-1, -2);
-            claimParams.topMargin = dp(6);
-            claimParams.leftMargin = dp(8);
-            claimParams.rightMargin = dp(8);
-            claimParams.bottomMargin = dp(6);
-            chestCard.addView(claim, claimParams);
+            claimParams.topMargin = dp(14);
+            questCard.addView(claim, claimParams);
+        } else if (!DailyQuest.allQuestsDone(this)) {
+            ReminderSettings.Rule recommend = pickRecommendation();
+            if (recommend != null) {
+                LinearLayout tip = new LinearLayout(this);
+                tip.setGravity(Gravity.CENTER_VERTICAL);
+                tip.setPadding(dp(12), dp(8), dp(8), dp(8));
+                tip.setBackground(round(UiPalette.PALE, 12));
+                LinearLayout.LayoutParams tipParams = new LinearLayout.LayoutParams(-1, -2);
+                tipParams.topMargin = dp(14);
+                questCard.addView(tip, tipParams);
+
+                TextView tipText = label("推荐：" + recommend.title, 13, INK, false);
+                tipText.setSingleLine(true);
+                tipText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                tip.addView(tipText, new LinearLayout.LayoutParams(0, -2, 1));
+
+                TextView go = label("去做", 13, Color.WHITE, true);
+                go.setGravity(Gravity.CENTER);
+                go.setPadding(dp(14), dp(7), dp(14), dp(7));
+                go.setBackground(round(GREEN, 14));
+                go.setOnClickListener(v -> startActivity(new Intent(this, TaskActivity.class)));
+                tip.addView(go);
+            }
+        } else {
+            TextView opened = label("\u26A1 冲刺模式已开启，今天多做多得", 13, 0xffc1870f, true);
+            LinearLayout.LayoutParams openedParams = new LinearLayout.LayoutParams(-1, -2);
+            openedParams.topMargin = dp(14);
+            questCard.addView(opened, openedParams);
         }
 
-        LinearLayout.LayoutParams chestCardParams = full();
-        chestCardParams.topMargin = dp(12);
-        zone.addView(chestCard, chestCardParams);
+        LinearLayout.LayoutParams questParams = full();
+        questParams.topMargin = dp(12);
+        zone.addView(questCard, questParams);
+
+        // ---- 冲刺模式 ----
+        if (DailyQuest.sprintUnlocked(this)) {
+            LinearLayout sprintCard = columnCard();
+            sprintCard.setPadding(dp(16), dp(14), dp(16), dp(14));
+
+            LinearLayout sHead = row();
+            sHead.addView(label("\u26A1 冲刺模式", 16, INK, true),
+                    new LinearLayout.LayoutParams(0, -2, 1));
+            sHead.addView(label("今日 " + DailyQuest.todayActions(this) + " 次", 12, MUTED, false));
+            sprintCard.addView(sHead, new LinearLayout.LayoutParams(-1, -2));
+
+            int stage = DailyQuest.sprintStage(this);
+            LinearLayout steps = new LinearLayout(this);
+            steps.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams stepsParams = new LinearLayout.LayoutParams(-1, -2);
+            stepsParams.topMargin = dp(12);
+            sprintCard.addView(steps, stepsParams);
+
+            for (int i = 0; i < DailyQuest.SPRINT_STEPS.length; i++) {
+                boolean reached = stage > i;
+                boolean current = stage == i;
+
+                LinearLayout step = new LinearLayout(this);
+                step.setOrientation(LinearLayout.VERTICAL);
+                step.setGravity(Gravity.CENTER);
+                LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, -2, 1);
+                if (i > 0) sp.leftMargin = dp(5);
+                steps.addView(step, sp);
+
+                TextView dot = label(reached ? "\u2713" : String.valueOf(DailyQuest.SPRINT_STEPS[i]),
+                        12, reached ? Color.WHITE : (current ? GREEN : MUTED), true);
+                dot.setGravity(Gravity.CENTER);
+                dot.setPadding(dp(2), dp(9), dp(2), dp(9));
+                dot.setBackground(round(reached ? GREEN : UiPalette.PALE, 10));
+                step.addView(dot, new LinearLayout.LayoutParams(-1, -2));
+            }
+
+            int next = DailyQuest.nextSprintTarget(this);
+            TextView hint = label(next > 0
+                            ? "再完成 " + Math.max(0, next - DailyQuest.todayActions(this)) + " 次到下一阶段"
+                            : "今日冲刺全部达成，厉害！",
+                    12, MUTED, false);
+            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
+            hintParams.topMargin = dp(10);
+            sprintCard.addView(hint, hintParams);
+
+            LinearLayout.LayoutParams sprintParams = full();
+            sprintParams.topMargin = dp(12);
+            zone.addView(sprintCard, sprintParams);
+        }
 
         LinearLayout.LayoutParams zoneParams = full();
         zoneParams.topMargin = dp(16);
         body.addView(zone, zoneParams);
     }
 
-    /** 第一个已达成但还没领过的里程碑，没有则返回 -1。 */
-    private int firstClaimable(int streak) {
-        for (int ms : GameSettings.MILESTONES) {
-            if (streak >= ms && !GameProgress.isChestClaimed(this, "global", ms)) return ms;
+    /** 从今天还没做的任务里随机挑一个，给「去做」用。 */
+    private ReminderSettings.Rule pickRecommendation() {
+        long dayStart = GameProgress.dayStart(System.currentTimeMillis());
+        List<ReminderSettings.Rule> candidates = new ArrayList<>();
+        for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
+            if (!rule.isTaskModule() || !rule.enabled) continue;
+            if (!ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) {
+                candidates.add(rule);
+            }
         }
-        return -1;
+        if (candidates.isEmpty()) return null;
+        return candidates.get(new java.util.Random().nextInt(candidates.size()));
     }
 
     private void showChestRewardDialog(int milestone) {

@@ -636,6 +636,7 @@ final class ReminderSettings {
         // 游戏化：任意一项完成就记一笔「今天有坚持」
         if (GameSettings.isEnabled(context)) {
             GameProgress.markGlobalComplete(context, GameProgress.dayStart(System.currentTimeMillis()));
+            DailyQuest.afterAction(context);
         }
         return count >= target;
     }
