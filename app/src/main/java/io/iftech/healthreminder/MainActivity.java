@@ -630,6 +630,84 @@ public final class MainActivity extends Activity {
         body.addView(card, params);
     }
 
+    /** 今天这条规则该提醒几次（不分早晚，只看今天该不该响）。 */
+    private int countTodaySlots(ReminderSettings.Rule rule, long dayStart) {
+        if (!rule.enabled) return 0;
+        if (rule.isSubtaskModule()) return 0;
+        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
+        if (!appliesToday(rule, dayStart)) return 0;
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.specificTimeMode) {
+            int total = 0;
+            for (int pointSec : rule.timePointsSeconds) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(dayStart);
+                cal.add(Calendar.SECOND, pointSec);
+                if (cal.getTimeInMillis() < dayEnd) total++;
+            }
+            return total;
+        }
+        int startSec = rule.start * 60;
+        int endSec = rule.end * 60;
+        if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
+        long windowStart = dayStart + startSec * 1000L;
+        long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
+        if (windowEnd <= windowStart) return 0;
+        int interval = Math.max(1, rule.intervalSeconds);
+        return (int) ((windowEnd - windowStart) / (interval * 1000L)) + 1;
+    }
+
+    /** 单次 / 每周规则今天到底该不该响。 */
+    private boolean appliesToday(ReminderSettings.Rule rule, long dayStart) {
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.isOnceSchedule()) return rule.onceAt >= dayStart && rule.onceAt < dayEnd;
+        if (rule.isWeeklySchedule()) {
+            return rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK));
+        }
+        return true;
+    }
+
+    /** 今天还剩多少次提醒：取「还没到的时间点」和「还没完成的数量」中小的那个。 */
+    private int countRemainingReminders(ReminderSettings.Rule rule, long now, long dayStart) {
+        if (!rule.enabled) return 0;
+        // 子任务不单独排闹钟，白板不提醒，都不计入
+        if (rule.isSubtaskModule()) return 0;
+        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
+        // 单次 / 每周：不是今天就归零
+        if (rule.isOnceSchedule()) {
+            if (rule.onceAt < dayStart || rule.onceAt >= dayStart + 24 * 60 * 60 * 1000L) return 0;
+        } else if (rule.isWeeklySchedule()) {
+            if (!rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) return 0;
+        }
+        int upcoming = 0;
+        int total = countTodaySlots(rule, dayStart);
+        if (total <= 0) return 0;
+        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
+        if (rule.specificTimeMode) {
+            for (int pointSec : rule.timePointsSeconds) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(dayStart);
+                cal.add(Calendar.SECOND, pointSec);
+                long pointMillis = cal.getTimeInMillis();
+                if (pointMillis >= dayEnd) continue;
+                if (pointMillis > now) upcoming++;
+            }
+        } else {
+            int startSec = rule.start * 60;
+            int endSec = rule.end * 60;
+            if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
+            long windowStart = dayStart + startSec * 1000L;
+            long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
+            long effectiveStart = Math.max(now, windowStart);
+            if (windowEnd > effectiveStart) {
+                int interval = Math.max(1, rule.intervalSeconds);
+                upcoming = (int) ((windowEnd - effectiveStart) / (interval * 1000L)) + 1;
+            }
+        }
+        int undone = Math.max(0, total - ReminderSettings.completedToday(this, rule.id));
+        return Math.min(upcoming, undone);
+    }
+
     private void addPermissionBanner() {
         boolean notification = notificationPermissionReady();
         boolean exactAlarm = exactAlarmAllowed();
