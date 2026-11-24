@@ -1,7 +1,7 @@
 {
-    "versionCode": 150,
-    "versionName": "0.3.0-beta134",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta134/rest-bean.apk",
-    "sha256": "506fe5e04a9ec40302667732fd1e5a55eb4d3f74f5ab24464e235a83909c9d02",
-    "notes": "版本 0.3.0-beta134 更新。"
+    "versionCode": 151,
+    "versionName": "0.3.0-beta135",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta135/rest-bean.apk",
+    "sha256": "658e02dadb099e030a2742e30807314a51d2a5ccd83431c91d96a0a3d56d1a2c",
+    "notes": "首页大改：顶部新增游戏激励卡片——🔥连胜天数、🎁宝箱进度（可领取/还差几天）、今日完成进度条、按完成情况变化的鼓励文案；设置页可开关游戏机制"
 }
