@@ -16,6 +16,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -109,13 +110,11 @@ private fun Modifier.androidxClickable(
     interaction: MutableInteractionSource,
     enabled: Boolean,
     onClick: () -> Unit
-): Modifier = this.then(
-    androidx.compose.foundation.clickable(
-        interactionSource = interaction,
-        indication = null,
-        enabled = enabled,
-        onClick = onClick
-    )
+): Modifier = this.clickable(
+    interactionSource = interaction,
+    indication = null,
+    enabled = enabled,
+    onClick = onClick
 )
 
 /** 白卡：20dp 圆角 + 绿调软阴影，可选金色描边发光。 */
@@ -266,7 +265,11 @@ fun WavyEntrance(index: Int, content: @Composable () -> Unit) {
         shown = true
     }
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(320), label = "a")
-    val dy by animateDpAsState(if (shown) 0.dp else 12.dp, qSpring(), label = "d")
+    val dy by animateDpAsState(
+        if (shown) 0.dp else 12.dp,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "d"
+    )
     Box(Modifier.graphicsLayer { this.alpha = alpha }.offset(y = dy)) { content() }
 }
 
@@ -342,9 +345,11 @@ fun CapsuleButton(
         Box(
             Modifier
                 .clip(GamePill)
-                .background(
-                    if (done) GameColors.ChipGray
-                    else Brush.linearGradient(listOf(Color(0xFF6FCFA0), GameColors.Primary))
+                .then(
+                    if (done) Modifier.background(GameColors.ChipGray)
+                    else Modifier.background(
+                        Brush.linearGradient(listOf(Color(0xFF6FCFA0), GameColors.Primary))
+                    )
                 )
                 .padding(horizontal = 14.dp, vertical = 7.dp)
         ) {
