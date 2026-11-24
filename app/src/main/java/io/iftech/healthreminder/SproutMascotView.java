@@ -156,7 +156,7 @@ final class SproutMascotView extends View {
     private void drawFace(Canvas canvas, float cx, float cy, float size) {
         float eyeGap = size * 0.075f;
         float eyeR = size * 0.028f;
-        float faceInk = 0xff3d5a4c;
+        int faceInk = 0xff3d5a4c;
 
         if (mood == SLEEPY) {
             // 闭眼：两条下弯弧
