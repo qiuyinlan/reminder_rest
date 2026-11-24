@@ -646,3 +646,65 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNoise(color: Co
     }
 }
 
+
+/**
+ * 给旧 View 首页嵌入用的任务卡：自带数据读取与刷新，Java 侧直接 addView 即可。
+ */
+object DewQuestHost {
+    @JvmStatic
+    fun create(
+        activity: android.app.Activity,
+        onOpenTasks: Runnable,
+        onRefresh: Runnable
+    ): android.view.View {
+        val cv = androidx.compose.ui.platform.ComposeView(activity)
+        cv.viewCompositionStrategy =
+            androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        cv.setContent {
+            DewTheme {
+                SelfContainedQuest(
+                    context = activity,
+                    onJump = { onOpenTasks.run() },
+                    onRefresh = { onRefresh.run() }
+                )
+            }
+        }
+        return cv
+    }
+}
+
+@Composable
+private fun SelfContainedQuest(
+    context: Context,
+    onJump: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    var tick by remember { mutableIntStateOf(0) }
+    DailyQuest.ensureDay(context)
+
+    val quests = remember(tick) { DailyQuest.quests() }
+    val questDone = remember(tick) { DailyQuest.doneQuestCount(context) }
+    val habitDone = remember(tick) { DailyQuest.habitCount(context) }
+    val taskDone = remember(tick) { DailyQuest.taskCount(context) }
+    val streak = remember(tick) { GameProgress.getGlobalStreak(context) }
+    val level = remember(tick) { DailyQuest.level(context) }
+    val bonusReady = remember(tick) { DailyQuest.bonusAvailable(context) }
+
+    QuestCard(
+        context = context,
+        quests = quests,
+        questDone = questDone,
+        habitDone = habitDone,
+        taskDone = taskDone,
+        totalDone = habitDone + taskDone,
+        totalTarget = quests.sumOf { it.target },
+        streak = streak,
+        level = level,
+        bonusReady = bonusReady,
+        onRefresh = {
+            tick++
+            onRefresh()
+        },
+        onOpenTasks = onJump
+    )
+}

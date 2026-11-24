@@ -464,6 +464,19 @@ public final class SettingsActivity extends Activity {
         });
         soundCard.addView(soundSwitch);
 
+        // 提醒权限检查（从首页搬来）
+        LinearLayout permCard = new LinearLayout(this);
+        permCard.setOrientation(LinearLayout.VERTICAL);
+        permCard.setPadding(dp(15), dp(4), dp(15), dp(4));
+        permCard.setBackground(round(Color.WHITE, 17));
+        permCard.setElevation(dp(1));
+        LinearLayout.LayoutParams permParams = new LinearLayout.LayoutParams(-1, -2);
+        permParams.topMargin = dp(9);
+        page.addView(permCard, permParams);
+        permCard.addView(settingRow("提醒权限检查",
+                "通知、精确闹钟、全屏、悬浮窗、电池逐项检查",
+                () -> startActivity(new Intent(this, PermissionCheckActivity.class))));
+
         // 使用与权限（从首页搬来）
         addUsageSection();
     }

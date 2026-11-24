@@ -152,15 +152,19 @@ public final class MainActivity extends Activity {
         top.addView(settingsButton);
         body.addView(top);
 
-        // 游戏化激励卡片（如果启用）
+        // 游戏化激励卡片：与预览页同一套 Compose 布局
         if (GameSettings.isEnabled(this)) {
-            addGamificationCard();
+            android.view.View questView = DewQuestHost.create(this,
+                    () -> startActivity(new Intent(this, TaskActivity.class)),
+                    this::render);
+            LinearLayout.LayoutParams questParams = full();
+            questParams.topMargin = dp(10);
+            body.addView(questView, questParams);
         }
 
         // 现在页记下的想法、每日复盘规则都不属于普通提醒事项
         List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
         addDailyBodyNote();
-        addPermissionBanner();
 
         LinearLayout sectionHead = row();
         sectionHead.setPadding(0, dp(22), 0, dp(10));
