@@ -1,7 +1,7 @@
 {
-    "versionCode": 163,
-    "versionName": "0.3.0-beta147",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta147/rest-bean.apk",
-    "sha256": "f6f21bb729849807dcc362bb5650c0edd5bd4f6c9c9b31d71b86051434c8a079",
-    "notes": "修复首页闪退（ComposeView 宿主改为 ComponentActivity）；动效对齐 Q 弹规范：按压缩至 0.92、星星 5 颗、宝箱点亮用金色 #FFC96B"
+    "versionCode": 164,
+    "versionName": "0.3.0-beta148",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta148/rest-bean.apk",
+    "sha256": "00dbc1bcb2affe4eac82b427b8c0397849a7b044a8b1dfcdf60f5571ab60b595",
+    "notes": "动效按 Q 弹规范落地：环形进度低阻尼弹簧（充气感）、卡片 60ms 波浪入场、宝箱解锁左右颤抖、按压 0.92、星星 5 颗、金色点缀"
 }
