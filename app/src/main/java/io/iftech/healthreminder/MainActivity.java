@@ -271,11 +271,25 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
             expand.addView(waterRow, new LinearLayout.LayoutParams(-1, -2));
         }
 
-        toggle.setOnClickListener(v -> {
+        View.OnClickListener flip = v -> {
+            // 先收键盘并清焦点，否则第一次点击会被输入法吃掉
+            View focused = getCurrentFocus();
+            if (focused != null) {
+                focused.clearFocus();
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager)
+                                getSystemService(INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                }
+            }
             boolean show = expand.getVisibility() != View.VISIBLE;
             expand.setVisibility(show ? View.VISIBLE : View.GONE);
             toggle.setText(show ? "\u6536\u8d77 \u2304" : "\u8bb0\u4e00\u53e5 \u203a");
-        });
+            if (show) note.requestFocus();
+        };
+        toggle.setOnClickListener(flip);
+        head.setOnClickListener(flip);
 
         LinearLayout.LayoutParams params = full();
         params.topMargin = dp(10);
