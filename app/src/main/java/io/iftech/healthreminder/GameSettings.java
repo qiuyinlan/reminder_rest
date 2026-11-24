@@ -45,6 +45,26 @@ final class GameSettings {
         }
         return currentStreak + 7; // 超过最大里程碑后，每 7 天一个
     }
+
+    /** 等级称号：按连续天数成长，给用户「在长大」的感觉。 */
+    static String levelTitle(int streak) {
+        if (streak >= 66) return "王者森林";
+        if (streak >= 21) return "大树";
+        if (streak >= 14) return "小树";
+        if (streak >= 7) return "青苗";
+        if (streak >= 3) return "嫩芽";
+        return "种子";
+    }
+
+    /** 等级序号 0-5，用于未来做进度条。 */
+    static int levelIndex(int streak) {
+        if (streak >= 66) return 5;
+        if (streak >= 21) return 4;
+        if (streak >= 14) return 3;
+        if (streak >= 7) return 2;
+        if (streak >= 3) return 1;
+        return 0;
+    }
     
     /** 当前里程碑对应的宝箱图标索引 */
     static int chestIndex(int milestone) {

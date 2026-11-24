@@ -26,6 +26,8 @@ final class GameProgress {
     private static final String KEY_COMPLETIONS = "completions_";
     private static final String KEY_MAKEUPS = "makeups_";
     private static final String KEY_CHEST_CLAIMED = "chest_claimed_";
+    /** 全局完成日集合：只要有任意一项完成，就算这天「有坚持」。 */
+    private static final String KEY_GLOBAL_DAYS = "global_days";
     
     /** 最大补签天数（超过这个天数就不让补了） */
     static final int MAX_MAKEUP_DAYS = 3;
@@ -170,6 +172,52 @@ final class GameProgress {
         }
     }
     
+    // ==================== 全局连续天数 ====================
+
+    /** 标记今天有完成（任何一项完成都调用）。 */
+    static void markGlobalComplete(Context context, long dayStart) {
+        try {
+            SharedPreferences prefs = prefs(context);
+            String json = prefs.getString(KEY_GLOBAL_DAYS, "{}");
+            JSONObject obj = new JSONObject(json);
+            obj.put(String.valueOf(dayStart), System.currentTimeMillis());
+            prefs.edit().putString(KEY_GLOBAL_DAYS, obj.toString()).apply();
+        } catch (JSONException ignored) { }
+    }
+
+    private static boolean hasGlobalDay(Context context, long dayStart) {
+        try {
+            SharedPreferences prefs = prefs(context);
+            JSONObject obj = new JSONObject(prefs.getString(KEY_GLOBAL_DAYS, "{}"));
+            return obj.has(String.valueOf(dayStart));
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 全局连续天数。今天没完成不算断——从昨天往前数，
+     * 保留「今天还有机会补上」的余地（弱化失败感）。
+     */
+    static int getGlobalStreak(Context context) {
+        long today = dayStart(System.currentTimeMillis());
+        long cursor = hasGlobalDay(context, today) ? today : prevDay(today);
+        int streak = 0;
+        int guard = 0;
+        while (guard++ < 4000 && hasGlobalDay(context, cursor)) {
+            streak++;
+            cursor = prevDay(cursor);
+        }
+        return streak;
+    }
+
+    private static long prevDay(long dayStart) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(dayStart);
+        cal.add(Calendar.DAY_OF_YEAR, -1);
+        return dayStart(cal.getTimeInMillis());
+    }
+
     // ==================== 宝箱管理 ====================
     
     /** 检查是否可以领取宝箱（达到里程碑且未领取） */

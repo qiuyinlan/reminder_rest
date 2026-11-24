@@ -163,6 +163,7 @@ final class Habits {
                 if (GameSettings.isEnabled(context)) {
                     String habitKey = GameProgress.makeHabitKey("habit", habitId);
                     GameProgress.markComplete(context, habitKey, dayStart);
+                    GameProgress.markGlobalComplete(context, dayStart);
                 }
             } else {
                 obj.remove(dayKey);

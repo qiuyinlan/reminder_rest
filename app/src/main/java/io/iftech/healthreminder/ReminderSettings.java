@@ -633,6 +633,10 @@ final class ReminderSettings {
         String key = "done_" + new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date()) + "_" + ruleId;
         int count = prefs(context).getInt(key, 0) + 1;
         prefs(context).edit().putInt(key, count).apply();
+        // 游戏化：任意一项完成就记一笔「今天有坚持」
+        if (GameSettings.isEnabled(context)) {
+            GameProgress.markGlobalComplete(context, GameProgress.dayStart(System.currentTimeMillis()));
+        }
         return count >= target;
     }
 }
