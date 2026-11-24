@@ -16,7 +16,7 @@ import java.util.Random;
  * 叠在英雄卡上层，用 burst() 触发一次。
  */
 final class CelebrationView extends View {
-    private static final int COUNT = 6;
+    private static final int COUNT = 5;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final List<float[]> parts = new ArrayList<>(); // {angle, speed, size}

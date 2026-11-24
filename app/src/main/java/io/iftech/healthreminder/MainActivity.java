@@ -47,7 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends androidx.activity.ComponentActivity {
     private int GREEN = UiPalette.ACCENT;
     private int INK = UiPalette.INK;
     private int MUTED = UiPalette.MUTED;

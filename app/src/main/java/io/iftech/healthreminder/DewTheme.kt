@@ -34,6 +34,9 @@ object Dew {
     val WarnSoft = Color(0xFFFBF3E8)
     val WarnInk = Color(0xFF9A7B52)
 
+    // 宝箱/奖励唯一金色点缀
+    val AccentGold = Color(0xFFFFC96B)
+
     // 粉彩辅助色：只允许极小面积点缀（单屏合计 <= 10%）
     val PastelCream = Color(0xFFFBF3E3)
     val PastelBlush = Color(0xFFF7EAEA)

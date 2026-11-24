@@ -406,7 +406,7 @@ private fun ChestIcon(filled: Boolean) {
     Canvas(Modifier.size(22.dp)) {
         val w = size.width
         val h = size.height
-        val body = if (filled) Dew.Accent else Dew.InkFaint
+        val body = if (filled) Dew.AccentGold else Dew.InkFaint
         // 箱体
         drawRoundRect(
             color = body.copy(alpha = 0.85f),
@@ -537,7 +537,7 @@ private fun Pressable(onClick: () -> Unit, content: @Composable () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.98f else 1f,
+        targetValue = if (pressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 240f),
         label = "press"
     )
