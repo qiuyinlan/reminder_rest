@@ -80,25 +80,32 @@ final class GameHeroView extends View {
         stroke.setColor(0xffddede3);
         canvas.drawCircle(cx, cy, ringR, stroke);
 
-        // 进度弧：实心主绿
+        // 进度弧：先画一层淡绿光晕，再画实心主绿（闪亮感）
         float progress = total > 0 ? Math.min(1f, completed / (float) total) : 0f;
         if (progress > 0f) {
-            stroke.setColor(0xff4caf7d);
             arc.set(cx - ringR, cy - ringR, cx + ringR, cy + ringR);
+            stroke.setColor(0x334caf7d);
+            stroke.setStrokeWidth(ringStroke + dp(4));
+            canvas.drawArc(arc, -90f, 360f * progress, false, stroke);
+            stroke.setColor(0xff4caf7d);
+            stroke.setStrokeWidth(ringStroke);
             canvas.drawArc(arc, -90f, 360f * progress, false, stroke);
         }
 
-        // 环心：大号 x/y
+        // 环心：字体度量居中
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         text.setColor(UiPalette.INK);
         text.setTextSize(dp(21));
-        canvas.drawText(total > 0 ? (completed + "/" + total) : "0", cx, cy + dp(4f), text);
+        String main = total > 0 ? (completed + "/" + total) : "0";
+        Paint.FontMetrics fm = text.getFontMetrics();
+        float mainBase = cy - (fm.ascent + fm.descent) / 2f + dp(7f);
+        canvas.drawText(main, cx, mainBase, text);
 
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
         text.setTextSize(dp(10));
-        canvas.drawText("今日", cx, cy - dp(13f), text);
+        canvas.drawText("今日", cx, mainBase - dp(21f), text);
 
         // 右侧：连胜数字（重音）
         float x = cx + ringR + dp(16);
@@ -108,18 +115,21 @@ final class GameHeroView extends View {
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
         text.setTextSize(dp(11));
-        canvas.drawText("连续坚持", x, cy - dp(12f), text);
+        Paint.FontMetrics fm1 = text.getFontMetrics();
+        canvas.drawText("连续坚持", x, cy - dp(10f), text);
 
         text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         text.setColor(0xff4caf7d);
         text.setTextSize(dp(26));
         String num = String.valueOf(streak);
-        canvas.drawText(num, x, cy + dp(14f), text);
+        Paint.FontMetrics fm2 = text.getFontMetrics();
+        float numBase = cy + dp(10f) - (fm2.ascent + fm2.descent) / 2f;
+        canvas.drawText(num, x, numBase, text);
         float numW = text.measureText(num);
 
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
         text.setTextSize(dp(12));
-        canvas.drawText("天", x + numW + dp(3), cy + dp(13f), text);
+        canvas.drawText("天", x + numW + dp(4), numBase - dp(1f), text);
     }
 }

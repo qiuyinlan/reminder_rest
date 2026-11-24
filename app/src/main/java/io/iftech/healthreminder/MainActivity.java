@@ -159,7 +159,6 @@ public final class MainActivity extends Activity {
 
         // 现在页记下的想法、每日复盘规则都不属于普通提醒事项
         List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
-        addTodayStatusCard(rules);
         addDailyBodyNote();
         addPermissionBanner();
 
@@ -187,6 +186,9 @@ public final class MainActivity extends Activity {
         }
         if (!addedBuiltIn) addEmptyMessage(schedule, "还没有提醒事项，请到事项页添加。");
         body.addView(schedule, full());
+
+        // 提醒运行状态放最下面，不抢首页视觉
+        addTodayStatusCard(rules);
 
         LinearLayout nav = BottomNavigationBar.create(this, BottomNavigationBar.HOME, null,
                 () -> { startActivity(new Intent(this, TaskActivity.class)); overridePendingTransition(0, 0); },
@@ -335,7 +337,7 @@ public final class MainActivity extends Activity {
         if (prevCompleted >= 0 && completed > prevCompleted) {
             heroWrap.post(() -> {
                 mascot.bounce();
-                heroFx.burst(GREEN);
+                heroFx.burst(0xff6fe3a8);
                 SoundKit.tick(this);
             });
         }
@@ -371,9 +373,9 @@ public final class MainActivity extends Activity {
             topLine.setGravity(Gravity.CENTER_VERTICAL);
             rowBody.addView(topLine, new LinearLayout.LayoutParams(-1, -2));
 
-            // 果冻豆打卡点
-            TextView bean = jellyBean(done);
-            topLine.addView(bean, new LinearLayout.LayoutParams(dp(22), dp(22)));
+            // 跳转按钮（点了去任务页完成，不是就地勾选）
+            final TextView bean = jumpButton(done);
+            topLine.addView(bean, new LinearLayout.LayoutParams(dp(24), dp(24)));
 
             final TextView questTitle = label(quest.title, 14, done ? UiPalette.MUTED : INK, done);
             questTitle.setPadding(dp(10), 0, 0, 0);
@@ -387,12 +389,12 @@ public final class MainActivity extends Activity {
                     12, done ? Color.WHITE : UiPalette.MUTED, true);
             if (done) {
                 state.setPadding(dp(9), dp(3), dp(9), dp(3));
-                state.setBackground(round(GREEN, 10));
+                state.setBackground(greenPill(10));
             }
             topLine.addView(state);
 
-            // 多格任务：行底细分段进度条
-            if (quest.target > 1) {
+            // 行底细分段进度条（最少一格，完成就亮）
+            if (quest.target >= 1) {
                 SegmentBarView bar = new SegmentBarView(this);
                 bar.setSegments(quest.target, progress, 0xff4caf7d, 0xffddede3);
                 LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(4));
@@ -405,22 +407,13 @@ public final class MainActivity extends Activity {
             final CelebrationView rowFx = new CelebrationView(this);
             rowWrap.addView(rowFx, new android.widget.FrameLayout.LayoutParams(-1, dp(56)));
 
-            // 点圆圈：填充 + 打勾 + 星星 + 跳去做
-            final int questIndex = index;
+            // 点按钮：弹一下 → 去任务页
             bean.setOnClickListener(v -> {
-                if (done) {
-                    startActivity(new Intent(this, TaskActivity.class));
-                    return;
-                }
-                applyBean(bean, true);
-                AnimKit.pop(bean, 1.35f);
-                rowFx.burst(GREEN);
+                AnimKit.pop(bean, 1.3f);
+                rowFx.burst(0xff6fe3a8);
                 SoundKit.tick(this);
-                questTitle.setTextColor(UiPalette.MUTED);
-                questTitle.setPaintFlags(questTitle.getPaintFlags()
-                        | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
-                questTitle.postDelayed(
-                        () -> startActivity(new Intent(this, TaskActivity.class)), 380);
+                bean.postDelayed(
+                        () -> startActivity(new Intent(this, TaskActivity.class)), 260);
             });
             index++;
         }
@@ -463,7 +456,8 @@ public final class MainActivity extends Activity {
             TextView claim = label("领取完成奖励  +40 经验", 14, Color.WHITE, true);
             claim.setGravity(Gravity.CENTER);
             claim.setPadding(dp(12), dp(12), dp(12), dp(12));
-            claim.setBackground(round(GREEN, 16));
+            claim.setBackground(greenPill(16));
+            claim.setElevation(dp(3));
             claim.setOnClickListener(v -> {
                 DailyQuest.claimAllBonus(this);
                 List<DailyQuest.Reward> gained = DailyQuest.advanceSprint(this);
@@ -505,7 +499,7 @@ public final class MainActivity extends Activity {
                 TextView go = label("去做", 12, Color.WHITE, true);
                 go.setGravity(Gravity.CENTER);
                 go.setPadding(dp(13), dp(6), dp(13), dp(6));
-                go.setBackground(round(GREEN, 12));
+                go.setBackground(greenPill(12));
                 go.setOnClickListener(v -> startActivity(new Intent(this, TaskActivity.class)));
                 AnimKit.press(go);
                 tip.addView(go);
@@ -540,22 +534,34 @@ public final class MainActivity extends Activity {
         gameZoneAnimated = true;
     }
 
-    /** 果冻豆打卡点：空心圆 / 实心绿打勾。 */
-    private TextView jellyBean(boolean done) {
-        TextView bean = label("", 11, Color.WHITE, true);
-        bean.setGravity(Gravity.CENTER);
-        applyBean(bean, done);
-        return bean;
+    /** 任务行左侧的跳转按钮：浅绿圆底箭头，完成后变亮绿打勾。 */
+    private TextView jumpButton(boolean done) {
+        TextView btn = label(done ? "\u2713" : "\u203A", done ? 13 : 18,
+                done ? Color.WHITE : 0xff2f8f63, true);
+        btn.setGravity(Gravity.CENTER);
+        if (done) {
+            GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    new int[]{0xff6fe3a8, 0xff3cae78});
+            bg.setShape(GradientDrawable.OVAL);
+            btn.setBackground(bg);
+        } else {
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.OVAL);
+            bg.setColor(0xffe4f6ec);
+            bg.setStroke(dp(1), 0xffc6ead6);
+            btn.setBackground(bg);
+        }
+        btn.setElevation(dp(2));
+        btn.setContentDescription("去完成任务");
+        return btn;
     }
 
-    private void applyBean(TextView bean, boolean done) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setShape(GradientDrawable.OVAL);
-        shape.setColor(done ? 0xff4caf7d : Color.TRANSPARENT);
-        if (!done) shape.setStroke(dp(2), UiPalette.DISABLED);
-        bean.setText(done ? "\u2713" : "");
-        bean.setBackground(shape);
-        bean.setContentDescription(done ? "已完成" : "去完成");
+    /** 亮绿渐变胶囊（完成标签、领取按钮共用）。 */
+    private GradientDrawable greenPill(int radius) {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xff6fe3a8, 0xff3cae78});
+        g.setCornerRadius(dp(radius));
+        return g;
     }
 
     /** 从今天还没做的任务里随机挑一个，给「去做」用。 */
@@ -719,11 +725,11 @@ public final class MainActivity extends Activity {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setPadding(dp(10), 0, dp(8), 0);
-        copy.addView(label(remindersOn ? "提醒运行中" : "提醒已暂停", 13, MUTED, false));
+        copy.addView(label(remindersOn ? "提醒运行中" : "提醒已暂停", 13, INK, true));
 
         if (remindersOn && target > 0) {
             TextView sub = label("今日 " + completed + "/" + target + " 次 · 待完成 "
-                    + remainingReminders + " 次", 11, UiPalette.DISABLED, false);
+                    + remainingReminders + " 次", 11, 0xff6b8a79, false);
             sub.setPadding(0, dp(3), 0, 0);
             copy.addView(sub);
         }
