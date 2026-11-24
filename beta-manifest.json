@@ -1,7 +1,7 @@
 {
-    "versionCode": 160,
-    "versionName": "0.3.0-beta144",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta144/rest-bean.apk",
-    "sha256": "9e517d60d36761d54dc483048e772bbb91b0c00213226712a0e23cc4a2808547",
-    "notes": "旧版首页排布收紧，向新版看齐：标题 26sp、卡片内边距与行间距压缩、豆芽与状态条缩小、按钮更小；提醒运行卡与身体记录保持原样"
+    "versionCode": 161,
+    "versionName": "0.3.0-beta145",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta145/rest-bean.apk",
+    "sha256": "4cc0d3a813577d32640164a1fc8972dd36a7b11d5678e4f36921c3bfd47c5f44",
+    "notes": "视觉层级优化：区块标题降级为小标签（12sp 淡色+字距）、任务名升为主体（15sp）、环内数字与连胜数字放大、未完成计数改强调色；Compose 预览版同步"
 }
