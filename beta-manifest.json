@@ -1,7 +1,7 @@
 {
-    "versionCode": 152,
-    "versionName": "0.3.0-beta136",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta136/rest-bean.apk",
-    "sha256": "72516c65bf8c296a1398cba0a45b0923112590a8ecdbf1d7774fb6ab861b3df3",
-    "notes": "首页游戏区重做：渐变英雄卡（环形今日进度+连胜火焰+等级称号，带呼吸动画）、宝箱关卡轨道（7/21/66 三个节点点亮推进）、可领取宝箱一键领；新增全局连续天数与种子→嫩芽→青苗→小树→大树→王者森林等级"
+    "versionCode": 153,
+    "versionName": "0.3.0-beta137",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta137/rest-bean.apk",
+    "sha256": "d3626600d3b7101afda7dfa93f10e78cdc5baa3de6193332a994029e7183363f",
+    "notes": "首页激励面板重做：每日 3 个任务（跨天归零）+ 全完成奖励 + 冲刺模式 5 阶段（4/7/10/14/19 次）+ 经验等级；全局 Q 弹动效（弹簧曲线、卡片波浪入场、按钮按压回弹、打卡圆点爆开、宝箱蹦入开盖飘彩带）"
 }
