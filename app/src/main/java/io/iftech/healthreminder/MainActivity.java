@@ -60,6 +60,8 @@ public final class MainActivity extends Activity {
     private boolean reopenPermissionGuide;
     private TextView completedMetric;
     private ProgressBar todayProgress;
+    /** 首页游戏区只播一次波浪入场，回页面不重复闹。 */
+    private boolean gameZoneAnimated;
     private static final String ONBOARDING_PREFS = "welcome_letter";
     private static final String KEY_WELCOME_SEEN = "seen_v1";
 
@@ -327,6 +329,7 @@ public final class MainActivity extends Activity {
         CelebrationView fx = new CelebrationView(this);
         heroWrap.addView(fx, new android.widget.FrameLayout.LayoutParams(-1, dp(132)));
         zone.addView(heroWrap, new LinearLayout.LayoutParams(-1, dp(132)));
+        if (!gameZoneAnimated) AnimKit.waveIn(heroWrap, 0);
 
         // 今日完成数变多 → 放一次粒子
         final String dayKey = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
@@ -390,10 +393,20 @@ public final class MainActivity extends Activity {
             claim.setBackground(round(GREEN, 14));
             claim.setOnClickListener(v -> {
                 DailyQuest.claimAllBonus(this);
-                DailyQuest.advanceSprint(this);
-                Toast.makeText(this, "已领取，冲刺模式开启！", Toast.LENGTH_SHORT).show();
+                List<DailyQuest.Reward> gained = DailyQuest.advanceSprint(this);
+                String chestText = null;
+                for (DailyQuest.Reward reward : gained) {
+                    if (reward.text.contains("宝箱")) { chestText = reward.text; break; }
+                }
                 render();
+                if (chestText != null) {
+                    String name = chestText.contains("金") ? "金" : (chestText.contains("银") ? "银" : "铜");
+                    ChestDialog.show(MainActivity.this, name, chestText);
+                } else {
+                    Toast.makeText(MainActivity.this, "已领取，冲刺模式开启！", Toast.LENGTH_SHORT).show();
+                }
             });
+            AnimKit.press(claim);
             LinearLayout.LayoutParams claimParams = new LinearLayout.LayoutParams(-1, -2);
             claimParams.topMargin = dp(14);
             questCard.addView(claim, claimParams);
@@ -418,6 +431,7 @@ public final class MainActivity extends Activity {
                 go.setPadding(dp(14), dp(7), dp(14), dp(7));
                 go.setBackground(round(GREEN, 14));
                 go.setOnClickListener(v -> startActivity(new Intent(this, TaskActivity.class)));
+                AnimKit.press(go);
                 tip.addView(go);
             }
         } else {
@@ -430,6 +444,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams questParams = full();
         questParams.topMargin = dp(12);
         zone.addView(questCard, questParams);
+        if (!gameZoneAnimated) AnimKit.waveIn(questCard, 1);
 
         // ---- 冲刺模式 ----
         if (DailyQuest.sprintUnlocked(this)) {
@@ -480,11 +495,13 @@ public final class MainActivity extends Activity {
             LinearLayout.LayoutParams sprintParams = full();
             sprintParams.topMargin = dp(12);
             zone.addView(sprintCard, sprintParams);
+            if (!gameZoneAnimated) AnimKit.waveIn(sprintCard, 2);
         }
 
         LinearLayout.LayoutParams zoneParams = full();
         zoneParams.topMargin = dp(16);
         body.addView(zone, zoneParams);
+        gameZoneAnimated = true;
     }
 
     /** 从今天还没做的任务里随机挑一个，给「去做」用。 */

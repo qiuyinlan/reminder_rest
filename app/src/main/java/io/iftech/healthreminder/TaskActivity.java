@@ -700,8 +700,11 @@ public final class TaskActivity extends Activity {
         LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         row.addView(cb, cbParams);
         cb.setOnClickListener(v -> {
-            Habits.toggleCompletion(this, habit.id, dayStart, !done);
-            reload();
+            boolean willDone = !done;
+            if (willDone) AnimKit.pop(cb, 1.35f);
+            Habits.toggleCompletion(this, habit.id, dayStart, willDone);
+            if (willDone) cb.postDelayed(this::reload, 240);
+            else reload();
         });
 
         // 标题

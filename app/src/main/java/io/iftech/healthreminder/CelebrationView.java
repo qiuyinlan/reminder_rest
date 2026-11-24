@@ -16,7 +16,7 @@ import java.util.Random;
  * 叠在英雄卡上层，用 burst() 触发一次。
  */
 final class CelebrationView extends View {
-    private static final int COUNT = 26;
+    private static final int COUNT = 6;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final List<float[]> parts = new ArrayList<>(); // {angle, speed, size}
@@ -37,14 +37,15 @@ final class CelebrationView extends View {
         this.color = color;
         parts.clear();
         for (int i = 0; i < COUNT; i++) {
-            float angle = (float) (Math.PI * 2 * i / COUNT + random.nextDouble() * 0.3);
-            float speed = 0.45f + random.nextFloat() * 0.55f;
-            float size = 2.5f + random.nextFloat() * 3.5f;
+            float angle = (float) (Math.PI * 2 * i / COUNT - Math.PI / 2
+                    + (random.nextDouble() - 0.5) * 0.4);
+            float speed = 0.85f + random.nextFloat() * 0.3f;
+            float size = 1.8f + random.nextFloat() * 1.4f;
             parts.add(new float[]{angle, speed, size});
         }
         if (animator != null) animator.cancel();
         animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(900);
+        animator.setDuration(500);
         animator.setInterpolator(new DecelerateInterpolator());
         animator.addUpdateListener(a -> {
             progress = (float) a.getAnimatedValue();
@@ -67,7 +68,7 @@ final class CelebrationView extends View {
 
         float cx = w * 0.28f; // 环形进度圆心附近
         float cy = h / 2f;
-        float maxR = Math.min(w, h) * 0.55f;
+        float travelDistance = 20f * getResources().getDisplayMetrics().density;
         float density = getResources().getDisplayMetrics().density;
 
         float t = progress;
@@ -75,10 +76,10 @@ final class CelebrationView extends View {
         paint.setColor(color);
         paint.setAlpha(Math.max(0, alpha));
 
-        float travel = maxR * (float) Math.sqrt(t);
+        float travel = travelDistance * (float) Math.sqrt(t);
         for (float[] p : parts) {
             float x = cx + (float) Math.cos(p[0]) * travel * p[1];
-            float y = cy + (float) Math.sin(p[0]) * travel * p[1] + t * t * 26f * density / 2f;
+            float y = cy + (float) Math.sin(p[0]) * travel * p[1] + t * t * 10f * density;
             float radius = p[2] * density * (1f - t * 0.5f);
             canvas.drawCircle(x, y, radius, paint);
         }
