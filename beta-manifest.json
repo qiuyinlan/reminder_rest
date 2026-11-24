@@ -1,7 +1,7 @@
 {
-    "versionCode": 169,
-    "versionName": "0.3.0-beta153",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta153/rest-bean.apk",
-    "sha256": "98e97c2c19a0f3f284316e2de6bc0c0157788843b94ea0ef0f156f7cfbc805af",
-    "notes": "宝箱改用自绘图形（箱体+箱盖+锁扣+高光），金色解锁带光晕，不再依赖 emoji 渲染"
+    "versionCode": 170,
+    "versionName": "0.3.0-beta154",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta154/rest-bean.apk",
+    "sha256": "6d513f6c1980157b1ebd2bc41b548328521e6dfe5db274f945ed3b61f8f93324",
+    "notes": "统一各页面字体层级与首页一致：页面标题统一 26sp + 字距、分区标题降级为 12sp 淡色小标签（事项/作息/设置各区块）、陪伴与统计标题对齐"
 }
