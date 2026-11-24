@@ -51,6 +51,18 @@ fun GameHomeScreen(
     onOpenSettings: () -> Unit
 ) {
     var tick by remember { mutableIntStateOf(0) }
+
+    // 从任务页/事项页返回时刷新数据
+    val hostActivity = androidx.compose.ui.platform.LocalContext.current as? androidx.activity.ComponentActivity
+    androidx.compose.runtime.DisposableEffect(hostActivity) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++
+        }
+        hostActivity?.lifecycle?.addObserver(observer)
+        androidx.compose.runtime.onDispose {
+            hostActivity?.lifecycle?.removeObserver(observer)
+        }
+    }
     var burstKey by remember { mutableIntStateOf(0) }
     var confettiKey by remember { mutableIntStateOf(0) }
     var banner by remember { mutableStateOf<String?>(null) }
@@ -196,6 +208,18 @@ fun GameHomeScreen(
 
                 WavyEntrance(4) {
                     RewardRoad(todayActions, totalTarget, confettiKey)
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                WavyEntrance(5) {
+                    BodyNoteCard(context) { tick++ }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                WavyEntrance(6) {
+                    ReminderSwitchCard(context) { tick++ }
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -658,6 +682,135 @@ private fun BottomBar(
                     )
                 }
             }
+        }
+    }
+}
+
+/** 身体记录：折叠在卡片里，点开弹输入框；水滴直接记喝水。 */
+@Composable
+private fun BodyNoteCard(context: Context, onChange: () -> Unit) {
+    var editing by remember { mutableStateOf(false) }
+    val today = remember { java.util.Calendar.getInstance() }
+    val saved = remember(editing) { DailyBodyNote.read(context, today) }
+    val water = remember { if (WaterLog.enabled(context)) WaterLog.todayTotal(context) else 0 }
+
+    GameCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "今天身体怎么样",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = GameColors.Ink
+                )
+                if (saved.isNotBlank()) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        saved,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GameColors.InkSoft,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            if (WaterLog.enabled(context)) {
+                BouncyBox(
+                    onClick = {
+                        val activity = context as? android.app.Activity
+                        if (activity != null) {
+                            WaterDialogs.showAmount(activity) { onChange() }
+                        }
+                    }
+                ) {
+                    Box(
+                        Modifier
+                            .clip(GamePill)
+                            .background(GameColors.Primary.copy(alpha = 0.12f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            if (water > 0) "\uD83D\uDCA7 ${water}ml" else "\uD83D\uDCA7",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GameColors.Ink
+                        )
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+            }
+
+            CapsuleButton(text = "记一句", onClick = { editing = true })
+        }
+    }
+
+    if (editing) {
+        var text by remember { mutableStateOf(saved) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { editing = false },
+            title = {
+                Text("今天身体怎么样", style = MaterialTheme.typography.titleMedium, color = GameColors.Ink)
+            },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    minLines = 3,
+                    placeholder = {
+                        Text("睡得好不好、精神、酸痛…随便写一句", style = MaterialTheme.typography.bodySmall)
+                    }
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    DailyBodyNote.save(context, today, text)
+                    editing = false
+                    onChange()
+                }) { Text("保存", color = GameColors.Primary) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { editing = false }) {
+                    Text("取消", color = GameColors.InkSoft)
+                }
+            }
+        )
+    }
+}
+
+/** 提醒运行开关：放在页面最下方，轻量。 */
+@Composable
+private fun ReminderSwitchCard(context: Context, onChange: () -> Unit) {
+    var on by remember { mutableStateOf(ReminderSettings.enabled(context)) }
+    GameCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(if (on) GameColors.Primary else GameColors.Track)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("提醒运行中", style = MaterialTheme.typography.bodySmall, color = GameColors.Ink)
+                Text(
+                    if (on) "到点会提醒你休息" else "已暂停，不会打扰",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GameColors.InkSoft
+                )
+            }
+            androidx.compose.material3.Switch(
+                checked = on,
+                onCheckedChange = {
+                    on = it
+                    ReminderSettings.setEnabled(context, it)
+                    onChange()
+                },
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = GameColors.Primary,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = GameColors.Track,
+                    uncheckedBorderColor = Color.Transparent
+                )
+            )
         }
     }
 }

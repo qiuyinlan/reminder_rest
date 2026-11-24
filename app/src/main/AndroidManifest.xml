@@ -108,7 +108,6 @@
         <activity android:name=".WallpaperSettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".PermissionCheckActivity" android:exported="false" android:screenOrientation="portrait" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-        <activity android:name=".ComposeHomeActivity" android:exported="false" android:screenOrientation="portrait" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity android:name=".BodyExportActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".BodyImportActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".ReminderDiagnosticsActivity" android:exported="false" android:screenOrientation="portrait" />
@@ -121,8 +120,14 @@
             android:screenOrientation="portrait" />
         <activity
             android:name=".MainActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ComposeHomeActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
