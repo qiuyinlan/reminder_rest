@@ -148,6 +148,11 @@ public final class MainActivity extends Activity {
         top.addView(settingsButton);
         body.addView(top);
 
+        // 游戏化激励卡片（如果启用）
+        if (GameSettings.isEnabled(this)) {
+            addGamificationCard();
+        }
+
         // 现在页记下的想法、每日复盘规则都不属于普通提醒事项
         List<ReminderSettings.Rule> rules = ReminderSettings.listedRules(this);
         addTodayStatusCard(rules);
@@ -340,6 +345,225 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params = full();
         params.topMargin = dp(14);
         body.addView(card, params);
+    }
+
+    /** 游戏化激励卡片：连胜、宝箱、今日进度 */
+    private void addGamificationCard() {
+        LinearLayout gameCard = columnCard();
+        gameCard.setPadding(dp(16), dp(14), dp(16), dp(14));
+        
+        // 标题行
+        LinearLayout titleRow = row();
+        TextView title = label("游戏激励", 16, INK, true);
+        titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView goSettings = label("设置", 12, GREEN, true);
+        goSettings.setPadding(dp(10), dp(6), dp(10), dp(6));
+        goSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        titleRow.addView(goSettings);
+        gameCard.addView(titleRow, new LinearLayout.LayoutParams(-1, -2));
+        
+        long dayStart = GameProgress.dayStart(System.currentTimeMillis());
+        
+        // 第一行：连胜 + 宝箱
+        LinearLayout progressRow = row();
+        progressRow.setPadding(0, dp(8), 0, dp(8));
+        
+        // 左侧：总连胜（取所有习惯/任务的最大值）
+        int maxStreak = 0;
+        String maxStreakKey = "";
+        
+        // 检查所有习惯
+        for (Habits.Habit habit : Habits.all(this)) {
+            String key = GameProgress.makeHabitKey("habit", habit.id);
+            int streak = GameProgress.getStreak(this, key);
+            if (streak > maxStreak) {
+                maxStreak = streak;
+                maxStreakKey = key;
+            }
+        }
+        
+        // 检查所有任务
+        for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
+            if (rule.isTaskModule() || rule.isSubtaskModule()) {
+                String key = GameProgress.makeHabitKey(rule.module, rule.id);
+                int streak = GameProgress.getStreak(this, key);
+                if (streak > maxStreak) {
+                    maxStreak = streak;
+                    maxStreakKey = key;
+                }
+            }
+        }
+        
+        // 连胜显示
+        LinearLayout streakCard = new LinearLayout(this);
+        streakCard.setOrientation(LinearLayout.VERTICAL);
+        streakCard.setGravity(Gravity.CENTER);
+        streakCard.setPadding(dp(14), dp(12), dp(14), dp(12));
+        streakCard.setBackground(round(MINT_PALE, 14));
+        progressRow.addView(streakCard, new LinearLayout.LayoutParams(0, -2, 1));
+        
+        TextView fireIcon = label("🔥", 28, UiPalette.ACCENT, false);
+        streakCard.addView(fireIcon);
+        
+        TextView streakValue = label(String.valueOf(maxStreak), 32, UiPalette.ACCENT, true);
+        streakValue.setPadding(0, dp(4), 0, 0);
+        streakCard.addView(streakValue);
+        
+        TextView streakLabel = label("天连胜", 12, MUTED, false);
+        streakCard.addView(streakLabel);
+        
+        // 右侧：宝箱进度
+        LinearLayout chestCard = new LinearLayout(this);
+        chestCard.setOrientation(LinearLayout.VERTICAL);
+        chestCard.setGravity(Gravity.CENTER);
+        chestCard.setPadding(dp(14), dp(12), dp(14), dp(12));
+        chestCard.setBackground(round(MINT_PALE, 14));
+        LinearLayout.LayoutParams chestParams = new LinearLayout.LayoutParams(0, -2, 1);
+        chestParams.leftMargin = dp(12);
+        progressRow.addView(chestCard, chestParams);
+        
+        // 检查是否有可领取的宝箱
+        Integer chestAvailable = null;
+        int nextMilestone = 7;
+        int remaining = 7;
+        
+        if (!maxStreakKey.isEmpty()) {
+            chestAvailable = GameProgress.checkChestAvailable(this, maxStreakKey);
+            nextMilestone = GameSettings.nextMilestone(maxStreak);
+            remaining = nextMilestone - maxStreak;
+        }
+        
+        TextView chestIcon;
+        TextView chestText;
+        
+        if (chestAvailable != null) {
+            int chestIdx = GameSettings.chestIndex(chestAvailable);
+            String icon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
+            chestIcon = label(icon, 28, 0xffd4a017, false);
+            chestCard.addView(chestIcon);
+            
+            chestText = label("可领取！", 14, 0xffd4a017, true);
+            chestText.setPadding(0, dp(4), 0, 0);
+            chestCard.addView(chestText);
+            
+            chestCard.setOnClickListener(v -> showChestRewardDialog(chestAvailable));
+        } else {
+            int chestIdx = GameSettings.chestIndex(nextMilestone);
+            String icon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
+            chestIcon = label(icon, 24, MUTED, false);
+            chestCard.addView(chestIcon);
+            
+            chestText = label("再" + remaining + "天", 14, MUTED, false);
+            chestText.setPadding(0, dp(4), 0, 0);
+            chestCard.addView(chestText);
+        }
+        
+        gameCard.addView(progressRow, new LinearLayout.LayoutParams(-1, -2));
+        
+        // 第二行：今日完成进度
+        LinearLayout progressCard = new LinearLayout(this);
+        progressCard.setOrientation(LinearLayout.VERTICAL);
+        progressCard.setPadding(dp(14), dp(12), dp(14), dp(12));
+        progressCard.setBackground(round(MINT_PALE, 14));
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, -2);
+        progressParams.topMargin = dp(10);
+        gameCard.addView(progressCard, progressParams);
+        
+        // 计算今日完成数
+        int completedToday = 0;
+        int totalToday = 0;
+        
+        // 统计习惯
+        for (Habits.Habit habit : Habits.all(this)) {
+            if (habit.isScheduledForToday()) {
+                totalToday++;
+                if (Habits.isCompletedToday(this, habit.id, dayStart)) {
+                    completedToday++;
+                }
+            }
+        }
+        
+        // 统计任务
+        for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
+            if (rule.isTaskModule() && rule.enabled) {
+                totalToday++;
+                if (ReminderSettings.isCompletedToday(this, rule.id, dayStart)) {
+                    completedToday++;
+                }
+            }
+        }
+        
+        TextView progressTitle = label("今日完成", 14, INK, true);
+        progressCard.addView(progressTitle);
+        
+        TextView progressValue = label(completedToday + " / " + totalToday, 20, UiPalette.ACCENT, true);
+        progressValue.setPadding(0, dp(6), 0, 0);
+        progressCard.addView(progressValue);
+        
+        // 进度条
+        ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(totalToday > 0 ? totalToday : 1);
+        progressBar.setProgress(completedToday);
+        progressBar.getProgressDrawable().setColorFilter(GREEN, android.graphics.PorterDuff.Mode.SRC_IN);
+        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(8));
+        barParams.topMargin = dp(8);
+        progressCard.addView(progressBar, barParams);
+        
+        // 补签入口（如果有可补签的）
+        List<String> makeupHabits = new ArrayList<>();
+        for (Habits.Habit habit : Habits.all(this)) {
+            String key = GameProgress.makeHabitKey("habit", habit.id);
+            List<Long> availableDays = GameProgress.getAvailableMakeupDays(this, key);
+            if (!availableDays.isEmpty()) {
+                makeupHabits.add(habit.title);
+            }
+        }
+        
+        if (!makeupHabits.isEmpty()) {
+            addDivider(gameCard);
+            
+            TextView makeupRow = row();
+            makeupRow.setPadding(0, dp(10), 0, 0);
+            makeupRow.setGravity(Gravity.CENTER_VERTICAL);
+            
+            TextView makeupIcon = label("📅", 18, INK, false);
+            makeupRow.addView(makeupIcon);
+            
+            TextView makeupText = label("  有 " + makeupHabits.size() + " 个习惯可补签", 13, MUTED, false);
+            makeupRow.addView(makeupText);
+            
+            TextView makeupAction = label("去补签  ›", 13, GREEN, true);
+            makeupRow.addView(makeupAction, new LinearLayout.LayoutParams(0, -2, 1));
+            
+            makeupRow.setOnClickListener(v -> {
+                Toast.makeText(this, "补签功能开发中", Toast.LENGTH_SHORT).show();
+            });
+            
+            gameCard.addView(makeupRow, new LinearLayout.LayoutParams(-1, -2));
+        }
+        
+        LinearLayout.LayoutParams cardParams = full();
+        cardParams.topMargin = dp(16);
+        body.addView(gameCard, cardParams);
+    }
+    
+    private void showChestRewardDialog(int milestone) {
+        int chestIdx = GameSettings.chestIndex(milestone);
+        String icon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
+        
+        String[] rewards = {"专属头像框", "特殊主题色", "成就徽章"};
+        String reward = rewards[Math.min(chestIdx, rewards.length - 1)];
+        
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(icon + " 恭喜解锁宝箱！")
+                .setMessage("坚持 " + milestone + " 天，获得：\n\n" + reward + "\n\n继续坚持解锁更多奖励！")
+                .setPositiveButton("收下", (d, w) -> {
+                    // TODO: 实际领取逻辑
+                    Toast.makeText(this, "已领取奖励", Toast.LENGTH_SHORT).show();
+                })
+                .create();
+        dialog.show();
+        styleDialog(dialog);
     }
 
     /** 结束日点错了，从首页直接改回来。 */
