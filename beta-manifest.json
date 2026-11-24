@@ -1,7 +1,7 @@
 {
-    "versionCode": 154,
-    "versionName": "0.3.0-beta138",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta138/rest-bean.apk",
-    "sha256": "a477af4f66e1af0c4d3bbaff422bf68aa5830fbf268cd9501f76b1d975243fb9",
-    "notes": "UI 重做：淡绿底白卡配色（#EAF6EF / #4CAF7D）、今日任务卡升为唯一主角（环形进度+嫩芽连胜状态条）、提醒卡降级、身体记录折叠、经期移出首页、emoji 换线性图标、打卡延时打钩+音效开关"
+    "versionCode": 155,
+    "versionName": "0.3.0-beta139",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta139/rest-bean.apk",
+    "sha256": "c1b3ca0c5adddd81ea59db71d41fbf2414734f40eb8479c83b121ef1fe5ded05",
+    "notes": "新增豆芽吉祥物（打瞌睡/加油/庆祝三态 + 打卡弹跳），环形进度放大到 84dp，完成态改实心绿胶囊；水杯图标改水滴、复盘卡改白卡、警告卡改浅杏色、卡片阴影加强；修复悬浮球拖出屏幕被裁切"
 }
