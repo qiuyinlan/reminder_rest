@@ -658,8 +658,9 @@ object DewQuestHost {
         onRefresh: Runnable
     ): android.view.View {
         val cv = androidx.compose.ui.platform.ComposeView(activity)
-        cv.viewCompositionStrategy =
+        cv.setViewCompositionStrategy(
             androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
         cv.setContent {
             DewTheme {
                 SelfContainedQuest(
