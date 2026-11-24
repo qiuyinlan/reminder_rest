@@ -96,7 +96,7 @@ final class GameHeroView extends View {
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         text.setColor(UiPalette.INK);
-        text.setTextSize(dp(21));
+        text.setTextSize(dp(23));
         String main = total > 0 ? (completed + "/" + total) : "0";
         Paint.FontMetrics fm = text.getFontMetrics();
         float mainBase = cy - (fm.ascent + fm.descent) / 2f + dp(7f);
@@ -104,7 +104,7 @@ final class GameHeroView extends View {
 
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
-        text.setTextSize(dp(10));
+        text.setTextSize(dp(9));
         canvas.drawText("今日", cx, mainBase - dp(21f), text);
 
         // 右侧：连胜数字（重音）
@@ -114,13 +114,13 @@ final class GameHeroView extends View {
         text.setTextAlign(Paint.Align.LEFT);
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
-        text.setTextSize(dp(11));
+        text.setTextSize(dp(10));
         Paint.FontMetrics fm1 = text.getFontMetrics();
         canvas.drawText("连续坚持", x, cy - dp(10f), text);
 
         text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         text.setColor(0xff4caf7d);
-        text.setTextSize(dp(26));
+        text.setTextSize(dp(30));
         String num = String.valueOf(streak);
         Paint.FontMetrics fm2 = text.getFontMetrics();
         float numBase = cy + dp(10f) - (fm2.ascent + fm2.descent) / 2f;
@@ -129,7 +129,7 @@ final class GameHeroView extends View {
 
         text.setTypeface(android.graphics.Typeface.DEFAULT);
         text.setColor(UiPalette.MUTED);
-        text.setTextSize(dp(12));
+        text.setTextSize(dp(11));
         canvas.drawText("天", x + numW + dp(4), numBase - dp(1f), text);
     }
 }

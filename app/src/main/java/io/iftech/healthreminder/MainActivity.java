@@ -349,7 +349,9 @@ public final class MainActivity extends Activity {
         headParams.topMargin = dp(10);
         headParams.leftMargin = dp(4);
         questCard.addView(head, headParams);
-        head.addView(label("今日任务", 14, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        TextView sectionLabel = label("今日任务", 12, UiPalette.MUTED, true);
+        sectionLabel.setLetterSpacing(0.12f);
+        head.addView(sectionLabel, new LinearLayout.LayoutParams(0, -2, 1));
         TextView lvBadge = label("Lv." + level, 10, UiPalette.ACCENT, true);
         lvBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
         lvBadge.setBackground(round(UiPalette.PALE, 9));
@@ -377,7 +379,7 @@ public final class MainActivity extends Activity {
             final TextView bean = jumpButton(done);
             topLine.addView(bean, new LinearLayout.LayoutParams(dp(24), dp(24)));
 
-            final TextView questTitle = label(quest.title, 14, done ? UiPalette.MUTED : INK, done);
+            final TextView questTitle = label(quest.title, 15, done ? UiPalette.MUTED : INK, done);
             questTitle.setPadding(dp(10), 0, 0, 0);
             if (done) {
                 questTitle.setPaintFlags(questTitle.getPaintFlags()
@@ -386,7 +388,7 @@ public final class MainActivity extends Activity {
             topLine.addView(questTitle, new LinearLayout.LayoutParams(0, -2, 1));
 
             final TextView state = label(done ? "已完成" : progress + "/" + quest.target,
-                    12, done ? Color.WHITE : UiPalette.MUTED, true);
+                    13, done ? Color.WHITE : UiPalette.ACCENT, true);
             if (done) {
                 state.setPadding(dp(9), dp(3), dp(9), dp(3));
                 state.setBackground(greenPill(10));
@@ -442,7 +444,7 @@ public final class MainActivity extends Activity {
         chestRow.addView(chestBar, chestBarParams);
 
         chestRow.addView(label(chestFull ? "可以领奖啦" : "还剩 " + (questTotal - questDone) + " 个",
-                12, chestFull ? GREEN : MUTED, chestFull));
+                11, chestFull ? GREEN : MUTED, chestFull));
 
         if (chestFull && DailyQuest.bonusAvailable(this)) {
             gift.postDelayed(() -> {

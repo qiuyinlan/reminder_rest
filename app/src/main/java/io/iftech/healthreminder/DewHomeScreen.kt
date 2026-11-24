@@ -234,7 +234,7 @@ private fun QuestCard(
 
         // 标题 + 等级
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("今日任务", style = MaterialTheme.typography.titleMedium, color = Dew.Ink)
+            Text("今日任务", style = MaterialTheme.typography.labelLarge, color = Dew.InkFaint)
             Spacer(Modifier.weight(1f))
             Box(
                 Modifier
@@ -336,7 +336,7 @@ private fun QuestRow(
                 Text(
                     "$progress/$target",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Dew.InkFaint
+                    color = Dew.Accent
                 )
             }
         }
