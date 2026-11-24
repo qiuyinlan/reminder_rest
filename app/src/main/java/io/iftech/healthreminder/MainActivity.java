@@ -212,19 +212,32 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         card.setPadding(dp(18), dp(14), dp(18), dp(14));
 
         LinearLayout head = row();
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(0, dp(2), 0, dp(2));
         head.addView(label("\u4eca\u5929\u8eab\u4f53\u600e\u4e48\u6837", 14, INK, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
 
         int water = WaterLog.enabled(this) ? WaterLog.todayTotal(this) : 0;
-        if (water > 0) {
-            head.addView(label("\uD83D\uDCA7 " + water + "ml", 12, MUTED, false));
+
+        // 水滴：独立按钮，点一下直接记喝水
+        if (WaterLog.enabled(this)) {
+            LinearLayout waterBtn = new LinearLayout(this);
+            waterBtn.setGravity(Gravity.CENTER_VERTICAL);
+            waterBtn.setPadding(dp(9), dp(6), dp(9), dp(6));
+            waterBtn.setBackground(round(UiPalette.PALE, 12));
+            waterBtn.setContentDescription("\u8bb0\u4e00\u6b21\u559d\u6c34");
+            waterBtn.addView(label("\uD83D\uDCA7", 13, INK, false));
+            if (water > 0) {
+                waterBtn.addView(label(" " + water + "ml", 11, MUTED, false));
+            }
+            waterBtn.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
+            LinearLayout.LayoutParams waterParams = new LinearLayout.LayoutParams(-2, -2);
+            waterParams.rightMargin = dp(12);
+            head.addView(waterBtn, waterParams);
         }
 
-        TextView drop = label("\uD83D\uDCA7", 14, INK, false);
-        drop.setPadding(0, 0, dp(5), 0);
-        head.addView(drop);
-
-        TextView toggle = label("\u8bb0\u4e00\u53e5 \u203a", 12, GREEN, true);
+        final TextView toggle = label("\u8bb0\u4e00\u53e5 \u203a", 12, GREEN, true);
+        toggle.setPadding(dp(2), dp(6), dp(2), dp(6));
         head.addView(toggle);
         card.addView(head, new LinearLayout.LayoutParams(-1, -2));
 
