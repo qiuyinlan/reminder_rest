@@ -76,14 +76,14 @@ public final class SettingsActivity extends Activity {
         membershipParams.topMargin = dp(16);
         page.addView(membership, membershipParams);
 
-        // 经典首页（旧版）入口
+        // 游戏化首页（预览）入口
         LinearLayout preview = new LinearLayout(this);
         preview.setGravity(Gravity.CENTER_VERTICAL);
         preview.setPadding(dp(15), dp(13), dp(14), dp(13));
         preview.setBackground(round(Color.WHITE, 17));
         preview.setElevation(dp(1));
         preview.setOnClickListener(v ->
-                startActivity(new Intent(this, MainActivity.class)));
+                startActivity(new Intent(this, ComposeHomeActivity.class)));
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1, -2);
         previewParams.topMargin = dp(9);
         page.addView(preview, previewParams);
@@ -95,8 +95,8 @@ public final class SettingsActivity extends Activity {
         preview.addView(pvMark, pvMarkParams);
         LinearLayout pvCopy = new LinearLayout(this);
         pvCopy.setOrientation(LinearLayout.VERTICAL);
-        pvCopy.addView(text("经典首页（旧版）", 15, INK, true));
-        TextView pvDetail = text("提醒事项列表完整版", 12, MUTED, false);
+        pvCopy.addView(text("游戏化首页（预览）", 15, INK, true));
+        TextView pvDetail = text("完整游戏界面 · 点这里看", 12, MUTED, false);
         pvDetail.setPadding(0, dp(4), 0, 0);
         pvCopy.addView(pvDetail);
         preview.addView(pvCopy, new LinearLayout.LayoutParams(0, -2, 1));
