@@ -99,7 +99,7 @@ public final class StatsActivity extends Activity {
     private void showStatsFallback(Throwable error) {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(22), dp(28), dp(22), dp(20));
+        root.setPadding(dp(20), dp(14), dp(20), dp(24));
         root.setBackground(UiPalette.page());
         root.addView(text("统计页加载失败", 20, INK, true));
         String stored = CrashLog.last(this);
@@ -154,7 +154,7 @@ public final class StatsActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackground(round(Color.WHITE, 16));
         lift(card);
 
@@ -379,7 +379,7 @@ public final class StatsActivity extends Activity {
         content.addView(dayHead);
         LinearLayout bodyNote = new LinearLayout(this);
         bodyNote.setOrientation(LinearLayout.VERTICAL);
-        bodyNote.setPadding(dp(16), dp(14), dp(16), dp(14));
+        bodyNote.setPadding(dp(16), dp(12), dp(16), dp(12));
         bodyNote.setBackground(pressable(outline(Color.WHITE, BORDER, 16)));
         LinearLayout noteHead = new LinearLayout(this);
         noteHead.setGravity(Gravity.CENTER_VERTICAL);
@@ -893,7 +893,7 @@ public final class StatsActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackground(round(Color.WHITE, 16));
         lift(card);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
@@ -1167,7 +1167,7 @@ public final class StatsActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackground(round(Color.WHITE, 16));
         lift(card);
 
@@ -1241,7 +1241,7 @@ public final class StatsActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackground(round(Color.WHITE, 16));
         lift(card);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);

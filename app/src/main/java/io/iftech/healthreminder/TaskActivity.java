@@ -76,7 +76,7 @@ public final class TaskActivity extends Activity {
         scroll.setClipToPadding(false);
         listContainer = new LinearLayout(this);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        listContainer.setPadding(dp(16), dp(8), dp(16), dp(96));
+        listContainer.setPadding(dp(20), dp(14), dp(20), dp(96));
         scroll.addView(listContainer, new ScrollView.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         loadScrollMemory();
@@ -253,7 +253,7 @@ public final class TaskActivity extends Activity {
     private View buildHeader(int done, int total) {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(14), dp(20), dp(18));
+        header.setPadding(dp(20), dp(14), dp(20), dp(14));
 
         // 头部用一层极淡的渐变，把标题从页面背景里托起来
         GradientDrawable headBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -594,7 +594,7 @@ public final class TaskActivity extends Activity {
         if (todayHabits.isEmpty()) {
             LinearLayout emptyBox = new LinearLayout(this);
             emptyBox.setOrientation(LinearLayout.VERTICAL);
-            emptyBox.setPadding(dp(16), dp(16), dp(16), dp(18));
+            emptyBox.setPadding(dp(16), dp(12), dp(16), dp(12));
             emptyBox.addView(text("今天没有要做的习惯", 13, UiPalette.INK, true));
             TextView emptySub = text("点右上角 + 添加，比如八段锦、颈椎训练", 12, UiPalette.MUTED, false);
             LinearLayout.LayoutParams emptySubParams = new LinearLayout.LayoutParams(-1, -2);
@@ -604,7 +604,7 @@ public final class TaskActivity extends Activity {
         } else if (pendingHabits.isEmpty()) {
             LinearLayout allDoneBox = new LinearLayout(this);
             allDoneBox.setOrientation(LinearLayout.VERTICAL);
-            allDoneBox.setPadding(dp(16), dp(16), dp(16), dp(18));
+            allDoneBox.setPadding(dp(16), dp(12), dp(16), dp(12));
             allDoneBox.addView(text("今天的习惯都做完了", 13, UiPalette.INK, true));
             TextView allDoneSub = text("想再来一次，点下面的「已完成」展开", 12, UiPalette.MUTED, false);
             LinearLayout.LayoutParams allDoneSubParams = new LinearLayout.LayoutParams(-1, -2);

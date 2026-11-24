@@ -46,7 +46,7 @@ public final class SettingsActivity extends Activity {
 
         page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(20), dp(10), dp(20), dp(30));
+        page.setPadding(dp(20), dp(14), dp(20), dp(24));
         scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
         setContentView(scroll);
         scroll.post(() -> FormKit.hideEmptyText(scroll));
@@ -70,7 +70,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout membership = new LinearLayout(this);
         membership.setGravity(Gravity.CENTER_VERTICAL);
-        membership.setPadding(dp(15), dp(14), dp(14), dp(14));
+        membership.setPadding(dp(16), dp(12), dp(16), dp(12));
         membership.setBackground(round(Color.WHITE, 14));
         membership.setOnClickListener(v -> startActivity(new Intent(this, MembershipActivity.class)));
         LinearLayout.LayoutParams membershipParams = new LinearLayout.LayoutParams(-1, -2);
@@ -80,7 +80,7 @@ public final class SettingsActivity extends Activity {
         // 游戏化首页（预览）入口
         LinearLayout preview = new LinearLayout(this);
         preview.setGravity(Gravity.CENTER_VERTICAL);
-        preview.setPadding(dp(15), dp(13), dp(14), dp(13));
+        preview.setPadding(dp(16), dp(12), dp(16), dp(12));
         preview.setBackground(round(Color.WHITE, 17));
         preview.setElevation(dp(1));
         preview.setOnClickListener(v ->
@@ -118,7 +118,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout update = new LinearLayout(this);
         update.setGravity(Gravity.CENTER_VERTICAL);
-        update.setPadding(dp(15), dp(13), dp(14), dp(13));
+        update.setPadding(dp(16), dp(12), dp(16), dp(12));
         update.setBackground(round(Color.WHITE, 14));
         update.setOnClickListener(v -> AppUpdateManager.check(this, true));
         LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(-1, -2);
@@ -151,7 +151,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout profileCard = new LinearLayout(this);
         profileCard.setOrientation(LinearLayout.VERTICAL);
-        profileCard.setPadding(dp(15), dp(15), dp(15), dp(15));
+        profileCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         profileCard.setBackground(round(Color.WHITE, 17));
         profileCard.setElevation(dp(1));
         page.addView(profileCard, new LinearLayout.LayoutParams(-1, -2));
@@ -209,7 +209,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout appearanceCard = new LinearLayout(this);
         appearanceCard.setOrientation(LinearLayout.VERTICAL);
-        appearanceCard.setPadding(dp(15), dp(15), dp(15), dp(15));
+        appearanceCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         appearanceCard.setBackground(round(Color.WHITE, 17));
         appearanceCard.setElevation(dp(1));
         page.addView(appearanceCard, new LinearLayout.LayoutParams(-1, -2));
@@ -242,7 +242,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout gameCard = new LinearLayout(this);
         gameCard.setGravity(Gravity.CENTER_VERTICAL);
-        gameCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        gameCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         gameCard.setBackground(round(Color.WHITE, 17));
         gameCard.setElevation(dp(1));
         LinearLayout.LayoutParams gameCardParams = new LinearLayout.LayoutParams(-1, -2);
@@ -292,7 +292,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout reviewCard = new LinearLayout(this);
         reviewCard.setGravity(Gravity.CENTER_VERTICAL);
-        reviewCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        reviewCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         reviewCard.setBackground(round(Color.WHITE, 17));
         reviewCard.setElevation(dp(1));
         LinearLayout.LayoutParams reviewCardParams = new LinearLayout.LayoutParams(-1, -2);
@@ -315,7 +315,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout waterCard = new LinearLayout(this);
         waterCard.setGravity(Gravity.CENTER_VERTICAL);
-        waterCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        waterCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         waterCard.setBackground(round(Color.WHITE, 17));
         waterCard.setElevation(dp(1));
         LinearLayout.LayoutParams waterCardParams = new LinearLayout.LayoutParams(-1, -2);
@@ -338,7 +338,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout diagnostics = new LinearLayout(this);
         diagnostics.setGravity(Gravity.CENTER_VERTICAL);
-        diagnostics.setPadding(dp(15), dp(14), dp(14), dp(14));
+        diagnostics.setPadding(dp(16), dp(12), dp(16), dp(12));
         diagnostics.setBackground(round(Color.WHITE, 17));
         diagnostics.setElevation(dp(1));
         diagnostics.setOnClickListener(v -> startActivity(new Intent(this, ReminderDiagnosticsActivity.class)));
@@ -370,7 +370,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout exportCard = new LinearLayout(this);
         exportCard.setGravity(Gravity.CENTER_VERTICAL);
-        exportCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+        exportCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         exportCard.setBackground(round(Color.WHITE, 17));
         exportCard.setElevation(dp(1));
         exportCard.setContentDescription("全部数据备份，把提醒、任务、复盘、喝水等打包成一个文件");
@@ -393,7 +393,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout importCard = new LinearLayout(this);
         importCard.setGravity(Gravity.CENTER_VERTICAL);
-        importCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+        importCard.setPadding(dp(16), dp(12), dp(16), dp(12));
         importCard.setBackground(round(Color.WHITE, 17));
         importCard.setElevation(dp(1));
         importCard.setContentDescription("恢复全部数据，用备份文件还原并覆盖本机");
@@ -419,7 +419,7 @@ public final class SettingsActivity extends Activity {
         if (!crashLog.isEmpty()) {
             LinearLayout crashCard = new LinearLayout(this);
             crashCard.setGravity(Gravity.CENTER_VERTICAL);
-            crashCard.setPadding(dp(15), dp(14), dp(14), dp(14));
+            crashCard.setPadding(dp(16), dp(12), dp(16), dp(12));
             crashCard.setBackground(round(Color.WHITE, 17));
             crashCard.setElevation(dp(1));
             crashCard.setOnClickListener(v -> showCrashLog(CrashLog.last(this)));

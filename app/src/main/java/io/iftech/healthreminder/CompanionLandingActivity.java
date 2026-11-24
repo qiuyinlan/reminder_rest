@@ -44,7 +44,7 @@ public final class CompanionLandingActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
-        content.setPadding(dp(24), dp(32), dp(24), dp(24));
+        content.setPadding(dp(20), dp(14), dp(20), dp(24));
         screen.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
 
         TextView title = text("陪伴", 26, INK, true);
