@@ -363,7 +363,43 @@ public final class MainActivity extends Activity {
         gameCard.addView(titleRow, new LinearLayout.LayoutParams(-1, -2));
         
         long dayStart = GameProgress.dayStart(System.currentTimeMillis());
-        
+
+        // 今日完成数（提前算，鼓励文案要用）
+        int completedToday = 0;
+        int totalToday = 0;
+        for (Habits.Habit habit : Habits.all(this)) {
+            if (habit.isScheduledForToday()) {
+                totalToday++;
+                if (Habits.isCompletedToday(this, habit.id, dayStart)) completedToday++;
+            }
+        }
+        for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
+            if (rule.isTaskModule() && rule.enabled) {
+                totalToday++;
+                if (ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) completedToday++;
+            }
+        }
+        int remainingToday = Math.max(0, totalToday - completedToday);
+
+        // 鼓励文案
+        String cheer;
+        if (totalToday == 0) {
+            cheer = "今天还没安排，去加一个小目标吧";
+        } else if (remainingToday == 0) {
+            cheer = "全部完成！今天是满分的一天 🎉";
+        } else if (remainingToday == 1) {
+            cheer = "就差最后一个了，冲！";
+        } else if (remainingToday <= 3) {
+            cheer = "还剩 " + remainingToday + " 个，马上就做完了";
+        } else {
+            cheer = "还剩 " + remainingToday + " 个，一个一个来";
+        }
+        TextView cheerLine = label(cheer, 13, GREEN, true);
+        cheerLine.setLineSpacing(dp(3), 1f);
+        LinearLayout.LayoutParams cheerParams = new LinearLayout.LayoutParams(-1, -2);
+        cheerParams.topMargin = dp(8);
+        gameCard.addView(cheerLine, cheerParams);
+
         // 第一行：连胜 + 宝箱
         LinearLayout progressRow = row();
         progressRow.setPadding(0, dp(8), 0, dp(8));
@@ -469,30 +505,6 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, -2);
         progressParams.topMargin = dp(10);
         gameCard.addView(progressCard, progressParams);
-        
-        // 计算今日完成数
-        int completedToday = 0;
-        int totalToday = 0;
-        
-        // 统计习惯
-        for (Habits.Habit habit : Habits.all(this)) {
-            if (habit.isScheduledForToday()) {
-                totalToday++;
-                if (Habits.isCompletedToday(this, habit.id, dayStart)) {
-                    completedToday++;
-                }
-            }
-        }
-        
-        // 统计任务
-        for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
-            if (rule.isTaskModule() && rule.enabled) {
-                totalToday++;
-                if (ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) {
-                    completedToday++;
-                }
-            }
-        }
         
         TextView progressTitle = label("今日完成", 14, INK, true);
         progressCard.addView(progressTitle);
