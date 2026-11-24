@@ -1,7 +1,7 @@
 {
-    "versionCode": 161,
-    "versionName": "0.3.0-beta145",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta145/rest-bean.apk",
-    "sha256": "4cc0d3a813577d32640164a1fc8972dd36a7b11d5678e4f36921c3bfd47c5f44",
-    "notes": "视觉层级优化：区块标题降级为小标签（12sp 淡色+字距）、任务名升为主体（15sp）、环内数字与连胜数字放大、未完成计数改强调色；Compose 预览版同步"
+    "versionCode": 162,
+    "versionName": "0.3.0-beta146",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta146/rest-bean.apk",
+    "sha256": "87fb86311d42ed6a7ec85b369377b48d9aa480a12410cd450155b9db9c3627b1",
+    "notes": "首页任务区改用预览页同款 Compose 布局（豆芽+圆环+任务行+宝箱）；新增提醒权限检查页（Compose），从首页移到设置；身体记录与提醒卡保持原样"
 }
