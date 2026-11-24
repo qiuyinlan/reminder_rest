@@ -551,6 +551,13 @@ public final class FocusBubbleService extends Service {
         private void dragTo(MotionEvent event) {
             params.x = startX + (int) (event.getRawX() - downX);
             params.y = startY + (int) (event.getRawY() - downY);
+            // 不让悬浮卡拖出屏幕，避免左边缘被裁成半个圆
+            int w = card != null && card.getWidth() > 0 ? card.getWidth() : dp(160);
+            int h = card != null && card.getHeight() > 0 ? card.getHeight() : dp(56);
+            int sw = screenWidth();
+            int sh = screenHeight();
+            params.x = Math.max(0, Math.min(params.x, Math.max(0, sw - w)));
+            params.y = Math.max(0, Math.min(params.y, Math.max(0, sh - h)));
             updateLayout();
         }
 
@@ -660,7 +667,7 @@ public final class FocusBubbleService extends Service {
                 peekParams.layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             }
-            peekParams.x = side < 0 ? 0 : sw - w;
+            peekParams.x = side < 0 ? dp(2) : sw - w - dp(2);
             peekParams.y = clampY(y, h, sh);
             try {
                 windowManager.addView(peekView, peekParams);
@@ -672,8 +679,8 @@ public final class FocusBubbleService extends Service {
         }
         edgeSide = side;
         peekSide = side;
-        // 半个圆直接贴在屏幕边上，不留缝
-        peekParams.x = side < 0 ? 0 : sw - w;
+        // 贴边但留 2dp 间隙，圆点完整可见
+        peekParams.x = side < 0 ? dp(2) : sw - w - dp(2);
         peekParams.y = clampY(y, h, sh);
         try {
             windowManager.updateViewLayout(peekView, peekParams);

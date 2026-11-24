@@ -113,9 +113,9 @@ final class UiPalette {
             MUTED = 0xff8faa9c;
             BORDER = 0xffddede3;
             DISABLED = 0xffc4d8cc;
-            WARN = 0xffb07a4a;
-            WARN_SOFT = 0xfffdf3e7;
-            WARN_BORDER = 0xffeed9bd;
+            WARN = 0xffa97545;
+            WARN_SOFT = 0xfffdf4e6;
+            WARN_BORDER = 0xffefdcc0;
             COMPANION = 0xff8a5bab;
             PERIOD_FILL = 0xfff2dfe6;
             PERIOD_INK = 0xff9a6379;

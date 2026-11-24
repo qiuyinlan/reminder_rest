@@ -211,8 +211,12 @@ public final class MainActivity extends Activity {
 
         int water = WaterLog.enabled(this) ? WaterLog.todayTotal(this) : 0;
         if (water > 0) {
-            head.addView(label("\uD83E\uDD5B " + water + "ml", 12, MUTED, false));
+            head.addView(label("\uD83D\uDCA7 " + water + "ml", 12, MUTED, false));
         }
+
+        TextView drop = label("\uD83D\uDCA7", 14, INK, false);
+        drop.setPadding(0, 0, dp(5), 0);
+        head.addView(drop);
 
         TextView toggle = label("\u8bb0\u4e00\u53e5 \u203a", 12, GREEN, true);
         head.addView(toggle);
@@ -253,7 +257,7 @@ public final class MainActivity extends Activity {
         if (WaterLog.enabled(this)) {
             LinearLayout waterRow = row();
             waterRow.setPadding(0, dp(10), 0, 0);
-            TextView cup = label("\uD83E\uDD5B \u8bb0\u4e00\u676f", 12, INK, true);
+            TextView cup = label("\uD83D\uDCA7 \u8bb0\u4e00\u676f", 12, INK, true);
             cup.setPadding(dp(12), dp(7), dp(12), dp(7));
             cup.setBackground(round(UiPalette.PALE, 12));
             cup.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
@@ -297,16 +301,51 @@ public final class MainActivity extends Activity {
 
         // 唯一的视觉主角：今日任务卡
         LinearLayout questCard = columnCard();
-        questCard.setPadding(dp(18), dp(14), dp(18), dp(16));
+        questCard.setPadding(dp(16), dp(12), dp(16), dp(16));
+
+        // 英雄区：豆芽吉祥物 + 大环形进度（首屏第一焦点）
+        LinearLayout heroRow = new LinearLayout(this);
+        heroRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        SproutMascotView mascot = new SproutMascotView(this);
+        int mood;
+        if (completed <= 0) mood = SproutMascotView.SLEEPY;
+        else if (total > 0 && completed >= total) mood = SproutMascotView.CELEBRATE;
+        else mood = SproutMascotView.AWAKE;
+        mascot.setMood(mood);
+        heroRow.addView(mascot, new LinearLayout.LayoutParams(dp(84), dp(84)));
 
         GameHeroView status = new GameHeroView(this);
         status.setData(completed, total, streak, sproutLevel);
-        questCard.addView(status, new LinearLayout.LayoutParams(-1, dp(54)));
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(0, dp(92), 1);
+        statusParams.leftMargin = dp(4);
+        heroRow.addView(status, statusParams);
+
+        android.widget.FrameLayout heroWrap = new android.widget.FrameLayout(this);
+        heroWrap.addView(heroRow, new android.widget.FrameLayout.LayoutParams(-1, -2));
+        final CelebrationView fx = new CelebrationView(this);
+        heroWrap.addView(fx, new android.widget.FrameLayout.LayoutParams(-1, dp(96)));
+        questCard.addView(heroWrap, new LinearLayout.LayoutParams(-1, -2));
+
+        // 完成数变多：豆芽弹跳 + 粒子爆开
+        final String dayKey = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
+                .format(new java.util.Date());
+        android.content.SharedPreferences fxPrefs = getSharedPreferences("game_fx", MODE_PRIVATE);
+        boolean sameDay = dayKey.equals(fxPrefs.getString("last_day", ""));
+        int prevCompleted = sameDay ? fxPrefs.getInt("last_completed", -1) : -1;
+        if (prevCompleted >= 0 && completed > prevCompleted) {
+            heroWrap.post(() -> {
+                mascot.bounce();
+                fx.burst(GREEN);
+                SoundKit.tick(this);
+            });
+        }
+        fxPrefs.edit().putString("last_day", dayKey).putInt("last_completed", completed).apply();
 
         View divider = new View(this);
         divider.setBackgroundColor(UiPalette.BORDER);
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
-        dividerParams.topMargin = dp(12);
+        dividerParams.topMargin = dp(10);
         questCard.addView(divider, dividerParams);
 
         LinearLayout head = row();
@@ -344,8 +383,13 @@ public final class MainActivity extends Activity {
             }
             questRow.addView(questTitle, new LinearLayout.LayoutParams(0, -2, 1));
 
-            questRow.addView(label(done ? "已完成" : progress + "/" + quest.target,
-                    12, done ? GREEN : MUTED, done));
+            TextView state = label(done ? "已完成" : progress + "/" + quest.target,
+                    12, done ? Color.WHITE : MUTED, true);
+            if (done) {
+                state.setPadding(dp(9), dp(3), dp(9), dp(3));
+                state.setBackground(round(GREEN, 10));
+            }
+            questRow.addView(state);
             index++;
         }
 
@@ -1542,13 +1586,31 @@ public final class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(12), dp(16), dp(12));
-        card.setBackground(glassRound(20));
-        card.setElevation(dp(1));
+        card.setBackground(softGreenCard(20));
+        card.setElevation(dp(4));
+        card.setTranslationZ(dp(2));
         return card;
+    }
+
+    /** 带绿调软阴影的白卡：大扩散、低透明度，看起来像浮在软垫上。 */
+    private GradientDrawable softGreenCard(int radius) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(UiPalette.surface(Color.WHITE));
+        shape.setCornerRadius(dp(radius));
+        shape.setStroke(dp(1), UiPalette.BORDER);
+        return shape;
     }
 
     /** 带类目色淡染的玻璃卡片。 */
     private GradientDrawable itemCard(ReminderSettings.Rule rule) {
+        // 复盘卡：白卡 + 细描边，不用粉红色块
+        if (rule.isReviewModule()) {
+            GradientDrawable white = new GradientDrawable();
+            white.setColor(UiPalette.surface(Color.WHITE));
+            white.setCornerRadius(dp(22));
+            white.setStroke(dp(1), UiPalette.BORDER);
+            return white;
+        }
         int tint = ruleTint(rule);
         boolean dark = UiPalette.isDark();
         int base = dark ? 0xff0a251c : 0xffffffff;
