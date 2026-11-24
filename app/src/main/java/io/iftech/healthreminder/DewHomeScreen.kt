@@ -2,8 +2,10 @@ package io.iftech.healthreminder
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -276,7 +278,7 @@ private fun QuestCard(
                 .padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ChestIcon(filled = questDone >= quests.size)
+            ShakingGift(unlocked = questDone >= quests.size)
             Spacer(Modifier.width(10.dp))
             SegmentBar(
                 total = quests.size,
@@ -400,6 +402,27 @@ private fun SegmentBar(total: Int, filled: Int, modifier: Modifier = Modifier) {
     }
 }
 
+
+/** 宝箱：解锁时左右颤两下再回正，配合弹簧曲线。 */
+@Composable
+private fun ShakingGift(unlocked: Boolean) {
+    val shake = remember { Animatable(0f) }
+    LaunchedEffect(unlocked) {
+        if (unlocked) {
+            listOf(-2f, 2f, -2f, 2f, 0f).forEach { target ->
+                shake.animateTo(target, tween(45))
+            }
+        } else {
+            shake.snapTo(0f)
+        }
+    }
+    androidx.compose.foundation.layout.Box(
+        Modifier.graphicsLayer { rotationZ = shake.value * 2f }
+    ) {
+        ChestIcon(filled = unlocked)
+    }
+}
+
 /** 宝箱小图标：自绘，不用 emoji。 */
 @Composable
 private fun ChestIcon(filled: Boolean) {
@@ -435,7 +458,10 @@ private fun ChestIcon(filled: Boolean) {
 private fun ProgressRing(done: Int, total: Int, modifier: Modifier = Modifier) {
     val animated by animateFloatAsState(
         targetValue = if (total > 0) done.toFloat() / total else 0f,
-        animationSpec = tween(520, easing = Dew.Spring),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "ring"
     )
     Box(modifier, contentAlignment = Alignment.Center) {
@@ -557,7 +583,7 @@ private fun Pressable(onClick: () -> Unit, content: @Composable () -> Unit) {
 private fun StaggeredIn(index: Int, content: @Composable () -> Unit) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(index * 40L)
+        delay(index * 60L)
         shown = true
     }
     val alpha by animateFloatAsState(
@@ -567,7 +593,7 @@ private fun StaggeredIn(index: Int, content: @Composable () -> Unit) {
     )
     val dy by animateDpAsState(
         if (shown) 0.dp else 12.dp,
-        tween(320, easing = Dew.EaseOut),
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "rise"
     )
     Box(Modifier.graphicsLayer { this.alpha = alpha }.offset(y = dy)) { content() }
