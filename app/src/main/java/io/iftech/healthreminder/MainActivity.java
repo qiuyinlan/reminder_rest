@@ -487,7 +487,7 @@ public final class MainActivity extends Activity {
         for (ReminderSettings.Rule rule : ReminderSettings.listedRules(this)) {
             if (rule.isTaskModule() && rule.enabled) {
                 totalToday++;
-                if (ReminderSettings.isCompletedToday(this, rule.id, dayStart)) {
+                if (ReminderRecord.completedOn(this, rule.module, rule.title, dayStart)) {
                     completedToday++;
                 }
             }
