@@ -1,7 +1,7 @@
 {
-    "versionCode": 167,
-    "versionName": "0.3.0-beta151",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta151/rest-bean.apk",
-    "sha256": "423856ce15bec00244f23a15da0b0743eb9ca405c053009aace5f99099e160f1",
-    "notes": "游戏化首页设为默认启动页：打开 App 直接进入新版界面（玩家卡/今日主线/每日关卡/任务副本/奖励之路），并补上身体记录与提醒开关；旧首页改为设置里的「经典首页（旧版）」"
+    "versionCode": 168,
+    "versionName": "0.3.0-beta152",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta152/rest-bean.apk",
+    "sha256": "6611c2fa8c49b3108ae8553d4b6406ba59de40ef34f9893cf96e6c38ce1d6771",
+    "notes": "恢复原首页为默认启动页；游戏化首页仍保留在「设置 → 游戏化首页（预览）」入口，供对比查看"
 }
