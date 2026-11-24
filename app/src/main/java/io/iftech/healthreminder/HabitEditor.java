@@ -57,6 +57,55 @@ public final class HabitEditor extends Activity {
         header.setPadding(dp(20), dp(18), dp(20), dp(10));
         TextView title = text("编辑习惯", 24, UiPalette.INK, true);
         header.addView(title);
+        
+        // 游戏化进度展示（如果启用）
+        if (GameSettings.isEnabled(this)) {
+            String habitKey = GameProgress.makeHabitKey("habit", habit.id);
+            int streak = GameProgress.getStreak(this, habitKey);
+            Integer chestAvailable = GameProgress.checkChestAvailable(this, habitKey);
+            int nextMilestone = GameSettings.nextMilestone(streak);
+            
+            LinearLayout progressCard = new LinearLayout(this);
+            progressCard.setOrientation(LinearLayout.VERTICAL);
+            progressCard.setPadding(dp(14), dp(12), dp(14), dp(12));
+            progressCard.setBackground(roundCard(UiPalette.SURFACE, 14));
+            progressCard.setElevation(dp(1));
+            LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, -2);
+            progressParams.topMargin = dp(12);
+            header.addView(progressCard, progressParams);
+            
+            // 连胜显示
+            LinearLayout streakRow = new LinearLayout(this);
+            streakRow.setGravity(Gravity.CENTER_VERTICAL);
+            progressCard.addView(streakRow, new LinearLayout.LayoutParams(-1, -2));
+            
+            TextView fireIcon = text("🔥", 20, UiPalette.ACCENT, false);
+            streakRow.addView(fireIcon, new LinearLayout.LayoutParams(-2, -2));
+            
+            TextView streakLabel = text(" 连胜 ", 13, UiPalette.MUTED, false);
+            streakRow.addView(streakLabel);
+            
+            TextView streakValue = text(String.valueOf(streak), 18, UiPalette.ACCENT, true);
+            streakRow.addView(streakValue);
+            
+            TextView streakUnit = text(" 天", 13, UiPalette.MUTED, false);
+            streakRow.addView(streakUnit);
+            
+            // 下一个宝箱
+            if (chestAvailable != null) {
+                TextView chestNotice = text("🎁 宝箱可领取！", 13, 0xffd4a017, true);
+                chestNotice.setPadding(0, dp(8), 0, 0);
+                progressCard.addView(chestNotice);
+            } else {
+                int chestIdx = GameSettings.chestIndex(nextMilestone);
+                String chestIcon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
+                int remaining = nextMilestone - streak;
+                TextView nextChest = text(chestIcon + " 再坚持 " + remaining + " 天解锁宝箱", 12, UiPalette.MUTED, false);
+                nextChest.setPadding(0, dp(8), 0, 0);
+                progressCard.addView(nextChest);
+            }
+        }
+        
         root.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout scroll = new LinearLayout(this);
@@ -197,6 +246,14 @@ public final class HabitEditor extends Activity {
             bg.setCornerRadius(dp(20));
             dot.setBackground(bg);
         }
+    }
+    
+    private GradientDrawable roundCard(int color, int radius) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(color);
+        shape.setCornerRadius(dp(radius));
+        shape.setStroke(dp(1), UiPalette.BORDER);
+        return shape;
     }
 
     private TextView text(String value, int size, int color, boolean bold) {

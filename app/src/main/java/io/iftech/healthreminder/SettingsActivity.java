@@ -201,10 +201,32 @@ public final class SettingsActivity extends Activity {
         page.addView(sectionHeader, sectionParams);
         sectionHeader.addView(text("提醒与权限", 14, INK, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
-        TextView sectionTag = text("2 项", 11, GREEN, true);
+        TextView sectionTag = text("3 项", 11, GREEN, true);
         sectionTag.setPadding(dp(9), dp(5), dp(9), dp(5));
         sectionTag.setBackground(round(MINT_PALE, 12));
         sectionHeader.addView(sectionTag);
+
+        LinearLayout gameCard = new LinearLayout(this);
+        gameCard.setGravity(Gravity.CENTER_VERTICAL);
+        gameCard.setPadding(dp(15), dp(13), dp(14), dp(13));
+        gameCard.setBackground(round(Color.WHITE, 17));
+        gameCard.setElevation(dp(1));
+        LinearLayout.LayoutParams gameCardParams = new LinearLayout.LayoutParams(-1, -2);
+        page.addView(gameCard, gameCardParams);
+
+        LinearLayout gameCopy = new LinearLayout(this);
+        gameCopy.setOrientation(LinearLayout.VERTICAL);
+        gameCopy.addView(text("游戏机制", 16, INK, true));
+        TextView gameDetail = text("连胜、宝箱、补签，让坚持更有趣", 12, MUTED, false);
+        gameDetail.setPadding(0, dp(5), 0, 0);
+        gameCopy.addView(gameDetail);
+        gameCard.addView(gameCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        Switch gameSwitch = new Switch(this);
+        gameSwitch.setChecked(GameSettings.isEnabled(this));
+        gameSwitch.setContentDescription("启用游戏机制");
+        gameSwitch.setOnCheckedChangeListener((button, checked) -> GameSettings.setEnabled(this, checked));
+        gameCard.addView(gameSwitch);
 
         LinearLayout settingCard = new LinearLayout(this);
         settingCard.setGravity(Gravity.CENTER_VERTICAL);

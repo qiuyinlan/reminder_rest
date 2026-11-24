@@ -159,8 +159,18 @@ final class Habits {
             String dayKey = String.valueOf(dayStart);
             if (done) {
                 obj.put(dayKey, System.currentTimeMillis());
+                // 游戏化：标记完成时更新连胜
+                if (GameSettings.isEnabled(context)) {
+                    String habitKey = GameProgress.makeHabitKey("habit", habitId);
+                    GameProgress.markComplete(context, habitKey, dayStart);
+                }
             } else {
                 obj.remove(dayKey);
+                // 游戏化：取消完成时重置连胜
+                if (GameSettings.isEnabled(context)) {
+                    String habitKey = GameProgress.makeHabitKey("habit", habitId);
+                    GameProgress.resetStreak(context, habitKey);
+                }
             }
             prefs.edit().putString(key, obj.toString()).apply();
         } catch (JSONException ignored) { }
