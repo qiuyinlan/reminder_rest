@@ -14,10 +14,16 @@ class ComposeHomeActivity : ComponentActivity() {
         UiPalette.applyWindow(window)
         setContent {
             DewTheme {
-                DewHomeScreen(
+                GameHomeScreen(
                     context = this,
                     onOpenTasks = {
                         startActivity(Intent(this, TaskActivity::class.java))
+                    },
+                    onOpenItems = {
+                        startActivity(Intent(this, ItemsActivity::class.java))
+                    },
+                    onOpenStats = {
+                        startActivity(Intent(this, StatsActivity::class.java))
                     },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
