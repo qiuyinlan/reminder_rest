@@ -519,10 +519,11 @@ public final class MainActivity extends Activity {
             }
         }
         
+        // 补签入口（临时调试：强制重新编译）
         if (!makeupHabits.isEmpty()) {
             addDivider(gameCard);
             
-            LinearLayout makeupRow = row();
+            LinearLayout makeupRow = row(); // 2026-11-24 fix
             makeupRow.setPadding(0, dp(10), 0, 0);
             makeupRow.setGravity(Gravity.CENTER_VERTICAL);
             
