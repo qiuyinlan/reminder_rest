@@ -1,7 +1,7 @@
 {
-    "versionCode": 166,
-    "versionName": "0.3.0-beta150",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta150/rest-bean.apk",
-    "sha256": "2be2ccd4d0443e56820b1d23b25e166784e5aeb7d87060ec3dbf9ad8e32f9a04",
-    "notes": "全新的游戏化首页（Compose）：顶部深绿渐变+闪电标题栏、金边玩家卡（等级/经验/连击）、今日主线大圆环+里程碑徽章、每日关卡与任务副本（图标块+打卡胶囊）、金边奖励之路（宝箱抖动+彩带）、4 tab 底部导航；打卡联动星星粒子、豆芽弹跳、经验与冲刺阶梯"
+    "versionCode": 167,
+    "versionName": "0.3.0-beta151",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta151/rest-bean.apk",
+    "sha256": "423856ce15bec00244f23a15da0b0743eb9ca405c053009aace5f99099e160f1",
+    "notes": "游戏化首页设为默认启动页：打开 App 直接进入新版界面（玩家卡/今日主线/每日关卡/任务副本/奖励之路），并补上身体记录与提醒开关；旧首页改为设置里的「经典首页（旧版）」"
 }
