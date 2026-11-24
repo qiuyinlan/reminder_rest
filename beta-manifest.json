@@ -1,7 +1,7 @@
 {
-    "versionCode": 156,
-    "versionName": "0.3.0-beta140",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta140/rest-bean.apk",
-    "sha256": "0203ea9724b1e3b77e62d4cec459771c4ba777108dd2c60ac2749579f2695804",
-    "notes": "换回原版豆芽图片动图（带打卡弹跳）；任务行加果冻豆打卡点（点击填充打勾+星星+删除线）、多格任务细分段进度条、宝箱进度改 🎁+三格分段条（全亮抖动）、英雄区极淡绿渐变底、圆环放大到 90dp"
+    "versionCode": 157,
+    "versionName": "0.3.0-beta141",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta141/rest-bean.apk",
+    "sha256": "12ad6f0f8120fc34d1d5a80c40ef99866139b787861a1b70b04dd527313521d6",
+    "notes": "提醒运行卡移到首页最下方并加深字色；任务行左侧改跳转按钮（不再是勾选框）；环内数字与文字居中对齐；单任务也显示分段进度条；完成标签/领取按钮改亮绿渐变、环形进度加发光、粒子改亮绿，整体更 Q 弹闪亮"
 }
