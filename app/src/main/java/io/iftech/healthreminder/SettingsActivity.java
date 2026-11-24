@@ -27,6 +27,8 @@ public final class SettingsActivity extends Activity {
     private int MUTED = UiPalette.MUTED;
     private int PAPER = UiPalette.PAGE;
     private int LINE = UiPalette.BORDER;
+    /** 设置页根容器，各个 addXxxSection() 共用一个。 */
+    private LinearLayout page;
 
     @Override protected void onResume() {
         super.onResume();
@@ -42,7 +44,7 @@ public final class SettingsActivity extends Activity {
         scroll.setClipToPadding(false);
         scroll.setBackground(UiPalette.page());
 
-        LinearLayout page = new LinearLayout(this);
+        page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(20), dp(10), dp(20), dp(30));
         scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
