@@ -437,6 +437,7 @@ public final class MainActivity extends Activity {
         TextView chestText;
         
         if (chestAvailable != null) {
+            final Integer chestToClaim = chestAvailable; // final for lambda
             int chestIdx = GameSettings.chestIndex(chestAvailable);
             String icon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
             chestIcon = label(icon, 28, 0xffd4a017, false);
@@ -446,7 +447,7 @@ public final class MainActivity extends Activity {
             chestText.setPadding(0, dp(4), 0, 0);
             chestCard.addView(chestText);
             
-            chestCard.setOnClickListener(v -> showChestRewardDialog(chestAvailable));
+            chestCard.setOnClickListener(v -> showChestRewardDialog(chestToClaim));
         } else {
             int chestIdx = GameSettings.chestIndex(nextMilestone);
             String icon = GameSettings.CHEST_ICONS[Math.min(chestIdx, GameSettings.CHEST_ICONS.length - 1)];
