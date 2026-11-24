@@ -266,6 +266,9 @@ public final class ItemsActivity extends Activity {
             list.addView(empty);
         }
 
+        // 作息（起床 / 睡觉）从首页搬到这里
+        addRoutineSection();
+
         // 布局完了再滑回原位（太早会被夹成顶部）
         if (restoreY > 0) {
             scroll.getViewTreeObserver().addOnGlobalLayoutListener(
@@ -277,6 +280,91 @@ public final class ItemsActivity extends Activity {
                         }
                     });
         }
+    }
+
+    /** 作息区：起床、睡觉两个固定提醒，带开关和改时间。 */
+    private void addRoutineSection() {
+        LinearLayout heading = new LinearLayout(this);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        heading.setPadding(0, dp(24), 0, dp(9));
+        heading.addView(text("作息", 17, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        heading.addView(text("起床 / 睡觉", 12, MUTED, false));
+        list.addView(heading);
+
+        for (ReminderSettings.Rule rule : ReminderSettings.routineRules(this)) {
+            list.addView(routineRow(rule));
+        }
+    }
+
+    private LinearLayout routineRow(ReminderSettings.Rule rule) {
+        LinearLayout card = new LinearLayout(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(14), dp(14));
+        card.setBackground(surface(UiPalette.headGradient(), 16, UiPalette.BORDER));
+        card.setElevation(dp(1));
+        if (!rule.enabled) card.setAlpha(0.62f);
+
+        TextView icon = text(rule.title.equals("起床") ? "\u2600" : "月", 17,
+                categoryInk(rule.title), true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(round(categoryTint(rule.title), 20));
+        card.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setPadding(dp(12), 0, dp(8), 0);
+        copy.addView(text(rule.title, 16, INK, true));
+        int seconds = rule.timePointsSeconds.isEmpty() ? rule.start * 60 : rule.timePointsSeconds.get(0);
+        TextView when = text("每天 " + MainActivity.clock(seconds / 60) + "  ·  到点全屏提醒",
+                12, MUTED, false);
+        when.setPadding(0, dp(4), 0, 0);
+        copy.addView(when);
+        card.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        Switch toggle = new Switch(this);
+        toggle.setChecked(rule.enabled);
+        toggle.setContentDescription(rule.title + "提醒");
+        toggle.setOnCheckedChangeListener((b, checked) -> {
+            ArrayList<ReminderSettings.Rule> updated =
+                    new ArrayList<>(ReminderSettings.routineRules(this));
+            for (int i = 0; i < updated.size(); i++) {
+                if (updated.get(i).id == rule.id) updated.set(i, updated.get(i).withEnabled(checked));
+            }
+            ReminderSettings.saveRoutineRules(this, updated);
+            renderItems();
+        });
+        card.addView(toggle);
+
+        card.setOnClickListener(v -> pickRoutineTime(rule));
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        card.setLayoutParams(params);
+        return card;
+    }
+
+    private void pickRoutineTime(ReminderSettings.Rule rule) {
+        int seconds = rule.timePointsSeconds.isEmpty() ? rule.start * 60 : rule.timePointsSeconds.get(0);
+        WheelPicker.time(this, "改" + rule.title + "时间", "保存", seconds, false, picked -> {
+            int minute = picked / 60;
+            ArrayList<Integer> single = new ArrayList<>();
+            single.add(picked);
+            ReminderSettings.Rule changed = ReminderSettings.Rule.withSpecificTimes(
+                            rule.id, rule.title, minute, minute, 24 * 60 * 60,
+                            single, 1, false, rule.enabled)
+                    .withReminderMessage(rule.reminderMessage)
+                    .withIcon(rule.icon)
+                    .withColor(rule.color)
+                    .withOverlayArtwork(rule.overlayArtwork);
+            ArrayList<ReminderSettings.Rule> updated =
+                    new ArrayList<>(ReminderSettings.routineRules(this));
+            for (int i = 0; i < updated.size(); i++) {
+                if (updated.get(i).id == rule.id) updated.set(i, changed);
+            }
+            ReminderSettings.saveRoutineRules(this, updated);
+            Toast.makeText(this, "已改到 " + MainActivity.clock(minute), Toast.LENGTH_SHORT).show();
+            renderItems();
+        }).show();
     }
 
     private ProgressBar progressBar(int target, int done) {

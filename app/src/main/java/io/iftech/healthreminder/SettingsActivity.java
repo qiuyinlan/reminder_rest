@@ -1,13 +1,18 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
+import android.app.Service;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -407,6 +412,138 @@ public final class SettingsActivity extends Activity {
             crashCard.addView(text("›", 25, GREEN, false));
         }
 
+        // 使用与权限（从首页搬来）
+        addUsageSection();
+    }
+
+    /** 使用权限 / 白名单 / 软拦截：这些是设置项，不该占首页。 */
+    private void addUsageSection() {
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(-1, -2);
+        headerParams.topMargin = dp(26);
+        headerParams.bottomMargin = dp(10);
+        page.addView(header, headerParams);
+        header.addView(text("使用与权限", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(15), dp(4), dp(15), dp(4));
+        card.setBackground(round(Color.WHITE, 17));
+        card.setElevation(dp(1));
+        page.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        long used = UsageAccess.todayMillis(this);
+        boolean hasAccess = UsageAccess.hasAccess(this);
+        card.addView(settingRow("今日屏幕使用",
+                hasAccess ? UsageAccess.format(used) : "点击开启使用情况访问",
+                this::openUsageSettings));
+        card.addView(dividerLine());
+
+        Switch onlyWhenUsed = new Switch(this);
+        onlyWhenUsed.setText("仅在最近有屏幕使用时提醒");
+        onlyWhenUsed.setTextColor(INK);
+        onlyWhenUsed.setTextSize(15);
+        onlyWhenUsed.setChecked(ReminderSettings.usageOnly(this));
+        onlyWhenUsed.setOnCheckedChangeListener((button, checked) -> {
+            if (checked && !UsageAccess.hasAccess(this)) {
+                button.setChecked(false);
+                openUsageSettings();
+                return;
+            }
+            ReminderSettings.prefs(this).edit().putBoolean("usage_only", checked).apply();
+            ReminderScheduler.update(this);
+        });
+        card.addView(onlyWhenUsed, new LinearLayout.LayoutParams(-1, dp(52)));
+        card.addView(dividerLine());
+
+        card.addView(settingRow("白名单应用",
+                ReminderSettings.whitelist(this).size() + " 个 · 不统计也不拦截",
+                () -> startActivity(new Intent(this, AppPickerActivity.class))));
+        card.addView(dividerLine());
+        card.addView(settingRow("限制应用",
+                ReminderSettings.blockPackages(this).size() + " 个 · 到点提示休息",
+                () -> startActivity(new Intent(this, AppPickerActivity.class).putExtra("mode", "block"))));
+        card.addView(dividerLine());
+
+        Switch blockEnabled = new Switch(this);
+        blockEnabled.setText("启用指定 App 软拦截");
+        blockEnabled.setTextColor(INK);
+        blockEnabled.setTextSize(15);
+        blockEnabled.setChecked(ReminderSettings.blockEnabled(this));
+        blockEnabled.setOnCheckedChangeListener((button, checked) -> {
+            if (checked && ReminderSettings.blockPackages(this).isEmpty()) {
+                button.setChecked(false);
+                ReminderSettings.prefs(this).edit().putBoolean("enable_block_after_picker", true).apply();
+                Toast.makeText(this, "请先选择要限制的应用", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, AppPickerActivity.class).putExtra("mode", "block"));
+                return;
+            }
+            ReminderSettings.prefs(this).edit().putBoolean("block_enabled", checked).apply();
+            if (checked && !isWatchServiceEnabled()) {
+                Toast.makeText(this, "请在系统页面手动启用应用休息提醒服务", Toast.LENGTH_LONG).show();
+                openAccessibilitySettings();
+            }
+            recreate();
+        });
+        card.addView(blockEnabled, new LinearLayout.LayoutParams(-1, dp(52)));
+    }
+
+    private LinearLayout settingRow(String title, String detail, Runnable onClick) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(14), 0, dp(14));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(text(title, 15, INK, true));
+        if (detail != null && !detail.isEmpty()) {
+            TextView sub = text(detail, 12, MUTED, false);
+            sub.setPadding(0, dp(4), 0, 0);
+            copy.addView(sub);
+        }
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        if (onClick != null) {
+            row.addView(text("›", 22, GREEN, false));
+            row.setOnClickListener(v -> onClick.run());
+        }
+        return row;
+    }
+
+    private View dividerLine() {
+        View v = new View(this);
+        v.setBackgroundColor(LINE);
+        v.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(1)));
+        return v;
+    }
+
+    private void openUsageSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        } catch (Exception error) {
+            Toast.makeText(this, "无法打开使用情况访问设置", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void openAccessibilitySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (Exception error) {
+            Toast.makeText(this, "无法打开无障碍设置", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean isWatchServiceEnabled() {
+        AccessibilityManager manager = (AccessibilityManager) getSystemService(Service.ACCESSIBILITY_SERVICE);
+        if (manager == null) return false;
+        for (AccessibilityServiceInfo info :
+                manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
+            if (info.getResolveInfo() == null) continue;
+            ServiceInfo serviceInfo = info.getResolveInfo().serviceInfo;
+            if (serviceInfo != null && getPackageName().equals(serviceInfo.packageName)
+                    && AppWatchService.class.getName().equals(serviceInfo.name)) return true;
+        }
+        return false;
     }
 
     private void showCrashLog(String log) {
