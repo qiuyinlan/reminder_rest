@@ -1,7 +1,7 @@
 {
-    "versionCode": 164,
-    "versionName": "0.3.0-beta148",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta148/rest-bean.apk",
-    "sha256": "00dbc1bcb2affe4eac82b427b8c0397849a7b044a8b1dfcdf60f5571ab60b595",
-    "notes": "动效按 Q 弹规范落地：环形进度低阻尼弹簧（充气感）、卡片 60ms 波浪入场、宝箱解锁左右颤抖、按压 0.92、星星 5 颗、金色点缀"
+    "versionCode": 165,
+    "versionName": "0.3.0-beta149",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta149/rest-bean.apk",
+    "sha256": "cf0a5c80afaebf8edf40f7fbf7a47a899fcf3bd949e0b789a7fb572fcabe3003",
+    "notes": "身体记录：水滴改为独立按钮（点一下直接记喝水），与「记一句」隔开；修好折叠点不开也收不起的问题（整行可点、先收键盘再切换）"
 }
