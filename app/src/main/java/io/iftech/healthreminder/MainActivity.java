@@ -522,7 +522,7 @@ public final class MainActivity extends Activity {
         if (!makeupHabits.isEmpty()) {
             addDivider(gameCard);
             
-            TextView makeupRow = row();
+            LinearLayout makeupRow = row();
             makeupRow.setPadding(0, dp(10), 0, 0);
             makeupRow.setGravity(Gravity.CENTER_VERTICAL);
             
