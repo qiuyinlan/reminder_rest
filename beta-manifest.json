@@ -1,7 +1,7 @@
 {
-    "versionCode": 155,
-    "versionName": "0.3.0-beta139",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta139/rest-bean.apk",
-    "sha256": "c1b3ca0c5adddd81ea59db71d41fbf2414734f40eb8479c83b121ef1fe5ded05",
-    "notes": "新增豆芽吉祥物（打瞌睡/加油/庆祝三态 + 打卡弹跳），环形进度放大到 84dp，完成态改实心绿胶囊；水杯图标改水滴、复盘卡改白卡、警告卡改浅杏色、卡片阴影加强；修复悬浮球拖出屏幕被裁切"
+    "versionCode": 156,
+    "versionName": "0.3.0-beta140",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta140/rest-bean.apk",
+    "sha256": "0203ea9724b1e3b77e62d4cec459771c4ba777108dd2c60ac2749579f2695804",
+    "notes": "换回原版豆芽图片动图（带打卡弹跳）；任务行加果冻豆打卡点（点击填充打勾+星星+删除线）、多格任务细分段进度条、宝箱进度改 🎁+三格分段条（全亮抖动）、英雄区极淡绿渐变底、圆环放大到 90dp"
 }
