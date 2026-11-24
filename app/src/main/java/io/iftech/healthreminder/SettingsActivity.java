@@ -59,7 +59,8 @@ public final class SettingsActivity extends Activity {
         back.setContentDescription("返回");
         back.setOnClickListener(v -> finish());
         header.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        TextView title = text("设置", 25, INK, true);
+        TextView title = text("设置", 26, INK, true);
+        title.setLetterSpacing(0.01f);
         title.setPadding(dp(12), 0, 0, 0);
         header.addView(title);
         page.addView(header);
@@ -145,7 +146,7 @@ public final class SettingsActivity extends Activity {
         profileHeaderParams.topMargin = dp(26);
         profileHeaderParams.bottomMargin = dp(10);
         page.addView(profileHeader, profileHeaderParams);
-        profileHeader.addView(text("个人资料", 14, INK, true),
+        profileHeader.addView(sectionLabel("个人资料"),
                 new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout profileCard = new LinearLayout(this);
@@ -203,7 +204,7 @@ public final class SettingsActivity extends Activity {
         appearanceHeaderParams.topMargin = dp(26);
         appearanceHeaderParams.bottomMargin = dp(10);
         page.addView(appearanceHeader, appearanceHeaderParams);
-        appearanceHeader.addView(text("外观", 14, INK, true),
+        appearanceHeader.addView(sectionLabel("外观"),
                 new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout appearanceCard = new LinearLayout(this);
@@ -232,7 +233,7 @@ public final class SettingsActivity extends Activity {
         sectionParams.topMargin = dp(26);
         sectionParams.bottomMargin = dp(10);
         page.addView(sectionHeader, sectionParams);
-        sectionHeader.addView(text("提醒与权限", 14, INK, true),
+        sectionHeader.addView(sectionLabel("提醒与权限"),
                 new LinearLayout.LayoutParams(0, -2, 1));
         TextView sectionTag = text("3 项", 11, GREEN, true);
         sectionTag.setPadding(dp(9), dp(5), dp(9), dp(5));
@@ -364,7 +365,7 @@ public final class SettingsActivity extends Activity {
         dataHeaderParams.topMargin = dp(26);
         dataHeaderParams.bottomMargin = dp(10);
         page.addView(dataHeader, dataHeaderParams);
-        dataHeader.addView(text("数据", 14, INK, true),
+        dataHeader.addView(sectionLabel("数据"),
                 new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout exportCard = new LinearLayout(this);
@@ -489,7 +490,7 @@ public final class SettingsActivity extends Activity {
         headerParams.topMargin = dp(26);
         headerParams.bottomMargin = dp(10);
         page.addView(header, headerParams);
-        header.addView(text("使用与权限", 14, INK, true),
+        header.addView(sectionLabel("使用与权限"),
                 new LinearLayout.LayoutParams(0, -2, 1));
 
         LinearLayout card = new LinearLayout(this);
@@ -663,6 +664,13 @@ public final class SettingsActivity extends Activity {
             startActivity(intent);
             finish();
         });
+        return view;
+    }
+
+    /** 分区小标签：与首页一致（12sp 淡色 + 字距）。 */
+    private TextView sectionLabel(String value) {
+        TextView view = text(value, 12, MUTED, true);
+        view.setLetterSpacing(0.12f);
         return view;
     }
 

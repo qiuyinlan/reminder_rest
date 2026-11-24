@@ -266,6 +266,7 @@ public final class TaskActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = text(ReminderSettings.MODULE_BOARD.equals(module) ? "白板" : "任务", 26, UiPalette.INK, true);
+        title.setLetterSpacing(0.01f);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
         TextView board = text("白板", 13, UiPalette.MUTED, true);

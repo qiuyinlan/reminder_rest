@@ -131,6 +131,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("今日行动", 26, INK, true);
+        title.setLetterSpacing(0.01f);
         heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         TextView addLabel = text(itemLimitReached ? "添加  PRO" : "添加", 13,
                 itemLimitReached ? UiPalette.MUTED : GREEN, true);
@@ -179,8 +180,9 @@ public final class ItemsActivity extends Activity {
         LinearLayout sectionHeader = new LinearLayout(this);
         sectionHeader.setGravity(Gravity.CENTER_VERTICAL);
         sectionHeader.setPadding(0, dp(22), 0, dp(9));
-        sectionHeader.addView(text("提醒事项", 17, INK, true),
-                new LinearLayout.LayoutParams(0, -2, 1));
+        TextView itemsLabel = text("提醒事项", 12, MUTED, true);
+        itemsLabel.setLetterSpacing(0.12f);
+        sectionHeader.addView(itemsLabel, new LinearLayout.LayoutParams(0, -2, 1));
         sectionHeader.addView(text(rules.size() + " 项", 12, MUTED, false));
         list.addView(sectionHeader);
 
@@ -287,7 +289,9 @@ public final class ItemsActivity extends Activity {
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         heading.setPadding(0, dp(24), 0, dp(9));
-        heading.addView(text("作息", 17, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        TextView routineLabel = text("作息", 12, MUTED, true);
+        routineLabel.setLetterSpacing(0.12f);
+        heading.addView(routineLabel, new LinearLayout.LayoutParams(0, -2, 1));
         heading.addView(text("起床 / 睡觉", 12, MUTED, false));
         list.addView(heading);
 

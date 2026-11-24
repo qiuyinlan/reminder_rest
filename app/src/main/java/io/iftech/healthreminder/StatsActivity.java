@@ -257,7 +257,8 @@ public final class StatsActivity extends Activity {
         header.setBackground(headerBackground());
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text("每日记录", 25, INK, true);
+        TextView title = text("每日记录", 26, INK, true);
+        title.setLetterSpacing(0.01f);
         titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         ImageButton saveImage = new ImageButton(this);
         saveImage.setImageResource(android.R.drawable.ic_menu_share);
