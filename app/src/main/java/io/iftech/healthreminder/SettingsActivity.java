@@ -414,6 +414,30 @@ public final class SettingsActivity extends Activity {
             crashCard.addView(text("›", 25, GREEN, false));
         }
 
+        // 打卡音效
+        LinearLayout soundCard = new LinearLayout(this);
+        soundCard.setGravity(Gravity.CENTER_VERTICAL);
+        soundCard.setPadding(dp(15), dp(9), dp(14), dp(9));
+        soundCard.setBackground(round(Color.WHITE, 17));
+        soundCard.setElevation(dp(1));
+        LinearLayout.LayoutParams soundParams = new LinearLayout.LayoutParams(-1, -2);
+        soundParams.topMargin = dp(26);
+        page.addView(soundCard, soundParams);
+        LinearLayout soundCopy = new LinearLayout(this);
+        soundCopy.setOrientation(LinearLayout.VERTICAL);
+        soundCopy.addView(text("打卡音效", 15, INK, true));
+        TextView soundSub = text("完成时「嘸」一声，可随时静音", 12, MUTED, false);
+        soundSub.setPadding(0, dp(4), 0, 0);
+        soundCopy.addView(soundSub);
+        soundCard.addView(soundCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        Switch soundSwitch = new Switch(this);
+        soundSwitch.setChecked(SoundKit.enabled(this));
+        soundSwitch.setOnCheckedChangeListener((button, checked) -> {
+            SoundKit.setEnabled(this, checked);
+            if (checked) SoundKit.tick(this);
+        });
+        soundCard.addView(soundSwitch);
+
         // 使用与权限（从首页搬来）
         addUsageSection();
     }

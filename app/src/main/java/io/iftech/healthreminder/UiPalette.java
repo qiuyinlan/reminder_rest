@@ -103,32 +103,32 @@ final class UiPalette {
             catStroke = new int[]{0xff39717a, 0xff59648d, 0xff34724f, 0xff8a6935, 0xff765187, 0xff89514a, 0xff3f8377, 0xff765187};
         } else {
             darkTheme = false;
-            ACCENT = 0xff1f8a5f;
-            PAGE = 0xffeef8f1;
-            PAGE_LIGHT = 0xfff6fcf8;
-            SOFT = 0xffd7f0e1;
-            PALE = 0xffe7f7ee;
+            ACCENT = 0xff4caf7d;
+            PAGE = 0xffeaf6ef;
+            PAGE_LIGHT = 0xfff4fbf7;
+            SOFT = 0xffddf2e6;
+            PALE = 0xffe8f5ee;
             SURFACE = 0xffffffff;
-            INK = 0xff133226;
-            MUTED = 0xff5c7c6e;
-            BORDER = 0xffcfe9da;
-            DISABLED = 0xffbcd3c7;
-            WARN = 0xffa4672a;
-            WARN_SOFT = 0xfffff2e2;
-            WARN_BORDER = 0xffeccba2;
+            INK = 0xff3d5a4c;
+            MUTED = 0xff8faa9c;
+            BORDER = 0xffddede3;
+            DISABLED = 0xffc4d8cc;
+            WARN = 0xffb07a4a;
+            WARN_SOFT = 0xfffdf3e7;
+            WARN_BORDER = 0xffeed9bd;
             COMPANION = 0xff8a5bab;
-            PERIOD_FILL = 0xfff8d3e1;
-            PERIOD_INK = 0xffb04570;
-            PERIOD_STRONG = 0xffd8739b;
-            COUNTDOWN_INK = 0xff125f45;
-            pageGradient = new int[]{0xfff6fcf8, 0xffeef8f1, 0xffe7f6ed};
-            headGradient = new int[]{0xffccefdd, 0xffe0f7ea, 0xfff7fdfb};
-            glassGradient = new int[]{0xffffffff, 0xfff3fbf7};
-            heroGradient = new int[]{0xffc4ecda, 0xfff7fdfb};
-            hairlineColor = 0x66b9dfcd;
-            catInk = new int[]{0xff247a88, 0xff4859b0, 0xff1f7d55, 0xff94650f, 0xff76439a, 0xffaa4a3d, 0xff1f8a5f, 0xff8a5bab};
-            catFill = new int[]{0xffd9f0f3, 0xffe3e8fb, 0xffd8f2e4, 0xfffdeed2, 0xfff0e2f7, 0xfffbe3e1, 0xffe2f5ea, 0xfff0e2f7};
-            catStroke = new int[]{0xffa8dbe2, 0xffb8c3ee, 0xffa7dfc2, 0xffeed0a2, 0xffdbbfe9, 0xfff0beb8, 0xffc3ead9, 0xffdbbfe9};
+            PERIOD_FILL = 0xfff2dfe6;
+            PERIOD_INK = 0xff9a6379;
+            PERIOD_STRONG = 0xffc1849b;
+            COUNTDOWN_INK = 0xff3d8a63;
+            pageGradient = new int[]{0xfff4fbf7, 0xffeaf6ef, 0xffe6f3ec};
+            headGradient = new int[]{0xffe1f4e9, 0xffeff9f3, 0xfff8fdfa};
+            glassGradient = new int[]{0xffffffff, 0xfff7fcf9};
+            heroGradient = new int[]{0xffe4f5eb, 0xfff9fdfb};
+            hairlineColor = 0x55b9dcc8;
+            catInk = new int[]{0xff3d8a8f, 0xff5a6fa8, 0xff3d8a63, 0xffa07a3d, 0xff7d5f9a, 0xffa0645a, 0xff4caf7d, 0xff8a5bab};
+            catFill = new int[]{0xffe3f2f3, 0xffe9edf8, 0xffe4f4ea, 0xfff8f0df, 0xfff1e9f7, 0xfff7e9e6, 0xffe6f6ed, 0xfff1e9f7};
+            catStroke = new int[]{0xffb8dce0, 0xffc7cfeb, 0xffbcdfca, 0xffe7d5b0, 0xffdcc9e8, 0xffe6c4bd, 0xffcbe9d8, 0xffdcc9e8};
         }
     }
 

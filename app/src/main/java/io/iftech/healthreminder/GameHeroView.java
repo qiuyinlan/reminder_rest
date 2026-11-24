@@ -3,29 +3,26 @@ package io.iftech.healthreminder;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 
 /**
- * 首页游戏英雄卡：
- * 左侧环形今日进度 + 右侧连胜火焰和等级称号，整体渐变底 + 呼吸光晕。
- * 纯 Canvas 绘制，跟随主题色。
+ * 今日任务卡顶部的一行状态条：
+ * 左侧小环形进度（今日完成 / 目标）+ 右侧嫩芽连胜。
+ * 纯净白卡上的线条风格，不画自己的背景。
  */
 final class GameHeroView extends View {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF arc = new RectF();
-    private final RectF card = new RectF();
 
     private int completed;
     private int total;
     private int streak;
-    private String levelTitle = "";
+    private int level;
 
     private ValueAnimator pulse;
     private float phase;
@@ -38,18 +35,18 @@ final class GameHeroView extends View {
         text.setTextAlign(Paint.Align.LEFT);
     }
 
-    void setData(int completed, int total, int streak, String levelTitle) {
+    void setData(int completed, int total, int streak, int level) {
         this.completed = Math.max(0, completed);
         this.total = Math.max(0, total);
         this.streak = Math.max(0, streak);
-        this.levelTitle = levelTitle == null ? "" : levelTitle;
+        this.level = Math.max(0, Math.min(5, level));
         invalidate();
     }
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         pulse = ValueAnimator.ofFloat(0f, 1f);
-        pulse.setDuration(2400);
+        pulse.setDuration(2600);
         pulse.setRepeatCount(ValueAnimator.INFINITE);
         pulse.setInterpolator(new LinearInterpolator());
         pulse.addUpdateListener(a -> {
@@ -74,107 +71,82 @@ final class GameHeroView extends View {
         float h = getHeight();
         if (w <= 0 || h <= 0) return;
 
-        float radius = dp(18);
-        card.set(0, 0, w, h);
-
-        // 渐变底
-        int[] hero = UiPalette.heroGradient();
-        fill.setStyle(Paint.Style.FILL);
-        fill.setShader(new LinearGradient(0, 0, w, h, hero, null, Shader.TileMode.CLAMP));
-        canvas.drawRoundRect(card, radius, radius, fill);
-        fill.setShader(null);
-
-        // 描边
-        stroke.setShader(null);
-        stroke.setStrokeWidth(dp(1));
-        stroke.setColor(UiPalette.BORDER);
-        arc.set(card);
-        arc.inset(dp(0.5f), dp(0.5f));
-        canvas.drawRoundRect(arc, radius, radius, stroke);
-
-        // ---- 左侧环形进度 ----
-        float pad = dp(18);
         float cy = h / 2f;
-        float ringR = Math.min(h / 2f - pad, dp(42));
-        float cx = pad + ringR;
-        float ringStroke = dp(9);
+        float ringR = Math.min(h / 2f - dp(6), dp(22));
+        float cx = dp(4) + ringR;
+        float ringStroke = dp(5);
 
-        // 呼吸光晕
-        float glow = (float) (0.5 + 0.5 * Math.sin(phase * Math.PI * 2));
-        fill.setStyle(Paint.Style.FILL);
-        fill.setColor(withAlpha(UiPalette.ACCENT, (int) (26 + 22 * glow)));
-        canvas.drawCircle(cx, cy, ringR + dp(5) + dp(2) * glow, fill);
-
-        // 底环
+        // 轨道：加深的浅绿
         stroke.setStrokeWidth(ringStroke);
-        stroke.setColor(withAlpha(UiPalette.ACCENT, 40));
-        arc.set(cx - ringR, cy - ringR, cx + ringR, cy + ringR);
+        stroke.setColor(0xffddede3);
         canvas.drawCircle(cx, cy, ringR, stroke);
 
-        // 进度弧
+        // 进度弧：主绿
         float progress = total > 0 ? Math.min(1f, completed / (float) total) : 0f;
         if (progress > 0f) {
             stroke.setColor(UiPalette.ACCENT);
+            arc.set(cx - ringR, cy - ringR, cx + ringR, cy + ringR);
             canvas.drawArc(arc, -90f, 360f * progress, false, stroke);
         }
 
-        // 环中心数字
+        // 环心数字：已完成/总数
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         text.setColor(UiPalette.INK);
-        text.setTextSize(dp(21));
-        String big = total > 0 ? (completed + "/" + total) : "0";
-        canvas.drawText(big, cx, cy + dp(7), text);
-
-        text.setTextSize(dp(10));
-        text.setTypeface(android.graphics.Typeface.DEFAULT);
-        text.setColor(UiPalette.MUTED);
-        canvas.drawText("今日", cx, cy - dp(12), text);
-
-        // ---- 右侧：火焰 + 连胜 + 等级 ----
-        text.setTextAlign(Paint.Align.LEFT);
-        float x = cx + ringR + dp(20);
-        float avail = w - x - pad;
-        if (avail < dp(40)) return;
-
-        // 火焰 emoji
-        text.setTypeface(android.graphics.Typeface.DEFAULT);
-        text.setTextSize(dp(22));
-        canvas.drawText("🔥", x, cy - dp(24), text);
-
-        // 连胜大数字
-        text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        text.setColor(UiPalette.ACCENT);
-        text.setTextSize(dp(38));
-        String streakText = String.valueOf(streak);
-        canvas.drawText(streakText, x, cy + dp(15), text);
-        float streakWidth = text.measureText(streakText);
-
-        // 「天连胜」
-        text.setTypeface(android.graphics.Typeface.DEFAULT);
-        text.setColor(UiPalette.MUTED);
         text.setTextSize(dp(13));
-        canvas.drawText("天连胜", x + streakWidth + dp(4), cy + dp(13), text);
+        canvas.drawText(total > 0 ? (completed + "/" + total) : "0", cx, cy + dp(4.5f), text);
 
-        // 等级称号 pill
-        if (!levelTitle.isEmpty()) {
-            text.setTextSize(dp(11));
-            float tw = text.measureText(levelTitle);
-            float pillH = dp(20);
-            float pillW = tw + dp(16);
-            if (x + pillW <= w - pad) {
-                fill.setStyle(Paint.Style.FILL);
-                fill.setColor(withAlpha(UiPalette.ACCENT, 34));
-                RectF pill = new RectF(x, cy + dp(24), x + pillW, cy + dp(24) + pillH);
-                canvas.drawRoundRect(pill, pillH / 2f, pillH / 2f, fill);
-                text.setColor(UiPalette.ACCENT);
-                text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                canvas.drawText(levelTitle, x + dp(8), cy + dp(24) + pillH / 2f + dp(4), text);
-            }
-        }
+        // 右侧：嫩芽 + 连胜天数
+        float x = cx + ringR + dp(14);
+        if (x > w - dp(40)) return;
+
+        drawSprout(canvas, x + dp(9), cy, dp(9), UiPalette.ACCENT);
+
+        text.setTextAlign(Paint.Align.LEFT);
+        text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        text.setColor(UiPalette.INK);
+        text.setTextSize(dp(15));
+        String streakText = streak + " 天";
+        canvas.drawText(streakText, x + dp(24), cy + dp(5), text);
+
+        text.setTypeface(android.graphics.Typeface.DEFAULT);
+        text.setColor(UiPalette.MUTED);
+        text.setTextSize(dp(11));
+        canvas.drawText("连续坚持", x + dp(24) + text.measureText(streakText) + dp(4), cy + dp(4.5f), text);
     }
 
-    private static int withAlpha(int color, int alpha) {
-        return (color & 0x00ffffff) | ((alpha & 0xff) << 24);
+    /** 小嫩芽：等级越高叶子越多、越高。 */
+    private void drawSprout(Canvas canvas, float cx, float cy, float size, int color) {
+        stroke.setColor(color);
+        stroke.setStrokeWidth(dp(1.6f));
+        float baseY = cy + size * 0.85f;
+        float stemTop = cy - size * (0.15f + level * 0.06f);
+
+        canvas.drawLine(cx, baseY, cx, stemTop, stroke);
+
+        int leaves = Math.min(3, Math.max(1, level));
+        for (int i = 0; i < leaves; i++) {
+            float y = stemTop + size * (0.22f + i * 0.3f);
+            float span = size * (0.80f - i * 0.12f);
+            android.graphics.Path p = new android.graphics.Path();
+            p.moveTo(cx, y);
+            p.cubicTo(cx - span * 0.6f, y - span * 0.7f,
+                    cx - span, y + span * 0.1f, cx - span * 0.85f, y + span * 0.45f);
+            p.cubicTo(cx - span * 0.4f, y + span * 0.4f, cx - span * 0.1f, y + span * 0.2f, cx, y);
+            canvas.drawPath(p, stroke);
+
+            android.graphics.Path mirror = new android.graphics.Path();
+            mirror.moveTo(cx, y);
+            mirror.cubicTo(cx + span * 0.6f, y - span * 0.7f,
+                    cx + span, y + span * 0.1f, cx + span * 0.85f, y + span * 0.45f);
+            mirror.cubicTo(cx + span * 0.4f, y + span * 0.4f, cx + span * 0.1f, y + span * 0.2f, cx, y);
+            canvas.drawPath(mirror, stroke);
+        }
+
+        if (level >= 4) {
+            fill.setStyle(Paint.Style.FILL);
+            fill.setColor(color);
+            canvas.drawCircle(cx, stemTop - size * 0.1f, size * 0.22f, fill);
+        }
     }
 }

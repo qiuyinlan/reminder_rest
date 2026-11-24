@@ -35,6 +35,18 @@ final class TaskRowKit {
         return box;
     }
 
+    /** 立刻把勾选框设成完成/未完成外观（用于点击后先显示打勾，延迟刷新）。 */
+    static void applyCircleCheck(Context context, TextView box, boolean done) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.OVAL);
+        shape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
+        if (!done) shape.setStroke(FormKit.dp(context, 2), UiPalette.DISABLED);
+        box.setText(done ? "\u2713" : "");
+        box.setTextColor(done ? Color.WHITE : UiPalette.DISABLED);
+        box.setBackground(shape);
+        box.setContentDescription(done ? "\u53d6\u6d88\u5b8c\u6210" : "\u6807\u8bb0\u5b8c\u6210");
+    }
+
     /** 任务标题：完成后变灰 + 删除线。 */
     static TextView title(Context context, String value, boolean done) {
         TextView view = FormKit.text(context, value, TITLE_SIZE,

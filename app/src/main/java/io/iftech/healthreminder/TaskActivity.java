@@ -1037,8 +1037,19 @@ public final class TaskActivity extends Activity {
 
         // 主任务行：统一外观（TaskRowKit 跟白板、「现在」页共用）
         LinearLayout row = TaskRowKit.mainRow(this);
-        TextView box = TaskRowKit.circleCheck(this, done,
-                v -> toggleDone(task, done, dayStart, allSubDone));
+        TextView box = TaskRowKit.circleCheck(this, done, null);
+        box.setOnClickListener(v -> {
+            boolean willDone = !done;
+            if (willDone) {
+                // 先显示打勾并弹一下，再刷新列表，让用户看到打钩
+                TaskRowKit.applyCircleCheck(this, box, true);
+                AnimKit.pop(box, 1.35f);
+                SoundKit.tick(this);
+                toggleDone(task, done, dayStart, allSubDone, true);
+            } else {
+                toggleDone(task, done, dayStart, allSubDone, false);
+            }
+        });
         row.addView(box, TaskRowKit.checkParams(this));
 
         TextView title = TaskRowKit.title(this,
@@ -1208,6 +1219,11 @@ public final class TaskActivity extends Activity {
     }
 
     private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart, boolean allSubDone) {
+        toggleDone(task, done, dayStart, allSubDone, false);
+    }
+
+    private void toggleDone(ReminderSettings.Rule task, boolean done, long dayStart,
+                            boolean allSubDone, boolean delayReload) {
         if (done) {
             // 取消大任务时，子任务也跟着回到未完成，免得只撤一半
             for (ReminderSettings.Rule sub : Subtasks.of(this, task.id)) {
@@ -1229,7 +1245,17 @@ public final class TaskActivity extends Activity {
                     ReminderRecord.KIND_DONE, now, now, "任务清单勾选", module);
             ReminderSettings.markCompleted(this, task.id, Math.max(1, task.dailyTarget));
         }
-        reload();
+        if (delayReload) {
+            box().postDelayed(this::reload, 340);
+        } else {
+            reload();
+        }
+    }
+
+    /** 延迟刷新用：随便拿一个已挂到窗口的 View。 */
+    private View box() {
+        View root = findViewById(android.R.id.content);
+        return root != null ? root : new View(this);
     }
 
     private void toggleSubtask(int parentId, ReminderSettings.Rule sub, boolean done, long dayStart) {

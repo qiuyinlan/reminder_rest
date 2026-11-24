@@ -119,13 +119,15 @@ public final class MainActivity extends Activity {
         ScrollView currentScroll = scroll;
         currentScroll.post(() -> currentScroll.scrollTo(0, previousScrollY));
 
-        TextView date = label(DateFormat.getDateInstance(DateFormat.FULL)
-                .format(Calendar.getInstance().getTime()), 11, MUTED, false);
+        DailyQuest.ensureDay(this);
+        TextView date = label(new java.text.SimpleDateFormat("M\u6708d\u65e5  E",
+                java.util.Locale.CHINA).format(Calendar.getInstance().getTime()), 11, MUTED, false);
         date.setLetterSpacing(0.14f);
         date.setPadding(dp(2), 0, 0, dp(6));
         body.addView(date);
         LinearLayout top = row();
-        TextView brand = label("休息一下", 30, INK, true);
+        boolean dayAllDone = DailyQuest.allQuestsDone(this) && DailyQuest.todayActions(this) > 0;
+        TextView brand = label(dayAllDone ? "休息一下" : "今天", 30, INK, true);
         brand.setLetterSpacing(0.01f);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         TextView moodButton = label("心情", 12, INK, true);
@@ -198,44 +200,43 @@ public final class MainActivity extends Activity {
         screen.addView(nav, navParams);
     }
 
+    /** 身体记录：默认折叠成一行入口，点开才出现输入框；经期已移出首页。 */
     private void addDailyBodyNote() {
         LinearLayout card = columnCard();
-        LinearLayout titleRow = row();
-        TextView title = label("今天身体怎么样？", 17, INK, true);
-        title.setSingleLine(true);
-        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        if (WaterLog.enabled(this)) {
-            TextView cup = label("🥛", 18, INK, false);
-            cup.setGravity(Gravity.CENTER);
-            cup.setPadding(dp(4), 0, dp(4), 0);
-            cup.setContentDescription("记一下喝了多少水");
-            cup.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
-            titleRow.addView(cup);
-            TextView drank = label("今日已喝：" + WaterLog.todayTotal(this) + "ml", 12, MUTED, true);
-            drank.setSingleLine(true);
-            drank.setPadding(dp(2), 0, 0, 0);
-            drank.setContentDescription("今日已喝 " + WaterLog.todayTotal(this) + " 毫升");
-            drank.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
-            titleRow.addView(drank);
+        card.setPadding(dp(18), dp(14), dp(18), dp(14));
+
+        LinearLayout head = row();
+        head.addView(label("\u4eca\u5929\u8eab\u4f53\u600e\u4e48\u6837", 14, INK, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+
+        int water = WaterLog.enabled(this) ? WaterLog.todayTotal(this) : 0;
+        if (water > 0) {
+            head.addView(label("\uD83E\uDD5B " + water + "ml", 12, MUTED, false));
         }
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
-        titleParams.bottomMargin = dp(10);
-        card.addView(titleRow, titleParams);
+
+        TextView toggle = label("\u8bb0\u4e00\u53e5 \u203a", 12, GREEN, true);
+        head.addView(toggle);
+        card.addView(head, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout expand = new LinearLayout(this);
+        expand.setOrientation(LinearLayout.VERTICAL);
+        expand.setVisibility(View.GONE);
+        card.addView(expand, new LinearLayout.LayoutParams(-1, -2));
+
         EditText note = new EditText(this);
-        note.setTextSize(15);
+        note.setTextSize(14);
         note.setTextColor(INK);
         note.setHintTextColor(MUTED);
         note.setGravity(Gravity.TOP | Gravity.LEFT);
         note.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        note.setMinLines(3);
-        note.setMaxLines(7);
+        note.setMinLines(2);
+        note.setMaxLines(6);
         note.setPadding(dp(12), dp(10), dp(12), dp(10));
         note.setBackground(round(UiPalette.PALE, 12));
-        note.setHint("睡得好不好、精神、酸痛、心情…随便写一句就行");
-        note.setContentDescription("每日身体情况");
+        note.setHint("睡得好不好、精神、酸痛…随便写一句");
+        note.setContentDescription("\u6bcf\u65e5\u8eab\u4f53\u60c5\u51b5");
         Calendar noteDay = Calendar.getInstance();
         note.setText(DailyBodyNote.read(this, noteDay));
         note.addTextChangedListener(new android.text.TextWatcher() {
@@ -245,55 +246,32 @@ public final class MainActivity extends Activity {
             }
             @Override public void afterTextChanged(android.text.Editable s) { }
         });
-        card.addView(note, full());
-        if (UserProfile.isFemale(this)) {
-            addDivider(card);
-            LinearLayout periodRow = row();
-            periodRow.setPadding(0, dp(12), 0, dp(2));
-            final PeriodLog.Range active = PeriodLog.active(this);
-            final boolean ongoing = active != null;
-            final PeriodLog.Range finished = ongoing ? null : PeriodLog.latest(this);
-            final boolean hasFinished = finished != null && !finished.ongoing();
-            String statusText;
-            if (ongoing) {
-                statusText = "经期进行中 · 第 " + PeriodLog.days(this, active) + " 天";
-            } else if (hasFinished) {
-                statusText = "经期：" + PeriodLog.monthDay(finished.startKey) + " - "
-                        + PeriodLog.monthDay(finished.endKey);
-            } else {
-                statusText = "经期：未标记";
-            }
-            TextView status = label(statusText, 12,
-                    ongoing || hasFinished ? UiPalette.PERIOD_INK : MUTED, true);
-            if (hasFinished) {
-                status.setOnClickListener(v -> pickPeriodEnd(finished));
-            }
-            periodRow.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
-            TextView action = label(ongoing ? "今天结束" : "今天来了", 12, UiPalette.PERIOD_INK, true);
-            action.setGravity(Gravity.CENTER);
-            action.setPadding(dp(12), dp(7), dp(12), dp(7));
-            action.setBackground(round(UiPalette.PERIOD_FILL, 12));
-            action.setContentDescription(ongoing ? "记录今天经期结束" : "记录今天经期开始");
-            action.setOnClickListener(v -> {
-                Calendar today = Calendar.getInstance();
-                if (ongoing) {
-                    PeriodLog.endOn(this, today);
-                    Toast.makeText(this, "已记录经期结束", Toast.LENGTH_SHORT).show();
-                } else {
-                    PeriodLog.startOn(this, today);
-                    Toast.makeText(this, "已记录经期开始", Toast.LENGTH_SHORT).show();
-                }
-                render();
-            });
-            periodRow.addView(action);
-            card.addView(periodRow, full());
+        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, -2);
+        noteParams.topMargin = dp(10);
+        expand.addView(note, noteParams);
+
+        if (WaterLog.enabled(this)) {
+            LinearLayout waterRow = row();
+            waterRow.setPadding(0, dp(10), 0, 0);
+            TextView cup = label("\uD83E\uDD5B \u8bb0\u4e00\u676f", 12, INK, true);
+            cup.setPadding(dp(12), dp(7), dp(12), dp(7));
+            cup.setBackground(round(UiPalette.PALE, 12));
+            cup.setOnClickListener(v -> WaterDialogs.showAmount(this, this::render));
+            waterRow.addView(cup);
+            expand.addView(waterRow, new LinearLayout.LayoutParams(-1, -2));
         }
+
+        toggle.setOnClickListener(v -> {
+            boolean show = expand.getVisibility() != View.VISIBLE;
+            expand.setVisibility(show ? View.VISIBLE : View.GONE);
+            toggle.setText(show ? "\u6536\u8d77 \u2304" : "\u8bb0\u4e00\u53e5 \u203a");
+        });
+
         LinearLayout.LayoutParams params = full();
-        params.topMargin = dp(14);
+        params.topMargin = dp(10);
         body.addView(card, params);
     }
 
-    /** 游戏化激励卡片：连胜、宝箱、今日进度 */
     private void addGamificationCard() {
         DailyQuest.ensureDay(this);
         long dayStart = GameProgress.dayStart(System.currentTimeMillis());
@@ -314,83 +292,69 @@ public final class MainActivity extends Activity {
         }
 
         int streak = GameProgress.getGlobalStreak(this);
-        int exp = DailyQuest.exp(this);
-        int doubles = DailyQuest.doubles(this);
         int level = DailyQuest.level(this);
+        int sproutLevel = GameSettings.levelIndex(streak);
 
-        LinearLayout zone = new LinearLayout(this);
-        zone.setOrientation(LinearLayout.VERTICAL);
-
-        // ---- 英雄卡 + 粒子层 ----
-        android.widget.FrameLayout heroWrap = new android.widget.FrameLayout(this);
-        GameHeroView hero = new GameHeroView(this);
-        hero.setData(completed, total, streak, "Lv." + level);
-        heroWrap.addView(hero, new android.widget.FrameLayout.LayoutParams(-1, dp(132)));
-        CelebrationView fx = new CelebrationView(this);
-        heroWrap.addView(fx, new android.widget.FrameLayout.LayoutParams(-1, dp(132)));
-        zone.addView(heroWrap, new LinearLayout.LayoutParams(-1, dp(132)));
-        if (!gameZoneAnimated) AnimKit.waveIn(heroWrap, 0);
-
-        // 今日完成数变多 → 放一次粒子
-        final String dayKey = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
-                .format(new java.util.Date());
-        android.content.SharedPreferences fxPrefs =
-                getSharedPreferences("game_fx", MODE_PRIVATE);
-        boolean sameDay = dayKey.equals(fxPrefs.getString("last_day", ""));
-        int prevCompleted = sameDay ? fxPrefs.getInt("last_completed", -1) : -1;
-        if (prevCompleted >= 0 && completed > prevCompleted) {
-            heroWrap.post(() -> fx.burst(GREEN));
-        }
-        fxPrefs.edit().putString("last_day", dayKey).putInt("last_completed", completed).apply();
-
-        // ---- 今日任务 ----
+        // 唯一的视觉主角：今日任务卡
         LinearLayout questCard = columnCard();
-        questCard.setPadding(dp(16), dp(14), dp(16), dp(12));
+        questCard.setPadding(dp(18), dp(14), dp(18), dp(16));
 
-        LinearLayout qHead = row();
-        qHead.addView(label("今日任务", 16, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
-        qHead.addView(label(DailyQuest.doneQuestCount(this) + "/" + DailyQuest.quests().size(),
-                14, GREEN, true));
-        questCard.addView(qHead, new LinearLayout.LayoutParams(-1, -2));
+        GameHeroView status = new GameHeroView(this);
+        status.setData(completed, total, streak, sproutLevel);
+        questCard.addView(status, new LinearLayout.LayoutParams(-1, dp(54)));
 
-        TextView stats = label("Lv." + level + "  ·  经验 " + exp + "  ·  双倍 " + doubles + " 次",
-                12, MUTED, false);
-        LinearLayout.LayoutParams statsParams = new LinearLayout.LayoutParams(-1, -2);
-        statsParams.topMargin = dp(4);
-        questCard.addView(stats, statsParams);
+        View divider = new View(this);
+        divider.setBackgroundColor(UiPalette.BORDER);
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
+        dividerParams.topMargin = dp(12);
+        questCard.addView(divider, dividerParams);
 
+        LinearLayout head = row();
+        LinearLayout.LayoutParams headParams = new LinearLayout.LayoutParams(-1, -2);
+        headParams.topMargin = dp(12);
+        questCard.addView(head, headParams);
+        head.addView(label("今日任务", 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        TextView lvBadge = label("Lv." + level, 10, UiPalette.ACCENT, true);
+        lvBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
+        lvBadge.setBackground(round(UiPalette.PALE, 9));
+        head.addView(lvBadge);
+
+        int index = 0;
         for (DailyQuest.Quest quest : DailyQuest.quests()) {
-            int progress = DailyQuest.questProgress(this, quest);
+            int progress = Math.min(DailyQuest.questProgress(this, quest), quest.target);
             boolean done = progress >= quest.target;
 
-            LinearLayout line = new LinearLayout(this);
-            line.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(-1, -2);
-            lineParams.topMargin = dp(11);
-            questCard.addView(line, lineParams);
+            LinearLayout questRow = new LinearLayout(this);
+            questRow.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+            rowParams.topMargin = dp(13);
+            questCard.addView(questRow, rowParams);
 
-            TextView icon = label(quest.icon, 16, INK, false);
-            icon.setGravity(Gravity.CENTER);
-            line.addView(icon, new LinearLayout.LayoutParams(dp(26), dp(26)));
+            MiniGlyphView glyph = new MiniGlyphView(this);
+            int kind = index == 0 ? MiniGlyphView.BOOK
+                    : (index == 1 ? MiniGlyphView.CHECKLIST : MiniGlyphView.CARDS);
+            glyph.setKind(kind, done ? UiPalette.MUTED : UiPalette.ACCENT);
+            questRow.addView(glyph, new LinearLayout.LayoutParams(dp(20), dp(20)));
 
-            TextView title = label(quest.title, 14, done ? MUTED : INK, done);
-            title.setPadding(dp(8), 0, 0, 0);
+            TextView questTitle = label(quest.title, 14, done ? MUTED : INK, done);
+            questTitle.setPadding(dp(10), 0, 0, 0);
             if (done) {
-                title.setPaintFlags(title.getPaintFlags()
+                questTitle.setPaintFlags(questTitle.getPaintFlags()
                         | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
             }
-            line.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+            questRow.addView(questTitle, new LinearLayout.LayoutParams(0, -2, 1));
 
-            line.addView(label(Math.min(progress, quest.target) + "/" + quest.target,
-                    13, done ? GREEN : MUTED, true));
+            questRow.addView(label(done ? "已完成" : progress + "/" + quest.target,
+                    12, done ? GREEN : MUTED, done));
+            index++;
         }
 
-        // 奖励按钮 / 推荐 / 状态
+        // 底部：奖励按钮 / 还差几个 / 推荐
         if (DailyQuest.bonusAvailable(this)) {
-            TextView claim = label("\uD83C\uDFC6 领取完成奖励：+40 经验 · 3 次双倍", 14, Color.WHITE, true);
+            TextView claim = label("领取完成奖励  +40 经验", 14, Color.WHITE, true);
             claim.setGravity(Gravity.CENTER);
             claim.setPadding(dp(12), dp(12), dp(12), dp(12));
-            claim.setBackground(round(GREEN, 14));
+            claim.setBackground(round(GREEN, 16));
             claim.setOnClickListener(v -> {
                 DailyQuest.claimAllBonus(this);
                 List<DailyQuest.Reward> gained = DailyQuest.advanceSprint(this);
@@ -400,107 +364,75 @@ public final class MainActivity extends Activity {
                 }
                 render();
                 if (chestText != null) {
-                    String name = chestText.contains("金") ? "金" : (chestText.contains("银") ? "银" : "铜");
+                    String name = chestText.contains("金") ? "金"
+                            : (chestText.contains("银") ? "银" : "铜");
                     ChestDialog.show(MainActivity.this, name, chestText);
                 } else {
-                    Toast.makeText(MainActivity.this, "已领取，冲刺模式开启！", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "已领取，冲刺模式开启", Toast.LENGTH_SHORT).show();
                 }
             });
             AnimKit.press(claim);
             LinearLayout.LayoutParams claimParams = new LinearLayout.LayoutParams(-1, -2);
-            claimParams.topMargin = dp(14);
+            claimParams.topMargin = dp(16);
             questCard.addView(claim, claimParams);
+
         } else if (!DailyQuest.allQuestsDone(this)) {
+            int questsLeft = DailyQuest.quests().size() - DailyQuest.doneQuestCount(this);
+            TextView hint = label("还剩 " + questsLeft + " 个就开箱 \uD83C\uDF81", 13, MUTED, true);
+            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
+            hintParams.topMargin = dp(14);
+            questCard.addView(hint, hintParams);
+
             ReminderSettings.Rule recommend = pickRecommendation();
             if (recommend != null) {
                 LinearLayout tip = new LinearLayout(this);
                 tip.setGravity(Gravity.CENTER_VERTICAL);
-                tip.setPadding(dp(12), dp(8), dp(8), dp(8));
-                tip.setBackground(round(UiPalette.PALE, 12));
+                tip.setPadding(dp(12), dp(7), dp(7), dp(7));
+                tip.setBackground(round(UiPalette.PALE, 14));
                 LinearLayout.LayoutParams tipParams = new LinearLayout.LayoutParams(-1, -2);
-                tipParams.topMargin = dp(14);
+                tipParams.topMargin = dp(8);
                 questCard.addView(tip, tipParams);
 
-                TextView tipText = label("推荐：" + recommend.title, 13, INK, false);
+                TextView tipText = label("推荐  " + recommend.title, 12, INK, false);
                 tipText.setSingleLine(true);
                 tipText.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 tip.addView(tipText, new LinearLayout.LayoutParams(0, -2, 1));
 
-                TextView go = label("去做", 13, Color.WHITE, true);
+                TextView go = label("去做", 12, Color.WHITE, true);
                 go.setGravity(Gravity.CENTER);
-                go.setPadding(dp(14), dp(7), dp(14), dp(7));
-                go.setBackground(round(GREEN, 14));
+                go.setPadding(dp(13), dp(6), dp(13), dp(6));
+                go.setBackground(round(GREEN, 12));
                 go.setOnClickListener(v -> startActivity(new Intent(this, TaskActivity.class)));
                 AnimKit.press(go);
                 tip.addView(go);
             }
-        } else {
-            TextView opened = label("\u26A1 冲刺模式已开启，今天多做多得", 13, 0xffc1870f, true);
-            LinearLayout.LayoutParams openedParams = new LinearLayout.LayoutParams(-1, -2);
-            openedParams.topMargin = dp(14);
-            questCard.addView(opened, openedParams);
         }
 
-        LinearLayout.LayoutParams questParams = full();
-        questParams.topMargin = dp(12);
-        zone.addView(questCard, questParams);
-        if (!gameZoneAnimated) AnimKit.waveIn(questCard, 1);
-
-        // ---- 冲刺模式 ----
+        // 冲刺阶段：卡内一行，不抢主角
         if (DailyQuest.sprintUnlocked(this)) {
-            LinearLayout sprintCard = columnCard();
-            sprintCard.setPadding(dp(16), dp(14), dp(16), dp(14));
-
-            LinearLayout sHead = row();
-            sHead.addView(label("\u26A1 冲刺模式", 16, INK, true),
-                    new LinearLayout.LayoutParams(0, -2, 1));
-            sHead.addView(label("今日 " + DailyQuest.todayActions(this) + " 次", 12, MUTED, false));
-            sprintCard.addView(sHead, new LinearLayout.LayoutParams(-1, -2));
-
-            int stage = DailyQuest.sprintStage(this);
-            LinearLayout steps = new LinearLayout(this);
-            steps.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams stepsParams = new LinearLayout.LayoutParams(-1, -2);
-            stepsParams.topMargin = dp(12);
-            sprintCard.addView(steps, stepsParams);
-
-            for (int i = 0; i < DailyQuest.SPRINT_STEPS.length; i++) {
-                boolean reached = stage > i;
-                boolean current = stage == i;
-
-                LinearLayout step = new LinearLayout(this);
-                step.setOrientation(LinearLayout.VERTICAL);
-                step.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, -2, 1);
-                if (i > 0) sp.leftMargin = dp(5);
-                steps.addView(step, sp);
-
-                TextView dot = label(reached ? "\u2713" : String.valueOf(DailyQuest.SPRINT_STEPS[i]),
-                        12, reached ? Color.WHITE : (current ? GREEN : MUTED), true);
-                dot.setGravity(Gravity.CENTER);
-                dot.setPadding(dp(2), dp(9), dp(2), dp(9));
-                dot.setBackground(round(reached ? GREEN : UiPalette.PALE, 10));
-                step.addView(dot, new LinearLayout.LayoutParams(-1, -2));
-            }
-
-            int next = DailyQuest.nextSprintTarget(this);
-            TextView hint = label(next > 0
-                            ? "再完成 " + Math.max(0, next - DailyQuest.todayActions(this)) + " 次到下一阶段"
-                            : "今日冲刺全部达成，厉害！",
-                    12, MUTED, false);
-            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-            hintParams.topMargin = dp(10);
-            sprintCard.addView(hint, hintParams);
-
-            LinearLayout.LayoutParams sprintParams = full();
+            LinearLayout sprint = new LinearLayout(this);
+            sprint.setGravity(Gravity.CENTER_VERTICAL);
+            sprint.setPadding(dp(12), dp(9), dp(12), dp(9));
+            sprint.setBackground(round(UiPalette.PALE, 12));
+            LinearLayout.LayoutParams sprintParams = new LinearLayout.LayoutParams(-1, -2);
             sprintParams.topMargin = dp(12);
-            zone.addView(sprintCard, sprintParams);
-            if (!gameZoneAnimated) AnimKit.waveIn(sprintCard, 2);
+            questCard.addView(sprint, sprintParams);
+
+            sprint.addView(label("\u26A1 冲刺 " + DailyQuest.todayActions(this) + " 次",
+                    12, UiPalette.ACCENT, true));
+            TextView sprintRight = label("", 11, MUTED, false);
+            int next = DailyQuest.nextSprintTarget(this);
+            sprintRight.setText(next > 0
+                    ? "再 " + Math.max(0, next - DailyQuest.todayActions(this)) + " 次到下一档"
+                    : "今日冲满");
+            sprintRight.setGravity(Gravity.END);
+            sprint.addView(sprintRight, new LinearLayout.LayoutParams(0, -2, 1));
         }
 
-        LinearLayout.LayoutParams zoneParams = full();
-        zoneParams.topMargin = dp(16);
-        body.addView(zone, zoneParams);
+        LinearLayout.LayoutParams cardParams = full();
+        cardParams.topMargin = dp(14);
+        body.addView(questCard, cardParams);
+        if (!gameZoneAnimated) AnimKit.waveIn(questCard, 0);
         gameZoneAnimated = true;
     }
 
@@ -634,6 +566,7 @@ public final class MainActivity extends Activity {
         AppUpdateManager.check(this, false);
     }
 
+    /** 提醒运行状态：降级成一张轻量白卡，只留小图标 + 一行小字 + 开关。 */
     private void addTodayStatusCard(List<ReminderSettings.Rule> rules) {
         boolean remindersOn = ReminderSettings.enabled(this);
         int completed = 0;
@@ -642,7 +575,6 @@ public final class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         long dayStart = ReminderRecord.dayStart(now);
         if (remindersOn) {
-            // 只统计已生效的提醒：关了的规则不计入分母，也不计入完成数
             for (ReminderSettings.Rule rule : rules) {
                 if (!rule.enabled) continue;
                 completed += ReminderSettings.completedToday(this, rule.id);
@@ -652,25 +584,33 @@ public final class MainActivity extends Activity {
         }
 
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(20), dp(20), dp(20), dp(18));
-        card.setBackground(heroCard());
-        card.setElevation(dp(3));
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(16), dp(12), dp(12), dp(12));
+        card.setBackground(round(Color.WHITE, 20));
+        card.setElevation(dp(1));
 
-        LinearLayout overview = row();
-        HomeMascotView face = new HomeMascotView(this);
-        overview.addView(face, new LinearLayout.LayoutParams(dp(62), dp(62)));
+        MiniGlyphView dot = new MiniGlyphView(this);
+        dot.setSproutLevel(remindersOn ? 2 : 0,
+                remindersOn ? UiPalette.ACCENT : UiPalette.MUTED);
+        card.addView(dot, new LinearLayout.LayoutParams(dp(20), dp(20)));
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(dp(13), 0, dp(8), 0);
-        TextView statusTitle = label(ReminderSettings.enabled(this) ? "提醒正在运行" : "提醒已暂停", 17, INK, true);
-        statusTitle.setLetterSpacing(0.02f);
-        copy.addView(statusTitle);
-        overview.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        copy.setPadding(dp(10), 0, dp(8), 0);
+        copy.addView(label(remindersOn ? "提醒运行中" : "提醒已暂停", 13, MUTED, false));
+
+        if (remindersOn && target > 0) {
+            TextView sub = label("今日 " + completed + "/" + target + " 次 · 待完成 "
+                    + remainingReminders + " 次", 11, UiPalette.DISABLED, false);
+            sub.setPadding(0, dp(3), 0, 0);
+            copy.addView(sub);
+        }
+        card.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
         Switch enabled = new Switch(this);
         styleSwitch(enabled);
+        enabled.setScaleX(0.85f);
+        enabled.setScaleY(0.85f);
         enabled.setChecked(ReminderSettings.enabled(this));
         enabled.setContentDescription(ReminderSettings.enabled(this) ? "暂停今日提醒" : "开启今日提醒");
         enabled.setOnCheckedChangeListener((button, checked) -> {
@@ -683,140 +623,11 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, checked ? "提醒已开启" : "提醒已暂停", Toast.LENGTH_SHORT).show();
             render();
         });
-        overview.addView(enabled);
-        card.addView(overview);
+        card.addView(enabled);
 
-        View divider = new View(this);
-        divider.setBackgroundColor(UiPalette.hairline());
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
-        dividerParams.topMargin = dp(16);
-        dividerParams.bottomMargin = dp(14);
-        card.addView(divider, dividerParams);
-
-        LinearLayout metrics = row();
-        String completedText = remindersOn && target > 0
-                ? completed + " / " + target + " 次" : "—";
-        metrics.addView(statusMetric("今日完成", completedText),
-                new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams completionParams = new LinearLayout.LayoutParams(0, -2, 1);
-        completionParams.leftMargin = dp(14);
-        metrics.addView(statusMetric("待完成提醒", remindersOn ? remainingReminders + " 次" : "—"), completionParams);
-        card.addView(metrics);
-
-        if (!remindersOn || target <= 0) {
-            LinearLayout.LayoutParams cardParams = full();
-            cardParams.bottomMargin = dp(14);
-            body.addView(card, cardParams);
-            return;
-        }
-
-        ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setIndeterminate(false);
-        progress.setMax(Math.max(1, target));
-        progress.setProgress(Math.min(completed, Math.max(1, target)));
-        progress.setProgressTintList(ColorStateList.valueOf(GREEN));
-        progress.setProgressBackgroundTintList(ColorStateList.valueOf(UiPalette.hairline()));
-        todayProgress = progress;
-        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(5));
-        progressParams.topMargin = dp(14);
-        card.addView(progress, progressParams);
-
-        LinearLayout.LayoutParams cardParams = full();
-        cardParams.bottomMargin = dp(14);
-        body.addView(card, cardParams);
-    }
-
-    /** 今天这条规则该提醒几次（不分早晚，只看今天该不该响）。 */
-    private int countTodaySlots(ReminderSettings.Rule rule, long dayStart) {
-        if (!rule.enabled) return 0;
-        if (rule.isSubtaskModule()) return 0;
-        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
-        if (!appliesToday(rule, dayStart)) return 0;
-        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
-        if (rule.specificTimeMode) {
-            int total = 0;
-            for (int pointSec : rule.timePointsSeconds) {
-                Calendar cal = Calendar.getInstance();
-                cal.setTimeInMillis(dayStart);
-                cal.add(Calendar.SECOND, pointSec);
-                if (cal.getTimeInMillis() < dayEnd) total++;
-            }
-            return total;
-        }
-        int startSec = rule.start * 60;
-        int endSec = rule.end * 60;
-        if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
-        long windowStart = dayStart + startSec * 1000L;
-        long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
-        if (windowEnd <= windowStart) return 0;
-        int interval = Math.max(1, rule.intervalSeconds);
-        return (int) ((windowEnd - windowStart) / (interval * 1000L)) + 1;
-    }
-
-    /** 单次 / 每周规则今天到底该不该响。 */
-    private boolean appliesToday(ReminderSettings.Rule rule, long dayStart) {
-        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
-        if (rule.isOnceSchedule()) return rule.onceAt >= dayStart && rule.onceAt < dayEnd;
-        if (rule.isWeeklySchedule()) {
-            return rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK));
-        }
-        return true;
-    }
-
-    /** 今天还剩多少次提醒：取「还没到的时间点」和「还没完成的数量」中小的那个。 */
-    private int countRemainingReminders(ReminderSettings.Rule rule, long now, long dayStart) {
-        if (!rule.enabled) return 0;
-        // 子任务不单独排闹钟，白板不提醒，都不计入
-        if (rule.isSubtaskModule()) return 0;
-        if (ReminderSettings.MODULE_BOARD.equals(rule.module)) return 0;
-        // 单次 / 每周：不是今天就归零
-        if (rule.isOnceSchedule()) {
-            if (rule.onceAt < dayStart || rule.onceAt >= dayStart + 24 * 60 * 60 * 1000L) return 0;
-        } else if (rule.isWeeklySchedule()) {
-            if (!rule.matchesWeekday(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) return 0;
-        }
-        int upcoming = 0;
-        int total = countTodaySlots(rule, dayStart);
-        if (total <= 0) return 0;
-        long dayEnd = dayStart + 24 * 60 * 60 * 1000L;
-        if (rule.specificTimeMode) {
-            for (int pointSec : rule.timePointsSeconds) {
-                Calendar cal = Calendar.getInstance();
-                cal.setTimeInMillis(dayStart);
-                cal.add(Calendar.SECOND, pointSec);
-                long pointMillis = cal.getTimeInMillis();
-                if (pointMillis >= dayEnd) continue;
-                if (pointMillis > now) upcoming++;
-            }
-        } else {
-            int startSec = rule.start * 60;
-            int endSec = rule.end * 60;
-            if (endSec <= startSec) endSec += 24 * 60 * 60; // 跨天
-            long windowStart = dayStart + startSec * 1000L;
-            long windowEnd = Math.min(dayStart + endSec * 1000L, dayEnd);
-            long effectiveStart = Math.max(now, windowStart);
-            if (windowEnd > effectiveStart) {
-                int interval = Math.max(1, rule.intervalSeconds);
-                upcoming = (int) ((windowEnd - effectiveStart) / (interval * 1000L)) + 1;
-            }
-        }
-        int undone = Math.max(0, total - ReminderSettings.completedToday(this, rule.id));
-        return Math.min(upcoming, undone);
-    }
-
-    private LinearLayout statusMetric(String title, String value) {
-        LinearLayout metric = new LinearLayout(this);
-        metric.setOrientation(LinearLayout.VERTICAL);
-        metric.setPadding(dp(2), 0, 0, 0);
-        TextView caption = label(title, 10, MUTED, false);
-        caption.setLetterSpacing(0.12f);
-        metric.addView(caption);
-        TextView amount = label(value, 18, INK, true);
-        amount.setPadding(0, dp(4), 0, 0);
-        amount.setLetterSpacing(0.01f);
-        if ("今日完成".equals(title)) completedMetric = amount;
-        metric.addView(amount);
-        return metric;
+        LinearLayout.LayoutParams params = full();
+        params.topMargin = dp(10);
+        body.addView(card, params);
     }
 
     private void addPermissionBanner() {
