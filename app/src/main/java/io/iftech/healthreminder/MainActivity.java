@@ -464,8 +464,9 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         chestRowParams.topMargin = dp(12);
         questCard.addView(chestRow, chestRowParams);
 
-        final TextView gift = label("\uD83C\uDF81", 19, INK, false);
-        chestRow.addView(gift);
+        final ChestIconView gift = new ChestIconView(this);
+        gift.setUnlocked(chestFull);
+        chestRow.addView(gift, new LinearLayout.LayoutParams(dp(26), dp(26)));
 
         SegmentBarView chestBar = new SegmentBarView(this);
         chestBar.setSegments(questTotal, questDone, 0xff4caf7d, 0xffddede3);
