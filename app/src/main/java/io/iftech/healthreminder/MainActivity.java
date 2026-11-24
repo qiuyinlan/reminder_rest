@@ -123,17 +123,17 @@ public final class MainActivity extends Activity {
         TextView date = label(new java.text.SimpleDateFormat("M\u6708d\u65e5  E",
                 java.util.Locale.CHINA).format(Calendar.getInstance().getTime()), 11, MUTED, false);
         date.setLetterSpacing(0.14f);
-        date.setPadding(dp(2), 0, 0, dp(6));
+        date.setPadding(dp(2), 0, 0, dp(4));
         body.addView(date);
         LinearLayout top = row();
         boolean dayAllDone = DailyQuest.allQuestsDone(this) && DailyQuest.todayActions(this) > 0;
-        TextView brand = label(dayAllDone ? "休息一下" : "今天", 30, INK, true);
+        TextView brand = label(dayAllDone ? "休息一下" : "今天", 26, INK, true);
         brand.setLetterSpacing(0.01f);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         TextView moodButton = label("心情", 12, INK, true);
         moodButton.setGravity(Gravity.CENTER);
         moodButton.setLetterSpacing(0.06f);
-        moodButton.setPadding(dp(15), dp(9), dp(15), dp(9));
+        moodButton.setPadding(dp(12), dp(7), dp(12), dp(7));
         moodButton.setBackground(outline(UiPalette.SOFT, UiPalette.BORDER, 18));
         moodButton.setElevation(dp(1));
         moodButton.setContentDescription("记一下现在的心情");
@@ -144,7 +144,7 @@ public final class MainActivity extends Activity {
         TextView settingsButton = label("设置", 12, INK, true);
         settingsButton.setGravity(Gravity.CENTER);
         settingsButton.setLetterSpacing(0.06f);
-        settingsButton.setPadding(dp(15), dp(9), dp(15), dp(9));
+        settingsButton.setPadding(dp(12), dp(7), dp(12), dp(7));
         settingsButton.setBackground(outline(UiPalette.SOFT, UiPalette.BORDER, 18));
         settingsButton.setElevation(dp(1));
         settingsButton.setContentDescription("设置");
@@ -302,30 +302,30 @@ public final class MainActivity extends Activity {
         int sproutLevel = GameSettings.levelIndex(streak);
 
         LinearLayout questCard = columnCard();
-        questCard.setPadding(dp(14), dp(12), dp(14), dp(14));
+        questCard.setPadding(dp(13), dp(10), dp(13), dp(12));
 
         // ---------- 英雄区：极淡绿白渐变底 ----------
         LinearLayout heroRow = new LinearLayout(this);
         heroRow.setGravity(Gravity.CENTER_VERTICAL);
-        heroRow.setPadding(dp(10), dp(8), dp(12), dp(8));
+        heroRow.setPadding(dp(8), dp(6), dp(10), dp(6));
         GradientDrawable heroBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{0xfff2faf5, 0xffe6f4ec});
         heroBg.setCornerRadius(dp(16));
         heroRow.setBackground(heroBg);
 
         HomeMascotView mascot = new HomeMascotView(this);
-        heroRow.addView(mascot, new LinearLayout.LayoutParams(dp(84), dp(84)));
+        heroRow.addView(mascot, new LinearLayout.LayoutParams(dp(72), dp(72)));
 
         GameHeroView status = new GameHeroView(this);
         status.setData(completed, total, streak, sproutLevel);
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(0, dp(96), 1);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(0, dp(84), 1);
         statusParams.leftMargin = dp(2);
         heroRow.addView(status, statusParams);
 
         android.widget.FrameLayout heroWrap = new android.widget.FrameLayout(this);
         heroWrap.addView(heroRow, new android.widget.FrameLayout.LayoutParams(-1, -2));
         final CelebrationView heroFx = new CelebrationView(this);
-        heroWrap.addView(heroFx, new android.widget.FrameLayout.LayoutParams(-1, dp(96)));
+        heroWrap.addView(heroFx, new android.widget.FrameLayout.LayoutParams(-1, dp(84)));
         questCard.addView(heroWrap, new LinearLayout.LayoutParams(-1, -2));
 
         // 完成数变多 → 豆芽弹跳 + 星星
@@ -346,10 +346,10 @@ public final class MainActivity extends Activity {
         // ---------- 标题行 ----------
         LinearLayout head = row();
         LinearLayout.LayoutParams headParams = new LinearLayout.LayoutParams(-1, -2);
-        headParams.topMargin = dp(14);
+        headParams.topMargin = dp(10);
         headParams.leftMargin = dp(4);
         questCard.addView(head, headParams);
-        head.addView(label("今日任务", 15, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
+        head.addView(label("今日任务", 14, INK, true), new LinearLayout.LayoutParams(0, -2, 1));
         TextView lvBadge = label("Lv." + level, 10, UiPalette.ACCENT, true);
         lvBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
         lvBadge.setBackground(round(UiPalette.PALE, 9));
@@ -363,7 +363,7 @@ public final class MainActivity extends Activity {
 
             android.widget.FrameLayout rowWrap = new android.widget.FrameLayout(this);
             LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(-1, -2);
-            wrapParams.topMargin = dp(12);
+            wrapParams.topMargin = dp(9);
             questCard.addView(rowWrap, wrapParams);
 
             LinearLayout rowBody = new LinearLayout(this);
@@ -398,7 +398,7 @@ public final class MainActivity extends Activity {
                 SegmentBarView bar = new SegmentBarView(this);
                 bar.setSegments(quest.target, progress, 0xff4caf7d, 0xffddede3);
                 LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(4));
-                barParams.topMargin = dp(6);
+                barParams.topMargin = dp(4);
                 barParams.leftMargin = dp(32);
                 rowBody.addView(bar, barParams);
             }
@@ -428,7 +428,7 @@ public final class MainActivity extends Activity {
         chestRow.setBackground(round(UiPalette.PALE, 12));
         chestRow.setPadding(dp(10), dp(9), dp(10), dp(9));
         LinearLayout.LayoutParams chestRowParams = new LinearLayout.LayoutParams(-1, -2);
-        chestRowParams.topMargin = dp(16);
+        chestRowParams.topMargin = dp(12);
         questCard.addView(chestRow, chestRowParams);
 
         final TextView gift = label("\uD83C\uDF81", 19, INK, false);
@@ -477,7 +477,7 @@ public final class MainActivity extends Activity {
             });
             AnimKit.press(claim);
             LinearLayout.LayoutParams claimParams = new LinearLayout.LayoutParams(-1, -2);
-            claimParams.topMargin = dp(12);
+            claimParams.topMargin = dp(10);
             questCard.addView(claim, claimParams);
 
         } else if (!DailyQuest.allQuestsDone(this)) {
@@ -488,7 +488,7 @@ public final class MainActivity extends Activity {
                 tip.setPadding(dp(12), dp(7), dp(7), dp(7));
                 tip.setBackground(round(UiPalette.PALE, 14));
                 LinearLayout.LayoutParams tipParams = new LinearLayout.LayoutParams(-1, -2);
-                tipParams.topMargin = dp(10);
+                tipParams.topMargin = dp(8);
                 questCard.addView(tip, tipParams);
 
                 TextView tipText = label("推荐  " + recommend.title, 12, INK, false);
@@ -513,7 +513,7 @@ public final class MainActivity extends Activity {
             sprint.setPadding(dp(12), dp(9), dp(12), dp(9));
             sprint.setBackground(round(UiPalette.PALE, 12));
             LinearLayout.LayoutParams sprintParams = new LinearLayout.LayoutParams(-1, -2);
-            sprintParams.topMargin = dp(10);
+            sprintParams.topMargin = dp(8);
             questCard.addView(sprint, sprintParams);
 
             sprint.addView(label("\u26A1 冲刺 " + DailyQuest.todayActions(this) + " 次",
@@ -528,7 +528,7 @@ public final class MainActivity extends Activity {
         }
 
         LinearLayout.LayoutParams cardParams = full();
-        cardParams.topMargin = dp(14);
+        cardParams.topMargin = dp(10);
         body.addView(questCard, cardParams);
         if (!gameZoneAnimated) AnimKit.waveIn(questCard, 0);
         gameZoneAnimated = true;
