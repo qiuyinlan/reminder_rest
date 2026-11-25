@@ -1,7 +1,7 @@
 {
-    "versionCode": 172,
-    "versionName": "0.3.0-beta156",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta156/rest-bean.apk",
-    "sha256": "1debf07f5501494d842a9da7cae097795758e14db65192147e850de7d2bb6fd7",
-    "notes": "恢复首页顶部豆芽的呼吸摇摆动画，底色改回旧版渐变绿，完成数增加时会弹一下"
+    "versionCode": 173,
+    "versionName": "0.3.0-beta157",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta157/rest-bean.apk",
+    "sha256": "b4fabcd00fa68ff22d3ca592cd345858292ad85b32d8061aaf68d921edc1bf8f",
+    "notes": "更新检查强制回源，避免清单命中旧缓存；首页豆芽动画与渐变绿底同 beta156"
 }
