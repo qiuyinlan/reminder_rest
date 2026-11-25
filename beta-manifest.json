@@ -1,7 +1,7 @@
 {
-    "versionCode": 171,
-    "versionName": "0.3.0-beta155",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta155/rest-bean.apk",
-    "sha256": "608f600665b2b0dec49461c8da08df4689a61edf067c8e01d1dc1b2bfecdacec",
-    "notes": "统一各页面间距以首页为标准：页面左右 20 / 上 14 / 下 24，卡片内边距 16/12，任务页列表与头部对齐"
+    "versionCode": 172,
+    "versionName": "0.3.0-beta156",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta156/rest-bean.apk",
+    "sha256": "1debf07f5501494d842a9da7cae097795758e14db65192147e850de7d2bb6fd7",
+    "notes": "恢复首页顶部豆芽的呼吸摇摆动画，底色改回旧版渐变绿，完成数增加时会弹一下"
 }
