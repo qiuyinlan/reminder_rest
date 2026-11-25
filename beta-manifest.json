@@ -1,7 +1,7 @@
 {
-    "versionCode": 173,
-    "versionName": "0.3.0-beta157",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta157/rest-bean.apk",
-    "sha256": "b4fabcd00fa68ff22d3ca592cd345858292ad85b32d8061aaf68d921edc1bf8f",
-    "notes": "更新检查强制回源，避免清单命中旧缓存；首页豆芽动画与渐变绿底同 beta156"
+    "versionCode": 174,
+    "versionName": "0.3.0-beta158",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta158/rest-bean.apk",
+    "sha256": "98721c5f18acbdbd93dac558f0c2269c0de8e090330118066dfd6ea4d23f8ea7",
+    "notes": "首页配色反转：页面底色改白、卡片改浅绿，豆芽动画与渐变绿底层保留"
 }
