@@ -9,7 +9,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,10 +53,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -188,7 +187,7 @@ private fun QuestCard(
     onOpenTasks: () -> Unit
 ) {
     GlassCard {
-        // L2 内嵌层：外层浅绿托盘 + 内层白色浮起，做出纵深
+        // 顶部英雄层：旧版同款「渐变绿」底 + 会呼吸摇摆的豆芽
         Box(
             Modifier
                 .fillMaxWidth()
@@ -200,6 +199,24 @@ private fun QuestCard(
                 )
                 .padding(7.dp)
         ) {
+            val mascotRef = remember { arrayOfNulls<HomeMascotView>(1) }
+            val dayKey = remember {
+                SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+            }
+            val fxPrefs = remember { context.getSharedPreferences("game_fx", Context.MODE_PRIVATE) }
+            var lastDone by remember {
+                mutableIntStateOf(
+                    if (dayKey == fxPrefs.getString("last_day", "")) {
+                        fxPrefs.getInt("last_completed", -1)
+                    } else -1
+                )
+            }
+            LaunchedEffect(totalDone) {
+                if (lastDone >= 0 && totalDone > lastDone) mascotRef[0]?.bounce()
+                lastDone = totalDone
+                fxPrefs.edit().putString("last_day", dayKey)
+                    .putInt("last_completed", totalDone).apply()
+            }
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -211,16 +228,15 @@ private fun QuestCard(
                     )
                     .clip(RoundedCornerShape(14.dp))
                     .background(
-                        Brush.verticalGradient(
-                            listOf(Dew.LayerFillTop, Dew.LayerFillBottom)
+                        Brush.linearGradient(
+                            listOf(Color(0xFFC4ECDA), Color(0xFFF7FDFB))
                         )
                     )
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(R.drawable.home_mascot),
-                    contentDescription = "豆芽",
+                AndroidView(
+                    factory = { ctx -> HomeMascotView(ctx).also { mascotRef[0] = it } },
                     modifier = Modifier.size(84.dp)
                 )
                 Spacer(Modifier.width(6.dp))
@@ -509,7 +525,7 @@ private fun ProgressRing(done: Int, total: Int, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 26.sp),
                 color = Dew.Ink
             )
-            Text("今日", style = MaterialTheme.typography.bodySmall, color = Dew.InkFaint)
+            Text("今日", style = MaterialTheme.typography.bodySmall, color = Dew.InkSoft)
         }
     }
 }
