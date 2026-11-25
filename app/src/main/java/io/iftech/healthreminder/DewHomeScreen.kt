@@ -548,7 +548,7 @@ fun GlassCard(
             .clip(Dew.ShapeCard)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.82f), Color.White.copy(alpha = 0.62f))
+                    listOf(Color(0xFFEAF8F1).copy(alpha = 0.96f), Color(0xFFDDF1E7).copy(alpha = 0.94f))
                 )
             )
             .border(1.dp, Dew.GlassBorder, Dew.ShapeCard)

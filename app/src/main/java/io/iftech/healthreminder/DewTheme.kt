@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.sp
  * Mint Dew 设计令牌。所有新 Compose 页面只能从这里取色/字号/曲线。
  */
 object Dew {
-    // 基础色
-    val Bg = Color(0xFFF0F7F4)
-    val Surface = Color(0xFFFFFFFF)
+    // 基础色：白底 + 绿卡片
+    val Bg = Color(0xFFFFFFFF)
+    val Surface = Color(0xFFE8F5EE)
     val Primary = Color(0xFFA8D5BA)
     val Accent = Color(0xFF5BA882)
     val AccentBright = Color(0xFF6FCFA0)
@@ -51,8 +51,8 @@ object Dew {
     const val ALPHA_TINT = 0.12f
     const val ALPHA_FAINT = 0.06f
 
-    val GlassFill get() = Surface.copy(alpha = ALPHA_GLASS)
-    val GlassBorder get() = Surface.copy(alpha = ALPHA_BORDER)
+    val GlassFill get() = Color(0xFFE8F5EE).copy(alpha = 0.92f)
+    val GlassBorder get() = Color(0xFFA8D5BA).copy(alpha = 0.55f)
     val Tint get() = Primary.copy(alpha = ALPHA_TINT)
 
     // 圆角

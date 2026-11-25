@@ -104,11 +104,11 @@ final class UiPalette {
         } else {
             darkTheme = false;
             ACCENT = 0xff4caf7d;
-            PAGE = 0xffeaf6ef;
-            PAGE_LIGHT = 0xfff4fbf7;
+            PAGE = 0xffffffff;
+            PAGE_LIGHT = 0xffffffff;
             SOFT = 0xffddf2e6;
             PALE = 0xffe8f5ee;
-            SURFACE = 0xffffffff;
+            SURFACE = 0xfff2fbf6;
             INK = 0xff3d5a4c;
             MUTED = 0xff8faa9c;
             BORDER = 0xffddede3;
@@ -121,10 +121,10 @@ final class UiPalette {
             PERIOD_INK = 0xff9a6379;
             PERIOD_STRONG = 0xffc1849b;
             COUNTDOWN_INK = 0xff3d8a63;
-            pageGradient = new int[]{0xfff4fbf7, 0xffeaf6ef, 0xffe6f3ec};
-            headGradient = new int[]{0xffe1f4e9, 0xffeff9f3, 0xfff8fdfa};
-            glassGradient = new int[]{0xffffffff, 0xfff7fcf9};
-            heroGradient = new int[]{0xffe4f5eb, 0xfff9fdfb};
+            pageGradient = new int[]{0xffffffff, 0xfffbfefc, 0xfff6fcf9};
+            headGradient = new int[]{0xffe4f6ec, 0xfff2fbf6, 0xfffbfefc};
+            glassGradient = new int[]{0xffeefaf3, 0xffe2f5ea};
+            heroGradient = new int[]{0xffd9f2e4, 0xffeefaf3};
             hairlineColor = 0x55b9dcc8;
             catInk = new int[]{0xff3d8a8f, 0xff5a6fa8, 0xff3d8a63, 0xffa07a3d, 0xff7d5f9a, 0xffa0645a, 0xff4caf7d, 0xff8a5bab};
             catFill = new int[]{0xffe3f2f3, 0xffe9edf8, 0xffe4f4ea, 0xfff8f0df, 0xfff1e9f7, 0xfff7e9e6, 0xffe6f6ed, 0xfff1e9f7};

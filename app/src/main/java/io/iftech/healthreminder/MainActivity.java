@@ -748,7 +748,7 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(16), dp(12), dp(12), dp(12));
-        card.setBackground(round(Color.WHITE, 20));
+        card.setBackground(round(UiPalette.PALE, 20));
         card.setElevation(dp(1));
 
         MiniGlyphView dot = new MiniGlyphView(this);
@@ -1710,10 +1710,10 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         return card;
     }
 
-    /** 带绿调软阴影的白卡：大扩散、低透明度，看起来像浮在软垫上。 */
+    /** 带绿调软阴影的绿卡：大扩散、低透明度，看起来像浮在软垫上。 */
     private GradientDrawable softGreenCard(int radius) {
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(UiPalette.surface(Color.WHITE));
+        shape.setColor(UiPalette.PALE);
         shape.setCornerRadius(dp(radius));
         shape.setStroke(dp(1), UiPalette.BORDER);
         return shape;
@@ -1721,17 +1721,17 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
 
     /** 带类目色淡染的玻璃卡片。 */
     private GradientDrawable itemCard(ReminderSettings.Rule rule) {
-        // 复盘卡：白卡 + 细描边，不用粉红色块
+        // 复盘卡：绿卡 + 细描边，不用粉红色块
         if (rule.isReviewModule()) {
             GradientDrawable white = new GradientDrawable();
-            white.setColor(UiPalette.surface(Color.WHITE));
+            white.setColor(UiPalette.PALE);
             white.setCornerRadius(dp(22));
             white.setStroke(dp(1), UiPalette.BORDER);
             return white;
         }
         int tint = ruleTint(rule);
         boolean dark = UiPalette.isDark();
-        int base = dark ? 0xff0a251c : 0xffffffff;
+        int base = dark ? 0xff0a251c : UiPalette.PALE;
         int[] colors = dark
                 ? new int[]{UiPalette.blend(base, tint, 0.90f), UiPalette.blend(base, tint, 0.55f), UiPalette.blend(base, tint, 0.30f)}
                 : new int[]{UiPalette.blend(base, tint, 0.88f), UiPalette.blend(base, tint, 0.55f), UiPalette.blend(base, tint, 0.22f)};
