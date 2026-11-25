@@ -75,10 +75,13 @@ final class AppUpdateManager {
         String primary = BuildConfig.UPDATE_MANIFEST_URL;
         String file = primary.contains("beta-manifest") ? "beta-manifest.json" : "update-manifest.json";
         String jsdelivr = "https://cdn.jsdelivr.net/gh/qiuyinlan/reminder_rest@main/" + file;
+        // 清单更新后 CDN 可能继续返回旧内容，加时间戳强制回源。
+        long stamp = System.currentTimeMillis();
+        String primarySuffix = (primary.contains("?") ? "&" : "?") + "v=" + stamp;
         return new String[]{
-                primary,
-                "https://ghfast.top/" + primary,
-                jsdelivr
+                primary + primarySuffix,
+                "https://ghfast.top/" + primary + primarySuffix,
+                jsdelivr + "?v=" + stamp
         };
     }
 
