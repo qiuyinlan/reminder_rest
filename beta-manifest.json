@@ -1,7 +1,7 @@
 {
-    "versionCode": 187,
-    "versionName": "0.3.0-beta171",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta171/rest-bean.apk",
-    "sha256": "5a16a36daf1de28d8390089f5dad928a09d2153687b79eff5ec7eaa6adebc8ac",
-    "notes": "回退任务/事项/统计页卡片渐变和玻璃材质到原样；修复提醒设置弹窗黑屏，任务编辑仍可设置提醒时间和间隔"
+    "versionCode": 188,
+    "versionName": "0.3.0-beta172",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta172/rest-bean.apk",
+    "sha256": "a28714279ea3daaf959cbe5f06ce49a41ea97b055253ee2950789d7ad1e67a7e",
+    "notes": "白板改名宝箱：不按天清空，可长期攒任务和随手记；顶部抽一个；任务页多选可移入宝箱或删除，支持全选"
 }
