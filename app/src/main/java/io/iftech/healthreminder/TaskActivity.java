@@ -371,9 +371,10 @@ public final class TaskActivity extends Activity {
             Toast.makeText(this, "现在没有开着的单独提醒", Toast.LENGTH_SHORT).show();
             return;
         }
+        final int total = enabledCount;
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("关闭全部单独提醒")
-                .setMessage("会把 " + enabledCount + " 条任务的单独提醒全部关掉，任务本身不会删。确定吗？")
+                .setMessage("会把 " + total + " 条任务的单独提醒全部关掉，任务本身不会删。确定吗？")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("全部关闭", (d, w) -> {
                     for (ReminderSettings.Rule task : tasksAll()) {
@@ -382,7 +383,7 @@ public final class TaskActivity extends Activity {
                         }
                     }
                     reload();
-                    Toast.makeText(this, "已关闭 " + enabledCount + " 条单独提醒", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "已关闭 " + total + " 条单独提醒", Toast.LENGTH_SHORT).show();
                 })
                 .create();
         FormKit.showStyled(this, dialog);
