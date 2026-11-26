@@ -1,7 +1,7 @@
 {
-    "versionCode": 189,
-    "versionName": "0.3.0-beta173",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta173/rest-bean.apk",
-    "sha256": "9a52494389169b5672e177c8c7b8d00d531338df09f84cd2bf3d1b57a449b222",
-    "notes": "宝箱兼容旧白板数据：升级时把原 module=board 的条目自动搬进宝箱，不会丢"
+    "versionCode": 190,
+    "versionName": "0.3.0-beta174",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta174/rest-bean.apk",
+    "sha256": "d54b2b5443011ba13e943a254ab6984c4e08b29ffe48125bd15866dc3196c3c8",
+    "notes": "修复首页抽出的任务/微习惯子任务打钩无效：Subtasks.toggle 参数传成了取反值"
 }
