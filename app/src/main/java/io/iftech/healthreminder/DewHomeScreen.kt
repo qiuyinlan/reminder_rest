@@ -393,16 +393,18 @@ private fun QuestRow(
         Box(Modifier.padding(start = 34.dp)) {
             SegmentBar(total = target, filled = progress, modifier = Modifier.fillMaxWidth())
         }
-        if (picked != null) {
+        val shown = picked
+        if (shown != null) {
             PickedItemCard(
                 context = context,
-                item = picked!!,
+                item = shown,
                 onChanged = onRefresh
             )
         }
-        if (notice != null) {
+        val hint = notice
+        if (hint != null) {
             Text(
-                notice!!,
+                hint,
                 style = MaterialTheme.typography.bodySmall,
                 color = Dew.InkFaint,
                 modifier = Modifier.padding(start = 34.dp, top = 4.dp)
@@ -441,49 +443,49 @@ private fun PickedItemCard(context: Context, item: DrawnItem, onChanged: () -> U
     val dayStart = GameProgress.dayStart(System.currentTimeMillis())
     if (item.kind == KIND_HABIT) {
         val habit = Habits.all(context).firstOrNull { it.id == item.id }
-        if (habit == null) {
+        if (habit != null) {
+            val parentId = Habits.parentId(habit.id)
+            val subs = Subtasks.of(context, parentId)
+            InlineTaskCard(
+                title = habit.title,
+                done = Habits.isCompletedToday(context, habit.id, dayStart),
+                subs = subs.map { it to Subtasks.doneToday(context, parentId, it.title, dayStart) },
+                onToggleMain = {
+                    Habits.toggleCompletion(context, habit.id, dayStart,
+                        !Habits.isCompletedToday(context, habit.id, dayStart))
+                    onChanged()
+                },
+                onToggleSub = { sub, subDone ->
+                    Subtasks.toggle(context, parentId, sub.title, !subDone, dayStart)
+                    onChanged()
+                }
+            )
+        } else {
             MissingItem("这个微习惯已经删了")
-            return
         }
-        val parentId = Habits.parentId(habit.id)
-        val subs = Subtasks.of(context, parentId)
-        InlineTaskCard(
-            title = habit.title,
-            done = Habits.isCompletedToday(context, habit.id, dayStart),
-            subs = subs.map { it to Subtasks.doneToday(context, parentId, it.title, dayStart) },
-            onToggleMain = {
-                Habits.toggleCompletion(context, habit.id, dayStart,
-                    !Habits.isCompletedToday(context, habit.id, dayStart))
-                onChanged()
-            },
-            onToggleSub = { sub, subDone ->
-                Subtasks.toggle(context, parentId, sub.title, !subDone, dayStart)
-                onChanged()
-            }
-        )
     } else {
         val task = ReminderSettings.ruleById(context, item.id)
-        if (task == null) {
+        if (task != null) {
+            val subs = Subtasks.of(context, task.id)
+            InlineTaskCard(
+                title = task.title.ifBlank { "未命名任务" },
+                done = ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
+                    task.title, dayStart),
+                subs = subs.map { it to Subtasks.doneToday(context, task.id, it.title, dayStart) },
+                onToggleMain = {
+                    TaskInlineToggle.setMainDone(context, task, dayStart,
+                        !ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
+                            task.title, dayStart))
+                    onChanged()
+                },
+                onToggleSub = { sub, subDone ->
+                    Subtasks.toggle(context, task.id, sub.title, !subDone, dayStart)
+                    onChanged()
+                }
+            )
+        } else {
             MissingItem("这个任务已经删了")
-            return
         }
-        val subs = Subtasks.of(context, task.id)
-        InlineTaskCard(
-            title = task.title.ifBlank { "未命名任务" },
-            done = ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
-                task.title, dayStart),
-            subs = subs.map { it to Subtasks.doneToday(context, task.id, it.title, dayStart) },
-            onToggleMain = {
-                TaskInlineToggle.setMainDone(context, task, dayStart,
-                    !ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
-                        task.title, dayStart))
-                onChanged()
-            },
-            onToggleSub = { sub, subDone ->
-                Subtasks.toggle(context, task.id, sub.title, !subDone, dayStart)
-                onChanged()
-            }
-        )
     }
 }
 
