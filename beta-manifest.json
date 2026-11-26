@@ -1,7 +1,7 @@
 {
-    "versionCode": 184,
-    "versionName": "0.3.0-beta168",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta168/rest-bean.apk",
-    "sha256": "e1bde2fbfe299164b029a2a6b1f3711cbaa8cc047107731010d7c141f6dc1918",
-    "notes": "撤掉三个页面照抄的进度卡；只把首页卡片那套浅绿玻璃渐变、18dp 圆角、细边和柔和阴影应用到任务、事项、统计原有卡片上"
+    "versionCode": 185,
+    "versionName": "0.3.0-beta169",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta169/rest-bean.apk",
+    "sha256": "26d4f3b596dc63266b9ef76960934033d190d42d3720d4fee1f160c87ed93357",
+    "notes": "微习惯标题右侧改成折叠/展开，未坚持时不显示天数；任务和微习惯的提醒设置改为当前页弹出编辑窗，不再跳转到事项页"
 }
