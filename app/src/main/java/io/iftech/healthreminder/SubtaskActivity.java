@@ -94,14 +94,14 @@ public final class SubtaskActivity extends Activity {
                         if (habit == null) return;
                         startActivity(new Intent(this, ItemsActivity.class)
                                 .putExtra("habit_id", habit.id)
+                                .putExtra("dialog_mode", true)
                                 .putExtra("finish_after_edit", true));
-                        finish();
                     } else {
-                        // 任务和事项共用同一个编辑界面（资料/图标/颜色/特效/提醒）
+                        // 任务和事项共用同一个编辑弹窗，但当前页留在后面
                         startActivity(new Intent(this, ItemsActivity.class)
                                 .putExtra("edit_id", parentId)
+                                .putExtra("dialog_mode", true)
                                 .putExtra("finish_after_edit", true));
-                        finish();
                     }
                 }));
         row.addView(more);

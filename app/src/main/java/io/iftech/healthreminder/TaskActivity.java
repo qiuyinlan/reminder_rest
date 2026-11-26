@@ -41,6 +41,7 @@ public final class TaskActivity extends Activity {
     /** 当前页面背的是哪一类数据：任务页是 task，白板是 board（只换数据源，UI 全复用）。 */
     private String module = ReminderSettings.MODULE_TASK;
     private boolean completedExpanded;
+    private boolean habitExpanded = true;
     private boolean habitDoneExpanded;
     private boolean futureExpanded;
     private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
@@ -610,8 +611,19 @@ public final class TaskActivity extends Activity {
         List<Habits.Habit> todayHabits = Habits.todayScheduled(this);
         int total = todayHabits.size();
 
-        section.addView(buildSectionHeader("微习惯", completed + "/" + total, "+ 添加",
-                v -> addHabit()));
+        View habitHeader = buildSectionHeader("微习惯", completed + "/" + total,
+                habitExpanded ? "⌃" : "⌄", null);
+        habitHeader.setOnClickListener(v -> {
+            habitExpanded = !habitExpanded;
+            reload();
+        });
+        habitHeader.setOnLongClickListener(v -> {
+            addHabit();
+            return true;
+        });
+        section.addView(habitHeader);
+
+        if (!habitExpanded) return section;
 
         // 做过的习惯收进「已完成」，不占主列表位置
         List<Habits.Habit> pendingHabits = new ArrayList<>();
@@ -627,7 +639,7 @@ public final class TaskActivity extends Activity {
             emptyBox.setOrientation(LinearLayout.VERTICAL);
             emptyBox.setPadding(dp(16), dp(12), dp(16), dp(12));
             emptyBox.addView(text("今天没有要做的习惯", 13, UiPalette.INK, true));
-            TextView emptySub = text("点右上角 + 添加，比如八段锦、颈椎训练", 12, UiPalette.MUTED, false);
+            TextView emptySub = text("点下面「＋ 新习惯」添加，比如八段锦、颈椎训练", 12, UiPalette.MUTED, false);
             LinearLayout.LayoutParams emptySubParams = new LinearLayout.LayoutParams(-1, -2);
             emptySubParams.topMargin = dp(3);
             emptyBox.addView(emptySub, emptySubParams);
@@ -648,6 +660,12 @@ public final class TaskActivity extends Activity {
                 card.addView(buildHabitRow(pendingHabits.get(i), dayStart));
             }
         }
+
+        TextView addHabitRow = text("＋ 新习惯", 12, UiPalette.ACCENT, true);
+        addHabitRow.setGravity(Gravity.CENTER);
+        addHabitRow.setPadding(0, dp(11), 0, dp(11));
+        addHabitRow.setOnClickListener(v -> addHabit());
+        card.addView(addHabitRow);
         section.addView(card);
 
         if (!doneHabits.isEmpty()) {
@@ -773,15 +791,15 @@ public final class TaskActivity extends Activity {
         if (GameSettings.isEnabled(this)) {
             String habitKey = GameProgress.makeHabitKey("habit", habit.id);
             int streak = GameProgress.getStreak(this, habitKey);
-            TextView badge = text(streak > 0 ? "连续 " + streak + " 天" : "今天开始",
-                    10, streak > 0 ? UiPalette.WARN : UiPalette.MUTED, true);
-            badge.setGravity(Gravity.CENTER);
-            badge.setPadding(dp(8), dp(3), dp(8), dp(3));
-            badge.setBackground(FormKit.round(this,
-                    streak > 0 ? UiPalette.WARN_SOFT : UiPalette.PALE, 10));
-            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
-            badgeParams.leftMargin = dp(6);
-            row.addView(badge, badgeParams);
+            if (streak > 0) {
+                TextView badge = text("连续 " + streak + " 天", 10, UiPalette.WARN, true);
+                badge.setGravity(Gravity.CENTER);
+                badge.setPadding(dp(8), dp(3), dp(8), dp(3));
+                badge.setBackground(FormKit.round(this, UiPalette.WARN_SOFT, 10));
+                LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
+                badgeParams.leftMargin = dp(6);
+                row.addView(badge, badgeParams);
+            }
         }
 
         // 和普通任务一致：点一下进子任务
@@ -807,6 +825,7 @@ public final class TaskActivity extends Activity {
         // 和事项/任务共用同一套编辑界面（名称、图标、颜色、特效、频率）
         startActivity(new Intent(this, ItemsActivity.class)
                 .putExtra("habit_id", habit.id)
+                .putExtra("dialog_mode", true)
                 .putExtra("finish_after_edit", true));
     }
 

@@ -53,6 +53,8 @@ public final class ItemsActivity extends Activity {
     private TextView addFabPro;
     private boolean returnToHome;
     private boolean finishAfterEdit;
+    /** 以弹窗形式打开：当前页留在后面，只弹出编辑器。 */
+    private boolean dialogMode;
     /** 从微习惯进来的编辑：复用事项编辑器，但保存回 Habits，不走 Rule 表。 */
     private int editingHabitId = -1;
     private Habits.Habit editingHabit;
@@ -61,10 +63,18 @@ public final class ItemsActivity extends Activity {
     private int lastScrollY;
 
     @Override public void onCreate(Bundle state) {
+        dialogMode = getIntent().getBooleanExtra("dialog_mode", false);
+        if (dialogMode) setTheme(R.style.TranslucentItemsTheme);
         super.onCreate(state);
         returnToHome = getIntent().getBooleanExtra("return_to_home", false);
         finishAfterEdit = getIntent().getBooleanExtra("finish_after_edit", false);
-        UiPalette.applyWindow(getWindow());
+        if (dialogMode) finishAfterEdit = true;
+        if (!dialogMode) UiPalette.applyWindow(getWindow());
+        if (dialogMode) {
+            setContentView(new View(this));
+            openRequestedEditor();
+            return;
+        }
         FrameLayout frame = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -101,33 +111,20 @@ public final class ItemsActivity extends Activity {
         scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldX, oldY) ->
                 lastScrollY = scrollY);
         renderItems();
-        if (state == null) {
-            int habitId = getIntent().getIntExtra("habit_id", -1);
-            if (habitId >= 0) {
-                editHabit(habitId);
-            } else if (getIntent().getBooleanExtra("new_item", false)) {
-                editRule(null);
-            } else {
-                int editId = getIntent().getIntExtra("edit_id", -1);
-                for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
-                    if (rule.id == editId) {
-                        editRule(rule);
-                        break;
-                    }
-                }
-            }
-        }
+        if (state == null) openRequestedEditor();
     }
 
     @Override protected void onResume() { super.onResume(); if (list != null) renderItems(); }
 
     @Override protected void onPause() {
         super.onPause();
+        if (scroll == null) return;
         getSharedPreferences("task_scroll_memory", MODE_PRIVATE).edit()
                 .putInt("items_page", lastScrollY).apply();
     }
 
     private void renderItems() {
+        if (dialogMode) return;
         final int restoreY = lastScrollY;
         list.removeAllViews();
         // 复盘排第一，后面是在事项里建的提醒
@@ -461,6 +458,26 @@ public final class ItemsActivity extends Activity {
     private void openReview(int ruleId) {
         startActivity(new Intent(this, ReviewReminderActivity.class)
                 .putExtra("rule_id", ruleId));
+    }
+
+    /** 按 Intent 打开：事项、任务、微习惯都走这里。 */
+    private void openRequestedEditor() {
+        int habitId = getIntent().getIntExtra("habit_id", -1);
+        if (habitId >= 0) {
+            editHabit(habitId);
+            return;
+        }
+        if (getIntent().getBooleanExtra("new_item", false)) {
+            editRule(null);
+            return;
+        }
+        int editId = getIntent().getIntExtra("edit_id", -1);
+        for (ReminderSettings.Rule rule : ReminderSettings.rules(this)) {
+            if (rule.id == editId) {
+                editRule(rule);
+                return;
+            }
+        }
     }
 
     /** 微习惯也走同一套编辑器：把 Habit 临时投影成 Rule，保存时再写回 Habits。 */
