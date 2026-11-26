@@ -1,7 +1,7 @@
 {
-    "versionCode": 188,
-    "versionName": "0.3.0-beta172",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta172/rest-bean.apk",
-    "sha256": "a28714279ea3daaf959cbe5f06ce49a41ea97b055253ee2950789d7ad1e67a7e",
-    "notes": "白板改名宝箱：不按天清空，可长期攒任务和随手记；顶部抽一个；任务页多选可移入宝箱或删除，支持全选"
+    "versionCode": 189,
+    "versionName": "0.3.0-beta173",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta173/rest-bean.apk",
+    "sha256": "9a52494389169b5672e177c8c7b8d00d531338df09f84cd2bf3d1b57a449b222",
+    "notes": "宝箱兼容旧白板数据：升级时把原 module=board 的条目自动搬进宝箱，不会丢"
 }
