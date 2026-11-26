@@ -572,10 +572,9 @@ public final class TaskActivity extends Activity {
     private LinearLayout groupCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable bg = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, UiPalette.glassGradient());
-        bg.setCornerRadius(dp(18));
-        bg.setStroke(dp(1), UiPalette.hairline());
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(16));
+        bg.setColor(UiPalette.SURFACE);
         card.setBackground(bg);
         card.setClipToOutline(true);
         card.setElevation(dp(2));

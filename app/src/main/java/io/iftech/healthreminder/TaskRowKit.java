@@ -137,10 +137,9 @@ final class TaskRowKit {
     static LinearLayout groupCard(Context context) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable bg = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, UiPalette.glassGradient());
-        bg.setCornerRadius(FormKit.dp(context, 18));
-        bg.setStroke(FormKit.dp(context, 1), UiPalette.hairline());
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(FormKit.dp(context, 16));
+        bg.setColor(UiPalette.SURFACE);
         card.setBackground(bg);
         card.setClipToOutline(true);
         card.setElevation(FormKit.dp(context, 2));

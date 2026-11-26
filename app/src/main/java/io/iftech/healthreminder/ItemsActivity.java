@@ -71,6 +71,8 @@ public final class ItemsActivity extends Activity {
         if (dialogMode) finishAfterEdit = true;
         if (!dialogMode) UiPalette.applyWindow(getWindow());
         if (dialogMode) {
+            // 这个 Activity 只当透明壳，真正的编辑器是它弹出的 AlertDialog。
+            getWindow().setLayout(1, 1);
             setContentView(new View(this));
             openRequestedEditor();
             return;
@@ -1675,19 +1677,7 @@ public final class ItemsActivity extends Activity {
     }
 
     private TextView text(String value, int size, int color, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return t; }
-    private GradientDrawable round(int color, int radius) {
-        if (color != Color.WHITE) {
-            GradientDrawable d = new GradientDrawable();
-            d.setColor(UiPalette.surface(color));
-            d.setCornerRadius(dp(radius));
-            return d;
-        }
-        GradientDrawable d = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, UiPalette.glassGradient());
-        d.setCornerRadius(dp(radius));
-        d.setStroke(dp(1), UiPalette.hairline());
-        return d;
-    }
+    private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(UiPalette.surface(color)); d.setCornerRadius(dp(radius)); if (color == Color.WHITE) d.setStroke(dp(1), UiPalette.BORDER); return d; }
 
     private void setArtworkPreview(FrameLayout preview, String artworkId) {
         preview.removeAllViews();

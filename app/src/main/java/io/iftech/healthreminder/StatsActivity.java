@@ -1865,18 +1865,7 @@ public final class StatsActivity extends Activity {
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return view;
     }
     private GradientDrawable round(int color, int radius) {
-        if (color != Color.WHITE) {
-            GradientDrawable shape = new GradientDrawable();
-            shape.setColor(UiPalette.surface(color));
-            shape.setCornerRadius(dp(radius));
-            return shape;
-        }
-        // 和首页同一套浅绿玻璃卡：极淡渐变 + 细边
-        GradientDrawable shape = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, UiPalette.glassGradient());
-        shape.setCornerRadius(dp(radius));
-        shape.setStroke(dp(1), UiPalette.hairline());
-        return shape;
+        GradientDrawable shape = new GradientDrawable(); shape.setColor(UiPalette.surface(color)); shape.setCornerRadius(dp(radius)); if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER); return shape;
     }
 
     /** 卡片按下时的水波纹反馈，长按记录时能立刻看到响应。 */
