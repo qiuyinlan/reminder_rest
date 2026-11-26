@@ -1,7 +1,7 @@
 {
-    "versionCode": 186,
-    "versionName": "0.3.0-beta170",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta170/rest-bean.apk",
-    "sha256": "b7946e3c29faabcae0e40e3f733141abca1e1363fdb313e2df72e693ffe93813",
-    "notes": "悬浮窗任务区分开「任务 / 微习惯」；两边都有 › 可设为现在做的事；切换后弹撤回条，点别处或 8 秒后自动消失"
+    "versionCode": 187,
+    "versionName": "0.3.0-beta171",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta171/rest-bean.apk",
+    "sha256": "5a16a36daf1de28d8390089f5dad928a09d2153687b79eff5ec7eaa6adebc8ac",
+    "notes": "回退任务/事项/统计页卡片渐变和玻璃材质到原样；修复提醒设置弹窗黑屏，任务编辑仍可设置提醒时间和间隔"
 }
