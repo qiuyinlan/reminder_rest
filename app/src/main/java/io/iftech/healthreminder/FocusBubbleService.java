@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
@@ -90,6 +91,11 @@ public final class FocusBubbleService extends Service {
     /** 悬浮窗最底部的已完成区。 */
     private LinearLayout doneBox;
     private boolean doneIdeasOpen;
+    /** 设成「现在做」后的撤回条：点别处就收起。 */
+    private LinearLayout undoBar;
+    private TextView undoText;
+    private FocusStore.TaskSlot undoPreviousMain;
+    private final Runnable hideUndoRunnable = this::hideUndoBanner;
 
     /** 展开态的陪伴音乐按钮。 */
     private LinearLayout musicRowView;
@@ -211,6 +217,24 @@ public final class FocusBubbleService extends Service {
         headerBox = new LinearLayout(this);
         headerBox.setOrientation(LinearLayout.VERTICAL);
         card.addView(headerBox, new LinearLayout.LayoutParams(-1, -2));
+
+        undoBar = new LinearLayout(this);
+        undoBar.setOrientation(LinearLayout.HORIZONTAL);
+        undoBar.setGravity(Gravity.CENTER_VERTICAL);
+        undoBar.setPadding(dp(10), dp(7), dp(10), dp(7));
+        undoBar.setBackground(FormKit.round(this, 0xff333333, 12));
+        undoText = FormKit.text(this, "", 12, Color.WHITE, false);
+        undoText.setSingleLine(true);
+        undoText.setEllipsize(TextUtils.TruncateAt.END);
+        undoBar.addView(undoText, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView undoNow = FormKit.text(this, "撤回", 12, UiPalette.ACCENT, true);
+        undoNow.setPadding(dp(10), 0, dp(2), 0);
+        undoNow.setOnClickListener(v -> undoSetCurrent());
+        undoBar.addView(undoNow);
+        LinearLayout.LayoutParams undoParams = new LinearLayout.LayoutParams(-1, -2);
+        undoParams.topMargin = dp(6);
+        card.addView(undoBar, undoParams);
+        undoBar.setVisibility(View.GONE);
 
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
@@ -335,7 +359,8 @@ public final class FocusBubbleService extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
         // 全屏/沉浸模式下也允许顶到屏幕最上面，不被状态栏压住
@@ -508,6 +533,24 @@ public final class FocusBubbleService extends Service {
         @Override
         public void requestDisallowInterceptTouchEvent(boolean disallow) {
             if (expanded) super.requestDisallowInterceptTouchEvent(disallow);
+        }
+
+        /** 撤回条显示时，点条以外的任何位置都收起（点「撤回」本身不收起）。 */
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent event) {
+            if (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE) {
+                hideUndoBanner();
+                return true;
+            }
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN
+                    && undoBar != null && undoBar.getVisibility() == View.VISIBLE) {
+                Rect rect = new Rect();
+                if (!undoBar.getGlobalVisibleRect(rect)
+                        || !rect.contains((int) event.getRawX(), (int) event.getRawY())) {
+                    hideUndoBanner();
+                }
+            }
+            return super.dispatchTouchEvent(event);
         }
 
         private void beginGesture(MotionEvent event) {
@@ -1127,14 +1170,27 @@ public final class FocusBubbleService extends Service {
             empty.setPadding(0, dp(4), 0, dp(4));
             slotBox.addView(empty);
         }
-        for (final ReminderSettings.Rule task : pending) {
-            slotBox.addView(buildTaskBoardRow(task.title, task.id, v -> completeTaskRule(task)));
+        if (!pending.isEmpty()) {
+            slotBox.addView(buildBoardSectionLabel("任务"));
+            for (final ReminderSettings.Rule task : pending) {
+                slotBox.addView(buildTaskBoardRow(task.title, task.id, v -> completeTaskRule(task)));
+            }
         }
-        for (final Habits.Habit habit : habits) {
-            slotBox.addView(buildTaskBoardRow(habit.title, -1, v -> completeHabit(habit)));
+        if (!habits.isEmpty()) {
+            slotBox.addView(buildBoardSectionLabel("微习惯"));
+            for (final Habits.Habit habit : habits) {
+                slotBox.addView(buildTaskBoardRow(habit.title, Habits.parentId(habit.id),
+                        v -> completeHabit(habit)));
+            }
         }
 
         slotBox.addView(buildTaskInputRow(), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private View buildBoardSectionLabel(String label) {
+        TextView view = FormKit.text(this, label, 10, UiPalette.MUTED, true);
+        view.setPadding(dp(2), dp(8), dp(2), dp(3));
+        return view;
     }
 
     private View buildTaskBoardRow(String title, final int ruleId, View.OnClickListener onCheck) {
@@ -1153,16 +1209,18 @@ public final class FocusBubbleService extends Service {
         nameParams.leftMargin = dp(7);
         row.addView(name, nameParams);
 
-        // 右边箭头：设为当前主线任务并切换到「现在」分区（样式跟底部已完成区的展开箭头统一）
+        // 右边箭头：设为当前主线任务并切换到「现在」分区（切换后给撤回条）
         if (ruleId >= 0) {
             TextView toNow = FormKit.text(this, "›", 11, UiPalette.MUTED, true);
             toNow.setGravity(Gravity.CENTER);
             toNow.setPadding(dp(4), 0, dp(2), 0);
             toNow.setContentDescription("设为现在正在做的事");
             toNow.setOnClickListener(v -> {
+                FocusStore.TaskSlot previous = FocusStore.getMain(FocusBubbleService.this);
                 FocusStore.setMain(FocusBubbleService.this, title, ruleId, 0);
                 boardTab = 0;
                 render();
+                showSetCurrentUndo(title, previous);
             });
             row.addView(toNow, new LinearLayout.LayoutParams(dp(20), dp(28)));
         }
@@ -1202,6 +1260,35 @@ public final class FocusBubbleService extends Service {
         toast.setDuration(android.widget.Toast.LENGTH_LONG);
         toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, dp(80));
         toast.show();
+    }
+
+    /** 把某条设成「现在做」后，露一条撤回；点别处或超时就收起。 */
+    private void showSetCurrentUndo(String title, FocusStore.TaskSlot previous) {
+        undoPreviousMain = previous;
+        if (undoBar == null || undoText == null) return;
+        undoText.setText("已设为现在：" + title);
+        undoBar.setVisibility(View.VISIBLE);
+        handler.removeCallbacks(hideUndoRunnable);
+        handler.postDelayed(hideUndoRunnable, 8000L);
+    }
+
+    private void hideUndoBanner() {
+        handler.removeCallbacks(hideUndoRunnable);
+        if (undoBar != null) undoBar.setVisibility(View.GONE);
+        undoPreviousMain = null;
+    }
+
+    private void undoSetCurrent() {
+        FocusStore.TaskSlot previous = undoPreviousMain;
+        hideUndoBanner();
+        if (previous == null || previous.isEmpty()) {
+            FocusStore.clearSlot(this, FocusStore.KEY_MAIN);
+        } else {
+            FocusStore.setMain(this, previous.title, previous.ruleId, previous.targetSeconds);
+            if (previous.isRunning()) FocusStore.startSlot(this, FocusStore.KEY_MAIN);
+        }
+        Toast.makeText(this, "已撤回", Toast.LENGTH_SHORT).show();
+        render();
     }
 
     /** 撤回完成的任务 */
