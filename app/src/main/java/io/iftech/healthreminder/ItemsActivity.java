@@ -148,31 +148,9 @@ public final class ItemsActivity extends Activity {
             doneTotal += ReminderSettings.completedToday(this, rule.id);
             targetTotal += rule.dailyTarget;
         }
-        LinearLayout summary = new LinearLayout(this);
-        summary.setOrientation(LinearLayout.VERTICAL);
-        summary.setPadding(dp(16), dp(14), dp(16), dp(14));
-        summary.setBackground(surface(UiPalette.headGradient(), 18, UiPalette.BORDER));
-        summary.setElevation(dp(1));
-        LinearLayout summaryTop = new LinearLayout(this);
-        summaryTop.setGravity(Gravity.CENTER_VERTICAL);
-        TextView summaryTitle = text("", 14, INK, true);
-        summaryTop.addView(summaryTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView date = text(new SimpleDateFormat("M月d日  EEEE", Locale.CHINA)
-                .format(Calendar.getInstance().getTime()), 12, MUTED, false);
-        summaryTop.addView(date);
-        summary.addView(summaryTop);
-        LinearLayout totalLine = new LinearLayout(this);
-        totalLine.setGravity(Gravity.CENTER_VERTICAL);
-        TextView completedCount = text(String.valueOf(doneTotal), 25, GREEN, true);
-        totalLine.addView(completedCount);
-        TextView targetCount = text(" / " + targetTotal + " 次", 13, MUTED, false);
-        targetCount.setPadding(dp(5), dp(6), 0, 0);
-        totalLine.addView(targetCount);
-        summary.addView(totalLine);
-        ProgressBar totalProgress = progressBar(targetTotal, doneTotal);
-        LinearLayout.LayoutParams totalProgressParams = new LinearLayout.LayoutParams(-1, dp(5));
-        totalProgressParams.topMargin = dp(8);
-        summary.addView(totalProgress, totalProgressParams);
+        ProgressHeroView summary = ProgressHeroView.create(this, "今日进度",
+                doneTotal, targetTotal,
+                ProgressHeroView.motivationText(doneTotal, targetTotal));
         LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
         summaryParams.topMargin = dp(14);
         list.addView(summary, summaryParams);

@@ -298,42 +298,16 @@ public final class TaskActivity extends Activity {
         row.addView(more);
         header.addView(row);
 
-        LinearLayout meta = new LinearLayout(this);
-        meta.setGravity(Gravity.CENTER_VERTICAL);
-        meta.addView(text(todayLabel(), 12, UiPalette.MUTED, false),
-                new LinearLayout.LayoutParams(0, -2, 1f));
-        if (total > 0) {
-            meta.addView(text(done + " / " + total, 12,
-                    done >= total ? UiPalette.ACCENT : UiPalette.MUTED, true));
-        }
-        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(-1, -2);
-        metaParams.topMargin = dp(4);
-        header.addView(meta, metaParams);
+        TextView date = text(todayLabel(), 12, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(-1, -2);
+        dateParams.topMargin = dp(4);
+        header.addView(date, dateParams);
 
-        if (total > 0) {
-            int filled = Math.max(0, Math.min(done, total));
-            LinearLayout bar = new LinearLayout(this);
-            bar.setOrientation(LinearLayout.HORIZONTAL);
-            GradientDrawable track = new GradientDrawable();
-            track.setCornerRadius(dp(4));
-            track.setColor(UiPalette.SOFT);
-            bar.setBackground(track);
-            if (filled > 0) {
-                View fill = new View(this);
-                GradientDrawable fillBg = new GradientDrawable();
-                fillBg.setCornerRadius(dp(4));
-                fillBg.setColor(UiPalette.ACCENT);
-                fill.setBackground(fillBg);
-                bar.addView(fill, new LinearLayout.LayoutParams(0, -1, filled));
-            }
-            if (total - filled > 0) {
-                View rest = new View(this);
-                bar.addView(rest, new LinearLayout.LayoutParams(0, -1, total - filled));
-            }
-            LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, dp(8));
-            barParams.topMargin = dp(12);
-            header.addView(bar, barParams);
-        }
+        ProgressHeroView hero = ProgressHeroView.create(this, "今日任务", done, total,
+                ProgressHeroView.motivationText(done, total));
+        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, -2);
+        heroParams.topMargin = dp(10);
+        header.addView(hero, heroParams);
         return header;
     }
 
