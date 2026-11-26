@@ -568,7 +568,7 @@ private fun PickedItemCard(
                     onChanged()
                 },
                 onToggleSub = { sub, subDone ->
-                    Subtasks.toggle(context, parentId, sub.title, !subDone, dayStart)
+                    Subtasks.toggle(context, parentId, sub.title, subDone, dayStart)
                     onChanged()
                 },
                 onOpen = { openSubtaskPage(context, parentId, habit.title) },
@@ -593,7 +593,7 @@ private fun PickedItemCard(
                     onChanged()
                 },
                 onToggleSub = { sub, subDone ->
-                    Subtasks.toggle(context, task.id, sub.title, !subDone, dayStart)
+                    Subtasks.toggle(context, task.id, sub.title, subDone, dayStart)
                     onChanged()
                 },
                 onOpen = { openSubtaskPage(context, task.id, task.title) },
