@@ -361,20 +361,20 @@ private fun QuestRow(
                     style = MaterialTheme.typography.labelLarge,
                     color = Dew.Accent
                 )
-                Spacer(Modifier.width(8.dp))
-                Box(
-                    Modifier
-                        .clip(Dew.ShapePill)
-                        .background(Dew.Accent.copy(alpha = 0.12f))
-                        .clickable { picked = drawOne(context, source, picked) }
-                        .padding(horizontal = 9.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        "抽一个",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Dew.Accent
-                    )
-                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .clip(Dew.ShapePill)
+                    .background(Dew.Accent.copy(alpha = 0.12f))
+                    .clickable { picked = drawOne(context, source, picked) }
+                    .padding(horizontal = 9.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    "抽一个",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Dew.Accent
+                )
             }
         }
         if (picked != null) {
