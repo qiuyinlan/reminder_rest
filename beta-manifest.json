@@ -1,7 +1,7 @@
 {
-    "versionCode": 176,
-    "versionName": "0.3.0-beta160",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta160/rest-bean.apk",
-    "sha256": "076a9e1bebad178b41a32b7bb7be8af1f6ab7db4d4e1e46b043093bd39f11aa0",
-    "notes": "完成后的每日任务也能继续点「抽一个」；任务卡片松墨绿、清空任务保留微习惯"
+    "versionCode": 177,
+    "versionName": "0.3.0-beta161",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta161/rest-bean.apk",
+    "sha256": "82b47e974aaf5978b7dcb52350d644cbceb715683d551e36ba00caf1f83cefcc",
+    "notes": "抽一个后按任务页展开主任务和子任务，可直接在首页勾选并同步进度；勾完不消失，再抽替换；任务页配色恢复原样"
 }
