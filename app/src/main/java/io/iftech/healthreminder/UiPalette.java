@@ -39,6 +39,12 @@ final class UiPalette {
     static int PERIOD_STRONG = 0xffd8739b;
     /** 倒计时数字色（比主色更深/更亮，保证数字醒目）。 */
     static int COUNTDOWN_INK = 0xff125f45;
+    /** 松墨绿：任务卡片专用的深松绿底色与配套前景色。 */
+    static int PINE = 0xff3e5647;
+    static int PINE_DEEP = 0xff334a3d;
+    static int PINE_INK = 0xfff3f8f4;
+    static int PINE_MUTED = 0xb3f3f8f4;
+    static int PINE_LINE = 0x2effffff;
 
     private static boolean darkTheme;
     private static int[] pageGradient = {0xfff6fcf8, 0xffeef8f1, 0xffe9f6ef};
@@ -93,6 +99,11 @@ final class UiPalette {
             PERIOD_INK = 0xfff7b6cd;
             PERIOD_STRONG = 0xffc46a92;
             COUNTDOWN_INK = 0xff8cecc0;
+            PINE = 0xff2a4739;
+            PINE_DEEP = 0xff203a2e;
+            PINE_INK = 0xfff3f8f4;
+            PINE_MUTED = 0xb3f3f8f4;
+            PINE_LINE = 0x2effffff;
             pageGradient = new int[]{PAGE_LIGHT, PAGE, 0xff02140f};
             headGradient = new int[]{0xff0b3e2a, 0xff12352c, 0xff072b1d};
             glassGradient = new int[]{0xff1c3d33, 0xff0f2b23};
@@ -121,6 +132,11 @@ final class UiPalette {
             PERIOD_INK = 0xff9a6379;
             PERIOD_STRONG = 0xffc1849b;
             COUNTDOWN_INK = 0xff3d8a63;
+            PINE = 0xff3e5647;
+            PINE_DEEP = 0xff334a3d;
+            PINE_INK = 0xfff3f8f4;
+            PINE_MUTED = 0xb3f3f8f4;
+            PINE_LINE = 0x2effffff;
             pageGradient = new int[]{0xffffffff, 0xfffbfefc, 0xfff6fcf9};
             headGradient = new int[]{0xffe4f6ec, 0xfff2fbf6, 0xfffbfefc};
             glassGradient = new int[]{0xffeefaf3, 0xffe2f5ea};

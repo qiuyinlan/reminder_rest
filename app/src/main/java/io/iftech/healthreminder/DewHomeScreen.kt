@@ -274,7 +274,9 @@ private fun QuestCard(
             val progress = DailyQuest.questProgress(context, quest).coerceAtMost(quest.target)
             val done = progress >= quest.target
             QuestRow(
+                context = context,
                 title = quest.title,
+                source = quest.source,
                 progress = progress,
                 target = quest.target,
                 done = done,
@@ -322,12 +324,15 @@ private fun QuestCard(
 
 @Composable
 private fun QuestRow(
+    context: Context,
     title: String,
+    source: String,
     progress: Int,
     target: Int,
     done: Boolean,
     onJump: () -> Unit
 ) {
+    var picked by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             JumpDot(active = done, onClick = onJump)
@@ -356,13 +361,49 @@ private fun QuestRow(
                     style = MaterialTheme.typography.labelLarge,
                     color = Dew.Accent
                 )
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    Modifier
+                        .clip(Dew.ShapePill)
+                        .background(Dew.Accent.copy(alpha = 0.12f))
+                        .clickable { picked = drawOne(context, source, picked) }
+                        .padding(horizontal = 9.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        "抽一个",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Dew.Accent
+                    )
+                }
             }
+        }
+        if (picked != null) {
+            Text(
+                "抽到：$picked",
+                style = MaterialTheme.typography.bodySmall,
+                color = Dew.Accent,
+                modifier = Modifier.padding(start = 34.dp, top = 4.dp)
+            )
         }
         Spacer(Modifier.height(6.dp))
         Box(Modifier.padding(start = 34.dp)) {
             SegmentBar(total = target, filled = progress, modifier = Modifier.fillMaxWidth())
         }
     }
+}
+
+/** 从今天的微习惯 / 任务里随机抽一个；连点会避开上一次抽到的那个。 */
+private fun drawOne(context: Context, source: String, previous: String?): String {
+    val pool: List<String> = if (source == "habit") {
+        val scheduled = Habits.todayScheduled(context).map { it.title }
+        if (scheduled.isNotEmpty()) scheduled else Habits.all(context).map { it.title }
+    } else {
+        val today = Tasks.today(context).map { it.title.ifBlank { "未命名任务" } }
+        if (today.isNotEmpty()) today else Tasks.all(context).map { it.title.ifBlank { "未命名任务" } }
+    }
+    if (pool.isEmpty()) return if (source == "habit") "今天没有微习惯" else "今天没有任务"
+    val choices = if (pool.size > 1 && previous != null) pool.filter { it != previous } else pool
+    return choices.random()
 }
 
 /** 行首圆形跳转按钮：浅绿底箭头，完成后实心绿勾。 */

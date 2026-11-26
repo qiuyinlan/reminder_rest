@@ -487,9 +487,9 @@ public final class TaskActivity extends Activity {
                 listContainer.addView(buildCategoryHeader(cat, totalCount));
             }
             if (!showHeaders || cat.expanded) {
-                LinearLayout card = groupCard();
+                LinearLayout card = pineCard();
                 for (int i = 0; i < pending.size(); i++) {
-                    if (i > 0) addDivider(card);
+                    if (i > 0) addDivider(card, pineCards());
                     card.addView(buildRow(pending.get(i), dayStart));
                 }
                 listContainer.addView(card);
@@ -497,8 +497,9 @@ public final class TaskActivity extends Activity {
         }
 
         if (!anyPending) {
-            LinearLayout card = groupCard();
-            TextView hint = text("今天没有任务，点右下角 + 新建一个", 13, UiPalette.MUTED, false);
+            LinearLayout card = pineCard();
+            TextView hint = text("今天没有任务，点右下角 + 新建一个", 13,
+                    pineCards() ? UiPalette.PINE_MUTED : UiPalette.MUTED, false);
             hint.setGravity(Gravity.CENTER);
             hint.setPadding(dp(16), dp(20), dp(16), dp(22));
             card.addView(hint);
@@ -539,24 +540,27 @@ public final class TaskActivity extends Activity {
 
     /** 分组容器：一张白底大圆角卡片包住整组行，行间靠内凹细线分隔。 */
     private LinearLayout groupCard() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(16));
-        bg.setColor(UiPalette.SURFACE);
-        card.setBackground(bg);
-        card.setClipToOutline(true);
-        card.setElevation(dp(2));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(6);
-        card.setLayoutParams(params);
-        return card;
+        return TaskRowKit.groupCard(this);
+    }
+
+    /** 任务卡片：深松墨绿底；白板页保持原来的浅色卡。 */
+    private LinearLayout pineCard() {
+        return TaskRowKit.groupCard(this, pineCards());
+    }
+
+    /** 白板模块只是复用任务页 UI，不跟着换成松墨绿。 */
+    private boolean pineCards() {
+        return !ReminderSettings.MODULE_BOARD.equals(module);
     }
 
     /** 行间分隔线：从文字起始位置开始，不顶到卡片边缘。 */
     private void addDivider(LinearLayout card) {
+        addDivider(card, false);
+    }
+
+    private void addDivider(LinearLayout card, boolean onPine) {
         View line = new View(this);
-        line.setBackgroundColor(UiPalette.hairline());
+        line.setBackgroundColor(onPine ? UiPalette.PINE_LINE : UiPalette.hairline());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(1));
         params.leftMargin = dp(50);
         card.addView(line, params);
@@ -752,7 +756,7 @@ public final class TaskActivity extends Activity {
         wrapper.setOrientation(LinearLayout.VERTICAL);
         wrapper.addView(row);
         if (!habitSubs.isEmpty()) {
-            wrapper.addView(buildSubtaskFlow(habitParentId, habitSubs, dayStart));
+            wrapper.addView(buildSubtaskFlow(habitParentId, habitSubs, dayStart, false));
         }
         return wrapper;
     }
@@ -810,9 +814,9 @@ public final class TaskActivity extends Activity {
         section.addView(header);
 
         if (futureExpanded) {
-            LinearLayout card = groupCard();
+            LinearLayout card = pineCard();
             for (int i = 0; i < future.size(); i++) {
-                if (i > 0) addDivider(card);
+                if (i > 0) addDivider(card, pineCards());
                 card.addView(buildFutureRow(future.get(i)));
             }
             section.addView(card);
@@ -827,7 +831,8 @@ public final class TaskActivity extends Activity {
         row.setMinimumHeight(dp(48));
         row.setPadding(dp(14), dp(10), dp(14), dp(10));
 
-        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 15, UiPalette.INK, false);
+        TextView title = text(task.title.isEmpty() ? "未命名任务" : task.title, 15,
+                pineCards() ? UiPalette.PINE_INK : UiPalette.INK, false);
         title.setMaxLines(1);
         title.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -836,7 +841,7 @@ public final class TaskActivity extends Activity {
         cal.setTimeInMillis(task.onceAt);
         row.addView(text(String.format(Locale.getDefault(), "%d月%d日",
                 cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH)),
-                12, UiPalette.MUTED, false));
+                12, pineCards() ? UiPalette.PINE_MUTED : UiPalette.MUTED, false));
 
         row.setOnClickListener(v -> openSubtasks(task));
         row.setOnLongClickListener(v -> {
@@ -860,9 +865,9 @@ public final class TaskActivity extends Activity {
         section.addView(header);
 
         if (completedExpanded) {
-            LinearLayout card = groupCard();
+            LinearLayout card = pineCard();
             for (int i = 0; i < finished.size(); i++) {
-                if (i > 0) addDivider(card);
+                if (i > 0) addDivider(card, pineCards());
                 card.addView(buildRow(finished.get(i), dayStart));
             }
             section.addView(card);
@@ -1037,13 +1042,14 @@ public final class TaskActivity extends Activity {
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
         // 主任务行：统一外观（TaskRowKit 跟白板、「现在」页共用）
+        boolean onPine = pineCards();
         LinearLayout row = TaskRowKit.mainRow(this);
-        TextView box = TaskRowKit.circleCheck(this, done, null);
+        TextView box = TaskRowKit.circleCheck(this, done, null, onPine);
         box.setOnClickListener(v -> {
             boolean willDone = !done;
             if (willDone) {
                 // 先显示打勾并弹一下，再刷新列表，让用户看到打钩
-                TaskRowKit.applyCircleCheck(this, box, true);
+                TaskRowKit.applyCircleCheck(this, box, true, onPine);
                 AnimKit.pop(box, 1.35f);
                 SoundKit.tick(this);
                 toggleDone(task, done, dayStart, allSubDone, true);
@@ -1054,7 +1060,7 @@ public final class TaskActivity extends Activity {
         row.addView(box, TaskRowKit.checkParams(this));
 
         TextView title = TaskRowKit.title(this,
-                task.title.isEmpty() ? "未命名任务" : task.title, done);
+                task.title.isEmpty() ? "未命名任务" : task.title, done, onPine);
         row.addView(title, TaskRowKit.titleParams(this));
 
         row.setOnClickListener(v -> openSubtasks(task));
@@ -1063,7 +1069,8 @@ public final class TaskActivity extends Activity {
             return true;
         });
         if (!subtasks.isEmpty()) {
-            TextView chevron = text("›", 18, UiPalette.DISABLED, true);
+            TextView chevron = text("›", 18,
+                    onPine ? UiPalette.PINE_MUTED : UiPalette.DISABLED, true);
             LinearLayout.LayoutParams chevronParams = new LinearLayout.LayoutParams(-2, -2);
             chevronParams.leftMargin = dp(8);
             row.addView(chevron, chevronParams);
@@ -1072,18 +1079,23 @@ public final class TaskActivity extends Activity {
 
         // 子任务流程视图（横向）
         if (!subtasks.isEmpty()) {
-            wrapper.addView(buildSubtaskFlow(task.id, subtasks, dayStart));
+            wrapper.addView(buildSubtaskFlow(task.id, subtasks, dayStart, onPine));
         }
         return wrapper;
     }
 
     /** 横向流程式子任务：☐ 步骤 1 → ☐ 步骤 2 → ☐ 步骤 3（可横向滚动） */
-    private View buildSubtaskFlow(final int parentId, List<ReminderSettings.Rule> subtasks, long dayStart) {
+    private View buildSubtaskFlow(final int parentId, List<ReminderSettings.Rule> subtasks,
+                                  long dayStart, boolean onPine) {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(false);
         scroll.setPadding(dp(10), dp(2), dp(6), dp(3));
         scroll.setMinimumHeight(dp(36));
+
+        int subIdle = onPine ? UiPalette.PINE_MUTED : UiPalette.DISABLED;
+        int subInk = onPine ? UiPalette.PINE_INK : UiPalette.INK;
+        int subMuted = onPine ? UiPalette.PINE_MUTED : UiPalette.MUTED;
 
         LinearLayout flow = new LinearLayout(this);
         flow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1108,15 +1120,15 @@ public final class TaskActivity extends Activity {
             GradientDrawable cbShape = new GradientDrawable();
             cbShape.setCornerRadius(dp(3));
             cbShape.setColor(subDone ? UiPalette.ACCENT : Color.TRANSPARENT);
-            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : UiPalette.DISABLED);
-            TextView cb = text(subDone ? "✓" : "", 9, subDone ? Color.WHITE : UiPalette.DISABLED, true);
+            cbShape.setStroke(dp(1), subDone ? Color.TRANSPARENT : subIdle);
+            TextView cb = text(subDone ? "✓" : "", 9, subDone ? Color.WHITE : subIdle, true);
             cb.setGravity(Gravity.CENTER);
             cb.setBackground(cbShape);
             LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(dp(15), dp(15));
             subBox.addView(cb, cbParams);
             cb.setOnClickListener(v -> toggleSubtask(parentId, sub, !subDone, dayStart));
 
-            TextView subTitle = text(sub.title, 13, subDone ? UiPalette.MUTED : UiPalette.INK, false);
+            TextView subTitle = text(sub.title, 13, subDone ? subMuted : subInk, false);
             if (subDone) subTitle.setPaintFlags(subTitle.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
             LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-2, -2);
             subParams.leftMargin = dp(7);
@@ -1160,7 +1172,7 @@ public final class TaskActivity extends Activity {
 
             // 箭头 →
             if (i < subtasks.size() - 1) {
-                TextView arrow = text("→", 11, UiPalette.DISABLED, false);
+                TextView arrow = text("→", 11, subIdle, false);
                 LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(-2, -2);
                 arrowParams.leftMargin = dp(7);
                 arrowParams.rightMargin = dp(7);
@@ -1207,7 +1219,9 @@ public final class TaskActivity extends Activity {
         wrap.setOrientation(LinearLayout.HORIZONTAL);
         GradientDrawable band = new GradientDrawable();
         band.setCornerRadius(dp(12));
-        band.setColor(UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.07f));
+        band.setColor(onPine
+                ? UiPalette.blend(UiPalette.PINE, 0xffffffff, 0.08f)
+                : UiPalette.blend(UiPalette.SURFACE, UiPalette.ACCENT, 0.07f));
         wrap.setBackground(band);
         LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(-1, -2);
         wrapParams.leftMargin = dp(38);
@@ -1444,10 +1458,14 @@ public final class TaskActivity extends Activity {
     private void confirmClearAll() {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("清空全部任务")
-                .setMessage("会删除所有任务和它们的提醒，历史记录保留。确定吗？")
+                .setMessage("会删除所有任务和它们的提醒，微习惯及其子任务保留，历史记录保留。确定吗？")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("清空", (d, w) -> {
-                    ReminderSettings.clearModule(this, ReminderSettings.MODULE_SUBTASK);
+                    // 只删当前模块任务自己的子任务；微习惯的子任务父 id 是 100000+，不能一起清
+                    List<ReminderSettings.Rule> tasks = new ArrayList<>(tasksAll());
+                    for (ReminderSettings.Rule task : tasks) {
+                        Subtasks.deleteForParent(this, task.id);
+                    }
                     ReminderSettings.clearModule(this, module);
                     reload();
                 })
