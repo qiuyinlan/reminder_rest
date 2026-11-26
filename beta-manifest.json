@@ -1,7 +1,7 @@
 {
-    "versionCode": 183,
-    "versionName": "0.3.0-beta167",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta167/rest-bean.apk",
-    "sha256": "dbe2778a21a8e61a1dd91e0af0481b12ba3296339b2d6c887202be48f66d7f5a",
-    "notes": "微习惯也完全复用事项页编辑器：长按微习惯或进「提醒设置」都打开同一界面，可改名称、图标、颜色、特效和每周频率"
+    "versionCode": 184,
+    "versionName": "0.3.0-beta168",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta168/rest-bean.apk",
+    "sha256": "e1bde2fbfe299164b029a2a6b1f3711cbaa8cc047107731010d7c141f6dc1918",
+    "notes": "撤掉三个页面照抄的进度卡；只把首页卡片那套浅绿玻璃渐变、18dp 圆角、细边和柔和阴影应用到任务、事项、统计原有卡片上"
 }
