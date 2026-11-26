@@ -139,26 +139,6 @@ public final class StatsActivity extends Activity {
         setContentView(root);
     }
 
-    /** 当前模块今天的完成数 / 目标总数，给顶部进度卡用。 */
-    private int[] todayProgress(String module) {
-        List<ReminderSettings.Rule> rules = ReminderSettings.MODULE_TASK.equals(module)
-                ? Tasks.today(this)
-                : ReminderSettings.moduleRules(this, module);
-        int done = 0;
-        int total = 0;
-        for (ReminderSettings.Rule rule : rules) {
-            done += ReminderSettings.completedToday(this, rule.id);
-            total += Math.max(1, rule.dailyTarget);
-        }
-        return new int[]{done, total};
-    }
-
-    private String moduleLabel(String module) {
-        if (ReminderSettings.MODULE_TASK.equals(module)) return "任务";
-        if (ReminderSettings.MODULE_REVIEW.equals(module)) return "复盘";
-        return "身体";
-    }
-
     private String helpText() {
         if (ReminderSettings.MODULE_TASK.equals(moduleFilter)) return "任务完成情况与每日打卡";
         if (ReminderSettings.MODULE_REVIEW.equals(moduleFilter)) return "日历选一天，看那天的复盘";
@@ -328,14 +308,6 @@ public final class StatsActivity extends Activity {
         scroll.addView(content);
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
-
-        int[] todayCounts = todayProgress(moduleFilter);
-        ProgressHeroView todayHero = ProgressHeroView.create(this,
-                moduleLabel(moduleFilter) + " · 今日", todayCounts[0], todayCounts[1],
-                ProgressHeroView.motivationText(todayCounts[0], todayCounts[1]));
-        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, -2);
-        heroParams.bottomMargin = dp(12);
-        content.addView(todayHero, heroParams);
 
         LinearLayout calendar = new LinearLayout(this);
         calendar.setOrientation(LinearLayout.VERTICAL);
@@ -1893,7 +1865,18 @@ public final class StatsActivity extends Activity {
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return view;
     }
     private GradientDrawable round(int color, int radius) {
-        GradientDrawable shape = new GradientDrawable(); shape.setColor(UiPalette.surface(color)); shape.setCornerRadius(dp(radius)); if (color == Color.WHITE) shape.setStroke(dp(1), UiPalette.BORDER); return shape;
+        if (color != Color.WHITE) {
+            GradientDrawable shape = new GradientDrawable();
+            shape.setColor(UiPalette.surface(color));
+            shape.setCornerRadius(dp(radius));
+            return shape;
+        }
+        // 和首页同一套浅绿玻璃卡：极淡渐变 + 细边
+        GradientDrawable shape = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM, UiPalette.glassGradient());
+        shape.setCornerRadius(dp(radius));
+        shape.setStroke(dp(1), UiPalette.hairline());
+        return shape;
     }
 
     /** 卡片按下时的水波纹反馈，长按记录时能立刻看到响应。 */
