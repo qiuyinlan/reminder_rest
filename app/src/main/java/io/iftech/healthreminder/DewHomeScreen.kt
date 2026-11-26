@@ -647,10 +647,7 @@ private fun InlineTaskCard(
             Spacer(Modifier.width(10.dp))
             Text(
                 title,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp
-                ),
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (done) Dew.InkFaint else Dew.Ink,
                 textDecoration = if (done) TextDecoration.LineThrough else null,
                 modifier = Modifier
