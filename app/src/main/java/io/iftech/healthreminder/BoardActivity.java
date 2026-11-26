@@ -46,6 +46,7 @@ public final class BoardActivity extends Activity {
         UiPalette.applyWindow(getWindow());
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         composerType = BoardStore.lastType(this);
+        migrateBoardRules();
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -79,6 +80,33 @@ public final class BoardActivity extends Activity {
         items.clear();
         items.addAll(BoardStore.load(this));
         render();
+    }
+
+    /** 旧版白板是 module=board 的规则，升级到宝箱时搬过来，避免这几天记的东西消失。 */
+    private void migrateBoardRules() {
+        List<ReminderSettings.Rule> board = ReminderSettings.moduleRules(this, ReminderSettings.MODULE_BOARD);
+        if (board.isEmpty()) return;
+        List<BoardStore.Item> saved = BoardStore.load(this);
+        long dayStart = ReminderRecord.dayStart(System.currentTimeMillis());
+        for (ReminderSettings.Rule rule : board) {
+            BoardStore.Item item = new BoardStore.Item();
+            item.id = BoardStore.nextId();
+            item.type = BoardStore.TYPE_TASK;
+            item.title = rule.title;
+            item.done = ReminderRecord.completedOn(this, ReminderSettings.MODULE_BOARD,
+                    rule.title, dayStart);
+            item.createdAt = System.currentTimeMillis();
+            for (ReminderSettings.Rule sub : Subtasks.of(this, rule.id)) {
+                BoardStore.Sub entry = new BoardStore.Sub();
+                entry.title = sub.title;
+                entry.done = Subtasks.doneToday(this, rule.id, sub.title, dayStart);
+                item.subs.add(entry);
+            }
+            saved.add(item);
+            Subtasks.deleteForParent(this, rule.id);
+            ReminderSettings.deleteRule(this, rule.id);
+        }
+        BoardStore.save(this, saved);
     }
 
     // ------------------------------------------------------------ 页面
