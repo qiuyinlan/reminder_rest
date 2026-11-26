@@ -73,15 +73,14 @@ final class AppUpdateManager {
     /** 清单地址：官方 raw 在国内常被墙，依次试镜像。 */
     private static String[] manifestUrls() {
         String primary = BuildConfig.UPDATE_MANIFEST_URL;
-        String file = primary.contains("beta-manifest") ? "beta-manifest.json" : "update-manifest.json";
-        String jsdelivr = "https://cdn.jsdelivr.net/gh/qiuyinlan/reminder_rest@main/" + file;
         // 清单更新后 CDN 可能继续返回旧内容，加时间戳强制回源。
         long stamp = System.currentTimeMillis();
         String primarySuffix = (primary.contains("?") ? "&" : "?") + "v=" + stamp;
+        // 不再用 jsDelivr 的 @main：缓存能旧好几个版本，会拿旧 sha 去校验新包。
         return new String[]{
                 primary + primarySuffix,
                 "https://ghfast.top/" + primary + primarySuffix,
-                jsdelivr + "?v=" + stamp
+                "https://gh-proxy.com/" + primary + primarySuffix
         };
     }
 
@@ -227,20 +226,39 @@ final class AppUpdateManager {
             // 删不掉就换个新文件，避免脏数据
             destination = new File(destination.getParentFile(), "update.apk.part2");
         }
-        for (int attempt = 1; attempt <= 6; attempt++) {
+        // 国内直连 GitHub Release 经常下到一半被掐断，而且是正常 EOF，不会抛异常。
+        // 以前一校验不符就删文件重下，永远攒不满；现在优先走镜像，并保留已下载的部分继续续传。
+        String[] urls = new String[]{
+                "https://ghfast.top/" + url,
+                "https://gh-proxy.com/" + url,
+                url
+        };
+        long lastSize = -1L;
+        int noProgress = 0;
+        for (int attempt = 1; attempt <= 10; attempt++) {
+            String candidate = urls[(attempt - 1) % urls.length];
+            long before = destination.exists() ? destination.length() : 0L;
             try {
-                appendFrom(url, destination);
+                appendFrom(candidate, destination);
             } catch (Exception error) {
-                if (attempt == 6) return false;
-                sleepQuietly(800L * attempt);
-                continue;
+                // 保留已下部分，换下一个地址继续试
             }
+            long after = destination.exists() ? destination.length() : 0L;
             String hash = sha256Of(destination);
             if (expectedSha.equals(hash)) return true;
-            // 校验不符：已下的部分可能损坏，从头再来
-            if (destination.exists() && !destination.delete()) return false;
-            if (attempt == 6) return false;
-            sleepQuietly(800L * attempt);
+            if (after <= before && after == lastSize) {
+                noProgress++;
+            } else {
+                noProgress = 0;
+            }
+            lastSize = after;
+            // 连续两次一点没长：文件可能真的坏了，删掉从头来
+            if (noProgress >= 2) {
+                if (destination.exists() && !destination.delete()) return false;
+                noProgress = 0;
+                lastSize = -1L;
+            }
+            if (attempt < 10) sleepQuietly(600L * attempt);
         }
         return false;
     }
@@ -256,7 +274,7 @@ final class AppUpdateManager {
         HttpURLConnection connection = openHttps(url, existing);
         try {
             connection.setConnectTimeout(15000);
-            connection.setReadTimeout(30000);
+            connection.setReadTimeout(60000);
             int status = connection.getResponseCode();
             boolean append = status == 206 && existing > 0;
             try (InputStream input = new BufferedInputStream(connection.getInputStream());
