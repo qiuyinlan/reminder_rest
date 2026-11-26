@@ -82,8 +82,11 @@ public final class TaskOverviewReminderActivity extends Activity {
 
     private void renderTasks() {
         listContainer.removeAllViews();
-        // 总览页列出任务清单里的全部任务（含「之后」的、关掉单独提醒的）
-        List<ReminderSettings.Rule> shown = new ArrayList<>(Tasks.all(this));
+        // 只列开着单独提醒的任务：关掉提醒的条目只留在任务清单里，不能再从总览页弹出来
+        List<ReminderSettings.Rule> shown = new ArrayList<>();
+        for (ReminderSettings.Rule task : Tasks.all(this)) {
+            if (task.enabled) shown.add(task);
+        }
         int doneCount = 0;
         for (ReminderSettings.Rule task : shown) {
             if (ReminderRecord.completedOn(this, ReminderSettings.MODULE_TASK, task.title, dayStart)) doneCount++;

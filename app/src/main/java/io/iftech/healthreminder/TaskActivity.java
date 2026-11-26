@@ -349,14 +349,43 @@ public final class TaskActivity extends Activity {
         String[] labels = {
                 overviewOn ? "总览提醒 · 已开" : "总览提醒 · 已关",
                 "总览提醒设置",
+                "关闭全部单独提醒",
                 "重置今日",
                 "清空全部任务"};
-        FormKit.options(this, null, labels, 3, which -> {
+        FormKit.options(this, null, labels, 4, which -> {
             if (which == 0) setOverviewEnabled(!overviewOn);
             else if (which == 1) showOverviewEditor();
-            else if (which == 2) confirmResetToday();
+            else if (which == 2) confirmDisableAllTaskReminders();
+            else if (which == 3) confirmResetToday();
             else confirmClearAll();
         });
+    }
+
+    /** 一键把任务页所有条目的单独提醒关掉（任务本身不删，微习惯不受影响）。 */
+    private void confirmDisableAllTaskReminders() {
+        int enabledCount = 0;
+        for (ReminderSettings.Rule task : tasksAll()) {
+            if (task.enabled) enabledCount++;
+        }
+        if (enabledCount == 0) {
+            Toast.makeText(this, "现在没有开着的单独提醒", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("关闭全部单独提醒")
+                .setMessage("会把 " + enabledCount + " 条任务的单独提醒全部关掉，任务本身不会删。确定吗？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("全部关闭", (d, w) -> {
+                    for (ReminderSettings.Rule task : tasksAll()) {
+                        if (task.enabled) {
+                            ReminderSettings.upsertRule(this, task.withEnabled(false));
+                        }
+                    }
+                    reload();
+                    Toast.makeText(this, "已关闭 " + enabledCount + " 条单独提醒", Toast.LENGTH_SHORT).show();
+                })
+                .create();
+        FormKit.showStyled(this, dialog);
     }
 
     // ---------------------------------------------------------------- 列表
@@ -1389,7 +1418,7 @@ public final class TaskActivity extends Activity {
 
     private String describe(ReminderSettings.Rule rule) {
         String base = describeBase(rule);
-        return rule.enabled ? base : "未单独提醒 · 只在总览页出现";
+        return rule.enabled ? base : "未单独提醒 · 只在任务清单里出现";
     }
 
     private String describeBase(ReminderSettings.Rule rule) {
@@ -1663,6 +1692,29 @@ public final class TaskActivity extends Activity {
         settings.setOrientation(LinearLayout.VERTICAL);
         settings.setPadding(dp(14), dp(10), dp(14), dp(10));
         settings.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+
+        // 单独提醒开关：默认沿用这批任务原来的状态，不再因为一次保存就默默打开 9 点提醒
+        LinearLayout notifyRow = new LinearLayout(this);
+        notifyRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout notifyTexts = new LinearLayout(this);
+        notifyTexts.setOrientation(LinearLayout.VERTICAL);
+        notifyTexts.addView(text("单独提醒", 14, UiPalette.INK, true));
+        TextView notifySub = text("关掉后不会按设置的时间响，只留在任务清单里", 11, UiPalette.MUTED, false);
+        LinearLayout.LayoutParams notifySubParams = new LinearLayout.LayoutParams(-1, -2);
+        notifySubParams.topMargin = dp(2);
+        notifyTexts.addView(notifySub, notifySubParams);
+        notifyRow.addView(notifyTexts, new LinearLayout.LayoutParams(0, -2, 1f));
+        Switch notifySwitch = new Switch(this);
+        notifySwitch.setThumbTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{Color.WHITE, Color.WHITE}));
+        notifySwitch.setTrackTintList(new android.content.res.ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{UiPalette.ACCENT, UiPalette.DISABLED}));
+        notifySwitch.setChecked(existing != null && existing.enabled);
+        notifyRow.addView(notifySwitch);
+        settings.addView(notifyRow);
+
         LinearLayout resetRow = new LinearLayout(this);
         resetRow.setGravity(Gravity.CENTER_VERTICAL);
         resetRow.addView(text("每天自动重置完成状态", 14, UiPalette.INK, true),
@@ -1708,7 +1760,8 @@ public final class TaskActivity extends Activity {
             }
             ReminderSettings.Rule rule = buildRule(id, existing, title, note.getText().toString().trim(),
                     draftMode, points, daysMask[0], onceAt[0], window, intervalMinutes[0])
-                    .withCategory(categoryId[0]);
+                    .withCategory(categoryId[0])
+                    .withEnabled(notifySwitch.isChecked());
             ReminderSettings.upsertRule(this, rule);
             ReminderSettings.setAutoReset(this, id, resetSwitch.isChecked());
             dialog.dismiss();
@@ -1862,7 +1915,7 @@ public final class TaskActivity extends Activity {
         if (!MODE_ONCE.equals(mode)) onceAt = 0L;
 
         ReminderSettings.Rule rule = ReminderSettings.Rule.withIntervalSeconds(id, title, startMinute, endMinute,
-                        intervalSeconds, 1, true, true)
+                        intervalSeconds, 1, true, existing != null && existing.enabled)
                 .withSchedule(specificTimes, effectivePoints, daysMask, onceAt)
                 .withModule(module)
                 .withReminderMessage(note);
