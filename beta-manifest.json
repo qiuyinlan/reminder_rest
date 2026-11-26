@@ -1,7 +1,7 @@
 {
-    "versionCode": 181,
-    "versionName": "0.3.0-beta165",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta165/rest-bean.apk",
-    "sha256": "fa10abafa4ff6013225af1aa729f4730afbf1bc1769192f27a4449df2aa7cd29",
-    "notes": "首页抽出的任务标题字号对齐首页任务行（15sp），子任务保持 13sp 小一号"
+    "versionCode": 182,
+    "versionName": "0.3.0-beta166",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta166/rest-bean.apk",
+    "sha256": "db9231172700fb2130ffc912062e4b2b32ecd4d7f6551a81ce9b93ff27a4ea00",
+    "notes": "任务页、事项页、统计页顶部统一首页同款「今日进度」英雄卡；游戏模式下微习惯右侧显示连续天数；任务提醒设置改用事项同款编辑界面；微习惯编辑页接入同套图标/颜色/特效选择器"
 }
