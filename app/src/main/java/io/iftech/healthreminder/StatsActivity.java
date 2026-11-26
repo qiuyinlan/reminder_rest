@@ -329,10 +329,10 @@ public final class StatsActivity extends Activity {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(screen);
 
-        int[] today = todayProgress(moduleFilter);
+        int[] todayCounts = todayProgress(moduleFilter);
         ProgressHeroView todayHero = ProgressHeroView.create(this,
-                moduleLabel(moduleFilter) + " · 今日", today[0], today[1],
-                ProgressHeroView.motivationText(today[0], today[1]));
+                moduleLabel(moduleFilter) + " · 今日", todayCounts[0], todayCounts[1],
+                ProgressHeroView.motivationText(todayCounts[0], todayCounts[1]));
         LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, -2);
         heroParams.bottomMargin = dp(12);
         content.addView(todayHero, heroParams);
