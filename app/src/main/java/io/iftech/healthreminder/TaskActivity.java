@@ -777,9 +777,10 @@ public final class TaskActivity extends Activity {
     }
 
     private void openHabitEditor(Habits.Habit habit) {
-        Intent intent = new Intent(this, HabitEditor.class);
-        intent.putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id);
-        startActivityForResult(intent, REQUEST_EDIT_HABIT);
+        // 和事项/任务共用同一套编辑界面（名称、图标、颜色、特效、频率）
+        startActivity(new Intent(this, ItemsActivity.class)
+                .putExtra("habit_id", habit.id)
+                .putExtra("finish_after_edit", true));
     }
 
     private void openHabitSubtasks(Habits.Habit habit) {

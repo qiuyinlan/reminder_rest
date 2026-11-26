@@ -92,8 +92,9 @@ public final class SubtaskActivity extends Activity {
                     else if (ReminderSettings.ruleById(this, parentId) == null) {
                         Habits.Habit habit = Habits.byParentId(this, parentId);
                         if (habit == null) return;
-                        startActivity(new Intent(this, HabitEditor.class)
-                                .putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id));
+                        startActivity(new Intent(this, ItemsActivity.class)
+                                .putExtra("habit_id", habit.id)
+                                .putExtra("finish_after_edit", true));
                         finish();
                     } else {
                         // 任务和事项共用同一个编辑界面（资料/图标/颜色/特效/提醒）

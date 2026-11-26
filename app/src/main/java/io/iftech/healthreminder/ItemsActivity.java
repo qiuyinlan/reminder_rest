@@ -53,6 +53,9 @@ public final class ItemsActivity extends Activity {
     private TextView addFabPro;
     private boolean returnToHome;
     private boolean finishAfterEdit;
+    /** 从微习惯进来的编辑：复用事项编辑器，但保存回 Habits，不走 Rule 表。 */
+    private int editingHabitId = -1;
+    private Habits.Habit editingHabit;
     /** 事项页也记住滚动位置，换页回来不跳回顶部。 */
     private ScrollView scroll;
     private int lastScrollY;
@@ -99,7 +102,10 @@ public final class ItemsActivity extends Activity {
                 lastScrollY = scrollY);
         renderItems();
         if (state == null) {
-            if (getIntent().getBooleanExtra("new_item", false)) {
+            int habitId = getIntent().getIntExtra("habit_id", -1);
+            if (habitId >= 0) {
+                editHabit(habitId);
+            } else if (getIntent().getBooleanExtra("new_item", false)) {
                 editRule(null);
             } else {
                 int editId = getIntent().getIntExtra("edit_id", -1);
@@ -435,6 +441,71 @@ public final class ItemsActivity extends Activity {
                 .putExtra("rule_id", ruleId));
     }
 
+    /** 微习惯也走同一套编辑器：把 Habit 临时投影成 Rule，保存时再写回 Habits。 */
+    private void editHabit(int habitId) {
+        for (Habits.Habit habit : Habits.all(this)) {
+            if (habit.id != habitId) continue;
+            editingHabitId = habitId;
+            editingHabit = habit;
+            ArrayList<Integer> points = new ArrayList<>();
+            points.add(9 * 3600);
+            ReminderSettings.Rule proxy = ReminderSettings.Rule.withSpecificTimes(
+                            Habits.parentId(habit.id), habit.title, 9 * 60, 9 * 60,
+                            24 * 3600, points, 1, true, false)
+                    .withModule("habit")
+                    .withIcon(habit.icon)
+                    .withColor(habit.color)
+                    .withOverlayArtwork(habit.overlayArtwork)
+                    .withReminderMessage(habit.reminderMessage);
+            editRuleInternal(proxy);
+            return;
+        }
+        finish();
+    }
+
+    /** 微习惯专属：7 个圆点选择每周重复哪几天。 */
+    private void addHabitFrequency(LinearLayout form) {
+        form.addView(editorLabel("重复频率", true));
+        TextView hint = text("点击圆点切换选择", 12, MUTED, false);
+        hint.setPadding(0, dp(4), 0, dp(10));
+        form.addView(hint);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER);
+        form.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        String[] labels = {"一", "二", "三", "四", "五", "六", "日"};
+        int[] bits = {1, 2, 4, 8, 16, 32, 64};
+        for (int i = 0; i < 7; i++) {
+            LinearLayout column = new LinearLayout(this);
+            column.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams columnParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (i > 0) columnParams.leftMargin = dp(3);
+            row.addView(column, columnParams);
+            TextView dot = text(labels[i], 14, UiPalette.MUTED, true);
+            dot.setGravity(Gravity.CENTER);
+            dot.setPadding(dp(10), dp(8), dp(10), dp(8));
+            final int bit = bits[i];
+            updateHabitDot(dot, (editingHabit.frequencyMask & bit) != 0);
+            dot.setOnClickListener(v -> {
+                if ((editingHabit.frequencyMask & bit) != 0) {
+                    editingHabit.frequencyMask &= ~bit;
+                } else {
+                    editingHabit.frequencyMask |= bit;
+                }
+                updateHabitDot(dot, (editingHabit.frequencyMask & bit) != 0);
+            });
+            column.addView(dot, new LinearLayout.LayoutParams(-1, dp(44)));
+        }
+    }
+
+    private void updateHabitDot(TextView dot, boolean selected) {
+        dot.setTextColor(selected ? Color.WHITE : UiPalette.MUTED);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(selected ? UiPalette.ACCENT : UiPalette.SURFACE);
+        background.setStroke(dp(1), selected ? Color.TRANSPARENT : UiPalette.BORDER);
+        background.setCornerRadius(dp(20));
+        dot.setBackground(background);
+    }
+
     private void editRule(ReminderSettings.Rule existing) {
         if (existing == null && MembershipPolicy.requiresMembershipForNewItem(
                 ReminderSettings.listedRules(this).size())) {
@@ -642,7 +713,9 @@ public final class ItemsActivity extends Activity {
         artworkRow.addView(artworkButton, artworkButtonParams);
         form.addView(artworkRow, new LinearLayout.LayoutParams(-1, -2));
 
-
+        if (editingHabitId >= 0) {
+            addHabitFrequency(form);
+        } else {
         form.addView(editorLabel("提醒方式", true));
         LinearLayout modes = new LinearLayout(this);
         modes.setOrientation(LinearLayout.HORIZONTAL);
@@ -796,6 +869,7 @@ public final class ItemsActivity extends Activity {
         LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(-1, -2);
         settingsParams.topMargin = dp(16);
         form.addView(settings, settingsParams);
+        }
         final int maxContentHeight = Math.min(dp(620),
                 getResources().getDisplayMetrics().heightPixels - dp(220));
         ScrollView formScroll = new ScrollView(this) {
@@ -809,11 +883,18 @@ public final class ItemsActivity extends Activity {
         formScroll.setClipToPadding(false);
         formScroll.setVerticalScrollBarEnabled(false);
         formScroll.addView(form);
-        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext()).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
+        String editorTitle = editingHabitId >= 0 ? "编辑微习惯"
+                : existing == null ? "添加提醒事项" : "编辑提醒事项";
+        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext()).setTitle(editorTitle)
                 .setView(formScroll)
                 .setNegativeButton("取消", (dialog, which) -> returnHomeAfterEditor())
                 .setPositiveButton("保存", null);
-        if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> {
+        if (editingHabit != null) builder.setNeutralButton("删除", (dialog, which) -> {
+            Habits.delete(this, editingHabit.id);
+            renderItems();
+            returnHomeAfterEditor();
+        });
+        else if (existing != null) builder.setNeutralButton("删除", (dialog, which) -> {
             ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
             updated.removeIf(rule -> rule.id == id);
             ReminderSettings.saveRules(this, updated);
@@ -826,6 +907,18 @@ public final class ItemsActivity extends Activity {
             String title = name.getText().toString().trim();
             if (title.isEmpty()) {
                 Toast.makeText(this, "请输入事项名称", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (editingHabit != null) {
+                editingHabit.title = title;
+                editingHabit.icon = iconValue[0];
+                editingHabit.color = colorValue[0];
+                editingHabit.overlayArtwork = artworkValue[0];
+                editingHabit.reminderMessage = reminderMessage.getText().toString();
+                Habits.update(this, editingHabit);
+                renderItems();
+                editor.dismiss();
+                returnHomeAfterEditor();
                 return;
             }
             if (specificTimeMode[0] && timePoints.isEmpty()) {
