@@ -90,10 +90,16 @@ public final class SubtaskActivity extends Activity {
                 new String[]{"改名字", "提醒设置"}, -1, which -> {
                     if (which == 0) editTitle();
                     else if (ReminderSettings.ruleById(this, parentId) == null) {
-                        Toast.makeText(this, "习惯的提醒请长按任务页条目修改", Toast.LENGTH_SHORT).show();
+                        Habits.Habit habit = Habits.byParentId(this, parentId);
+                        if (habit == null) return;
+                        startActivity(new Intent(this, HabitEditor.class)
+                                .putExtra(HabitEditor.EXTRA_HABIT_ID, habit.id));
+                        finish();
                     } else {
-                        startActivity(new Intent(this, TaskActivity.class)
-                                .putExtra(TaskActivity.EXTRA_EDIT_RULE_ID, parentId));
+                        // 任务和事项共用同一个编辑界面（资料/图标/颜色/特效/提醒）
+                        startActivity(new Intent(this, ItemsActivity.class)
+                                .putExtra("edit_id", parentId)
+                                .putExtra("finish_after_edit", true));
                         finish();
                     }
                 }));

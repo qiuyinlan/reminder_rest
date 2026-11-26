@@ -742,6 +742,21 @@ public final class TaskActivity extends Activity {
             row.addView(dotsRow);
         }
 
+        // 游戏模式开着时，微习惯右边直接露出坚持天数，给一点正反馈
+        if (GameSettings.isEnabled(this)) {
+            String habitKey = GameProgress.makeHabitKey("habit", habit.id);
+            int streak = GameProgress.getStreak(this, habitKey);
+            TextView badge = text(streak > 0 ? "连续 " + streak + " 天" : "今天开始",
+                    10, streak > 0 ? UiPalette.WARN : UiPalette.MUTED, true);
+            badge.setGravity(Gravity.CENTER);
+            badge.setPadding(dp(8), dp(3), dp(8), dp(3));
+            badge.setBackground(FormKit.round(this,
+                    streak > 0 ? UiPalette.WARN_SOFT : UiPalette.PALE, 10));
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
+            badgeParams.leftMargin = dp(6);
+            row.addView(badge, badgeParams);
+        }
+
         // 和普通任务一致：点一下进子任务
         final int habitParentId = Habits.parentId(habit.id);
         final List<ReminderSettings.Rule> habitSubs = Subtasks.of(this, habitParentId);

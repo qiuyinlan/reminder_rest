@@ -52,6 +52,7 @@ public final class ItemsActivity extends Activity {
     private TextView addFab;
     private TextView addFabPro;
     private boolean returnToHome;
+    private boolean finishAfterEdit;
     /** 事项页也记住滚动位置，换页回来不跳回顶部。 */
     private ScrollView scroll;
     private int lastScrollY;
@@ -59,6 +60,7 @@ public final class ItemsActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         returnToHome = getIntent().getBooleanExtra("return_to_home", false);
+        finishAfterEdit = getIntent().getBooleanExtra("finish_after_edit", false);
         UiPalette.applyWindow(getWindow());
         FrameLayout frame = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
@@ -866,6 +868,11 @@ public final class ItemsActivity extends Activity {
     }
 
     private void returnHomeAfterEditor() {
+        if (finishAfterEdit) {
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
         if (!returnToHome) return;
         startActivity(new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));

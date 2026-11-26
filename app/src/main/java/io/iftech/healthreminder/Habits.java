@@ -28,6 +28,11 @@ final class Habits {
         /** 频率掩码：周一=1, 周二=2, ..., 周日=64，全选=127 */
         int frequencyMask;
         final long createdAt;
+        /** 和事项共用的外观字段：图标 / 颜色 / 霸屏特效 / 提醒语句。 */
+        String icon = "";
+        int color = ReminderSettings.Rule.COLOR_AUTO;
+        String overlayArtwork = ReminderArtworkCatalog.DEFAULT;
+        String reminderMessage = "";
 
         Habit(int id, String title, int frequencyMask, long createdAt) {
             this.id = id;
@@ -73,6 +78,10 @@ final class Habits {
                         obj.optInt("frequencyMask", 127),
                         obj.optLong("createdAt", System.currentTimeMillis())
                 );
+                habit.icon = obj.optString("icon", "");
+                habit.color = obj.optInt("color", ReminderSettings.Rule.COLOR_AUTO);
+                habit.overlayArtwork = obj.optString("overlayArtwork", ReminderArtworkCatalog.DEFAULT);
+                habit.reminderMessage = obj.optString("reminderMessage", "");
                 result.add(habit);
             }
         } catch (JSONException ignored) { }
@@ -140,6 +149,10 @@ final class Habits {
                 obj.put("title", h.title);
                 obj.put("frequencyMask", h.frequencyMask);
                 obj.put("createdAt", h.createdAt);
+                obj.put("icon", h.icon);
+                obj.put("color", h.color);
+                obj.put("overlayArtwork", h.overlayArtwork);
+                obj.put("reminderMessage", h.reminderMessage);
                 arr.put(obj);
             } catch (JSONException ignored) { }
         }

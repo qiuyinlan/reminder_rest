@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -125,6 +126,54 @@ public final class HabitEditor extends Activity {
         nameParams.bottomMargin = dp(20);
         scroll.addView(nameInput, nameParams);
 
+        // 外观：图标 / 颜色 / 霸屏特效，和事项页共用同一套选择器
+        final String[] iconValue = {habit.icon};
+        final int[] colorValue = {habit.color};
+        final String[] artworkValue = {habit.overlayArtwork};
+
+        scroll.addView(FormKit.editorLabel(this, "外观", true));
+        Button iconButton = FormKit.controlButton(this);
+        iconButton.setText("图标  " + ItemIconPicker.describe(iconValue[0]) + "  ›");
+        iconButton.setOnClickListener(v -> {
+            AlertDialog picker = ItemIconPicker.build(this, iconValue[0], picked -> {
+                iconValue[0] = picked;
+                iconButton.setText("图标  " + ItemIconPicker.describe(picked) + "  ›");
+            });
+            FormKit.showStyled(this, picker);
+        });
+        LinearLayout.LayoutParams appearanceParams = new LinearLayout.LayoutParams(-1, -2);
+        appearanceParams.topMargin = dp(8);
+        scroll.addView(iconButton, appearanceParams);
+
+        Button colorButton = FormKit.controlButton(this);
+        colorButton.setText("颜色  " + ItemColorPicker.describe(colorValue[0]) + "  ›");
+        colorButton.setOnClickListener(v -> {
+            AlertDialog picker = ItemColorPicker.build(this, colorValue[0], picked -> {
+                colorValue[0] = picked;
+                colorButton.setText("颜色  " + ItemColorPicker.describe(picked) + "  ›");
+            });
+            FormKit.showStyled(this, picker);
+        });
+        LinearLayout.LayoutParams colorParams = new LinearLayout.LayoutParams(-1, -2);
+        colorParams.topMargin = dp(8);
+        scroll.addView(colorButton, colorParams);
+
+        Button artworkButton = FormKit.controlButton(this);
+        artworkButton.setText("霸屏特效  " + ReminderArtworkCatalog.label(artworkValue[0]) + "  ›");
+        artworkButton.setOnClickListener(v -> {
+            String[] labels = ReminderArtworkCatalog.labels();
+            String[] ids = new String[labels.length];
+            for (int i = 0; i < ids.length; i++) ids[i] = ReminderArtworkCatalog.idAt(i);
+            FormKit.options(this, "选择霸屏特效", labels, 0, which -> {
+                artworkValue[0] = ids[which];
+                artworkButton.setText("霸屏特效  " + labels[which] + "  ›");
+            });
+        });
+        LinearLayout.LayoutParams artworkParams = new LinearLayout.LayoutParams(-1, -2);
+        artworkParams.topMargin = dp(8);
+        artworkParams.bottomMargin = dp(6);
+        scroll.addView(artworkButton, artworkParams);
+
         // 频率选择
         scroll.addView(text("重复频率", 13, UiPalette.MUTED, true));
         TextView hint = text("点击圆点切换选择", 12, UiPalette.MUTED, false);
@@ -223,6 +272,9 @@ public final class HabitEditor extends Activity {
             }
             habit.frequencyMask = mask[0];
             habit.title = name;
+            habit.icon = iconValue[0];
+            habit.color = colorValue[0];
+            habit.overlayArtwork = artworkValue[0];
             Habits.update(this, habit);
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
             setResult(RESULT_OK);
