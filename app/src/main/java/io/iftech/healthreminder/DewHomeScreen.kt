@@ -83,6 +83,7 @@ fun DewHomeScreen(
     val taskDone = remember(tick) { DailyQuest.taskCount(context) }
     val streak = remember(tick) { GameProgress.getGlobalStreak(context) }
     val level = remember(tick) { DailyQuest.level(context) }
+    val expProgress = remember(tick) { DailyQuest.levelProgress(context) }
     val bonusReady = remember(tick) { DailyQuest.bonusAvailable(context) }
     val remindersOn = remember(tick) { ReminderSettings.enabled(context) }
 
@@ -111,6 +112,7 @@ fun DewHomeScreen(
                     totalTarget = totalTarget,
                     streak = streak,
                     level = level,
+                    expProgress = expProgress,
                     bonusReady = bonusReady,
                     onRefresh = { tick++ },
                     onOpenTasks = onOpenTasks
@@ -183,6 +185,7 @@ private fun QuestCard(
     totalTarget: Int,
     streak: Int,
     level: Int,
+    expProgress: Int,
     bonusReady: Boolean,
     onRefresh: () -> Unit,
     onOpenTasks: () -> Unit
@@ -233,40 +236,86 @@ private fun QuestCard(
                             listOf(Color(0xFFC4ECDA), Color(0xFFF7FDFB))
                         )
                     )
-                    .padding(8.dp),
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AndroidView(
                     factory = { ctx -> HomeMascotView(ctx).also { mascotRef[0] = it } },
-                    modifier = Modifier.size(84.dp)
+                    modifier = Modifier.size(82.dp)
                 )
-                Spacer(Modifier.width(6.dp))
-                ProgressRing(
-                    done = totalDone.coerceAtMost(totalTarget),
-                    total = totalTarget,
-                    modifier = Modifier.weight(1f).height(92.dp)
-                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "今日进度",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Dew.InkSoft
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Box(
+                            Modifier
+                                .clip(Dew.ShapeSmall)
+                                .background(Dew.PastelCream)
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                "Lv.$level · $expProgress/100",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
+                                color = Dew.Accent
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "$totalDone",
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontSize = 32.sp,
+                                lineHeight = 34.sp
+                            ),
+                            color = Dew.Accent
+                        )
+                        Text(
+                            " / $totalTarget",
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                            color = Dew.InkSoft,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                        Spacer(Modifier.weight(1f))
+                        StreakPill(streak)
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    SegmentBar(
+                        total = totalTarget,
+                        filled = totalDone.coerceAtMost(totalTarget),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ChestIcon(filled = totalDone >= totalTarget)
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            motivationText(totalDone, totalTarget, bonusReady),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Dew.InkSoft,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // 标题 + 等级
+        // 今日任务标题
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("今日任务", style = MaterialTheme.typography.labelLarge, color = Dew.InkFaint)
             Spacer(Modifier.weight(1f))
-            Box(
-                Modifier
-                    .clip(Dew.ShapeSmall)
-                    .background(Dew.PastelCream)
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    "Lv.$level",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Dew.Accent
-                )
-            }
+            Text(
+                "全清 +40 经验",
+                style = MaterialTheme.typography.bodySmall,
+                color = Dew.WarnInk
+            )
         }
 
         Spacer(Modifier.height(6.dp))
@@ -276,6 +325,7 @@ private fun QuestCard(
             val done = progress >= quest.target
             QuestRow(
                 context = context,
+                storeKey = quest.key,
                 title = quest.title,
                 source = quest.source,
                 progress = progress,
@@ -325,8 +375,34 @@ private fun QuestCard(
 }
 
 @Composable
+private fun StreakPill(streak: Int) {
+    Box(
+        Modifier
+            .clip(Dew.ShapePill)
+            .background(Dew.PastelCream)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            if (streak > 0) "连续 $streak 天" else "今天开个头",
+            style = MaterialTheme.typography.bodySmall,
+            color = Dew.WarnInk
+        )
+    }
+}
+
+private fun motivationText(done: Int, target: Int, bonusReady: Boolean): String = when {
+    target <= 0 -> "今天没有安排任务"
+    done >= target && bonusReady -> "全部完成，去领 +40 经验"
+    done >= target -> "今日全清，明天继续"
+    done == 0 -> "先做一个，点亮第一格"
+    target - done <= 2 -> "还差 ${target - done} 件就全清"
+    else -> "今天已完成 $done 件，保持节奏"
+}
+
+@Composable
 private fun QuestRow(
     context: Context,
+    storeKey: String,
     title: String,
     source: String,
     progress: Int,
@@ -335,7 +411,7 @@ private fun QuestRow(
     onJump: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    var picked by remember { mutableStateOf<DrawnItem?>(null) }
+    var picked by remember(storeKey) { mutableStateOf(PickedStore.load(context, storeKey)) }
     var notice by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -378,6 +454,7 @@ private fun QuestRow(
                         } else {
                             picked = next
                             notice = null
+                            PickedStore.save(context, storeKey, next)
                         }
                     }
                     .padding(horizontal = 9.dp, vertical = 3.dp)
@@ -398,7 +475,11 @@ private fun QuestRow(
             PickedItemCard(
                 context = context,
                 item = shown,
-                onChanged = onRefresh
+                onChanged = onRefresh,
+                onHide = {
+                    picked = null
+                    PickedStore.clear(context, storeKey)
+                }
             )
         }
         val hint = notice
@@ -418,6 +499,32 @@ private const val KIND_TASK = 1
 
 /** 抽到的那一条：kind 区分微习惯 / 任务，id 用来回查最新数据。 */
 private data class DrawnItem(val kind: Int, val id: Int, val title: String)
+
+/** 抽到的条目要在离开首页后还在，所以落进 SharedPreferences，而不是只放 Compose state。 */
+private object PickedStore {
+    private const val PREFS = "home_pick"
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun load(context: Context, key: String): DrawnItem? {
+        val raw = prefs(context).getString(key, null) ?: return null
+        val parts = raw.split("|", limit = 3)
+        if (parts.size < 3) return null
+        val kind = parts[0].toIntOrNull() ?: return null
+        val id = parts[1].toIntOrNull() ?: return null
+        return DrawnItem(kind, id, parts[2])
+    }
+
+    fun save(context: Context, key: String, item: DrawnItem) {
+        prefs(context).edit()
+            .putString(key, "${item.kind}|${item.id}|${item.title}")
+            .apply()
+    }
+
+    fun clear(context: Context, key: String) {
+        prefs(context).edit().remove(key).apply()
+    }
+}
 
 /** 从今天的微习惯 / 任务里随机抽一个；连点会避开上一次抽到的那个。 */
 private fun drawOne(context: Context, source: String, previous: DrawnItem?): DrawnItem? {
@@ -439,7 +546,12 @@ private fun drawOne(context: Context, source: String, previous: DrawnItem?): Dra
 
 /** 抽到后直接按任务页的样子铺开：主条目 + 子任务，勾选立即写回同一份进度。 */
 @Composable
-private fun PickedItemCard(context: Context, item: DrawnItem, onChanged: () -> Unit) {
+private fun PickedItemCard(
+    context: Context,
+    item: DrawnItem,
+    onChanged: () -> Unit,
+    onHide: () -> Unit
+) {
     val dayStart = GameProgress.dayStart(System.currentTimeMillis())
     if (item.kind == KIND_HABIT) {
         val habit = Habits.all(context).firstOrNull { it.id == item.id }
@@ -458,10 +570,12 @@ private fun PickedItemCard(context: Context, item: DrawnItem, onChanged: () -> U
                 onToggleSub = { sub, subDone ->
                     Subtasks.toggle(context, parentId, sub.title, !subDone, dayStart)
                     onChanged()
-                }
+                },
+                onOpen = { openSubtaskPage(context, parentId, habit.title) },
+                onHide = onHide
             )
         } else {
-            MissingItem("这个微习惯已经删了")
+            MissingItem("这个微习惯已经删了", onHide)
         }
     } else {
         val task = ReminderSettings.ruleById(context, item.id)
@@ -481,22 +595,32 @@ private fun PickedItemCard(context: Context, item: DrawnItem, onChanged: () -> U
                 onToggleSub = { sub, subDone ->
                     Subtasks.toggle(context, task.id, sub.title, !subDone, dayStart)
                     onChanged()
-                }
+                },
+                onOpen = { openSubtaskPage(context, task.id, task.title) },
+                onHide = onHide
             )
         } else {
-            MissingItem("这个任务已经删了")
+            MissingItem("这个任务已经删了", onHide)
         }
     }
 }
 
 @Composable
-private fun MissingItem(message: String) {
-    Text(
-        message,
-        style = MaterialTheme.typography.bodySmall,
-        color = Dew.InkFaint,
-        modifier = Modifier.padding(start = 34.dp, top = 6.dp)
-    )
+private fun MissingItem(message: String, onHide: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 34.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            message,
+            style = MaterialTheme.typography.bodySmall,
+            color = Dew.InkFaint,
+            modifier = Modifier.weight(1f)
+        )
+        HideChip(onHide)
+    }
 }
 
 @Composable
@@ -505,7 +629,9 @@ private fun InlineTaskCard(
     done: Boolean,
     subs: List<Pair<ReminderSettings.Rule, Boolean>>,
     onToggleMain: () -> Unit,
-    onToggleSub: (ReminderSettings.Rule, Boolean) -> Unit
+    onToggleSub: (ReminderSettings.Rule, Boolean) -> Unit,
+    onOpen: () -> Unit,
+    onHide: () -> Unit
 ) {
     Column(
         Modifier
@@ -521,11 +647,25 @@ private fun InlineTaskCard(
             Spacer(Modifier.width(10.dp))
             Text(
                 title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp
+                ),
                 color = if (done) Dew.InkFaint else Dew.Ink,
                 textDecoration = if (done) TextDecoration.LineThrough else null,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onOpen)
+                    .padding(vertical = 2.dp)
             )
+            Text(
+                "›",
+                style = MaterialTheme.typography.titleMedium,
+                color = Dew.InkFaint,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
+            HideChip(onHide)
         }
         if (subs.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
@@ -552,7 +692,10 @@ private fun InlineTaskCard(
                         Spacer(Modifier.width(5.dp))
                         Text(
                             sub.title,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            ),
                             color = if (subDone) Dew.InkFaint else Dew.Ink,
                             textDecoration = if (subDone) TextDecoration.LineThrough else null
                         )
@@ -596,10 +739,32 @@ private fun TaskCheck(done: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
+private fun HideChip(onHide: () -> Unit) {
+    Text(
+        "隐藏",
+        style = MaterialTheme.typography.bodySmall,
+        color = Dew.InkFaint,
+        modifier = Modifier
+            .clip(Dew.ShapePill)
+            .background(Dew.Surface.copy(alpha = 0.7f))
+            .clickable(onClick = onHide)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    )
+}
+
+private fun openSubtaskPage(context: Context, parentId: Int, title: String) {
+    val intent = Intent(context, SubtaskActivity::class.java)
+        .putExtra(SubtaskActivity.EXTRA_PARENT_ID, parentId)
+        .putExtra(SubtaskActivity.EXTRA_PARENT_TITLE, title)
+    if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
+}
+
+@Composable
 private fun SubCheck(done: Boolean) {
     Box(
         Modifier
-            .size(14.dp)
+            .size(15.dp)
             .clip(RoundedCornerShape(3.dp))
             .background(if (done) Dew.Accent else Color.Transparent)
             .border(1.dp, if (done) Color.Transparent else Dew.InkFaint, RoundedCornerShape(3.dp)),
@@ -984,6 +1149,7 @@ private fun SelfContainedQuest(
     val taskDone = remember(tick) { DailyQuest.taskCount(context) }
     val streak = remember(tick) { GameProgress.getGlobalStreak(context) }
     val level = remember(tick) { DailyQuest.level(context) }
+    val expProgress = remember(tick) { DailyQuest.levelProgress(context) }
     val bonusReady = remember(tick) { DailyQuest.bonusAvailable(context) }
 
     QuestCard(
@@ -996,6 +1162,7 @@ private fun SelfContainedQuest(
         totalTarget = quests.sumOf { it.target },
         streak = streak,
         level = level,
+        expProgress = expProgress,
         bonusReady = bonusReady,
         onRefresh = {
             tick++
