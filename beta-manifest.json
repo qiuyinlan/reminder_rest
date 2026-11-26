@@ -1,7 +1,7 @@
 {
-    "versionCode": 179,
-    "versionName": "0.3.0-beta163",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta163/rest-bean.apk",
-    "sha256": "9158454dc6d8d362da3fa91769380c2bbbdb0e6cd30ea7d884840a684c86ef5f",
-    "notes": "更新下载改走 ghfast / gh-proxy 镜像，断点续传不再一校验失败就删文件重下；修复「更新文件校验失败」，清单不再读 jsDelivr 旧缓存"
+    "versionCode": 180,
+    "versionName": "0.3.0-beta164",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta164/rest-bean.apk",
+    "sha256": "8150f1d305f459f4cc64c710ef176fc43fba798b6779438e08a726d58a0a6ade",
+    "notes": "首页抽卡状态跨页面保留，加隐藏按钮，点任务名字进入任务详情；首页任务卡字号对齐任务页；今日进度卡补等级、经验、连续天数和宝箱提示"
 }
