@@ -12,6 +12,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -280,7 +281,8 @@ private fun QuestCard(
                 progress = progress,
                 target = quest.target,
                 done = done,
-                onJump = onOpenTasks
+                onJump = onOpenTasks,
+                onRefresh = onRefresh
             )
             if (index != quests.lastIndex) Spacer(Modifier.height(12.dp))
         }
@@ -330,9 +332,11 @@ private fun QuestRow(
     progress: Int,
     target: Int,
     done: Boolean,
-    onJump: () -> Unit
+    onJump: () -> Unit,
+    onRefresh: () -> Unit
 ) {
-    var picked by remember { mutableStateOf<String?>(null) }
+    var picked by remember { mutableStateOf<DrawnItem?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             JumpDot(active = done, onClick = onJump)
@@ -367,7 +371,15 @@ private fun QuestRow(
                 Modifier
                     .clip(Dew.ShapePill)
                     .background(Dew.Accent.copy(alpha = 0.12f))
-                    .clickable { picked = drawOne(context, source, picked) }
+                    .clickable {
+                        val next = drawOne(context, source, picked)
+                        if (next == null) {
+                            notice = if (source == "habit") "今天没有微习惯" else "今天没有任务"
+                        } else {
+                            picked = next
+                            notice = null
+                        }
+                    }
                     .padding(horizontal = 9.dp, vertical = 3.dp)
             ) {
                 Text(
@@ -377,33 +389,231 @@ private fun QuestRow(
                 )
             }
         }
-        if (picked != null) {
-            Text(
-                "抽到：$picked",
-                style = MaterialTheme.typography.bodySmall,
-                color = Dew.Accent,
-                modifier = Modifier.padding(start = 34.dp, top = 4.dp)
-            )
-        }
         Spacer(Modifier.height(6.dp))
         Box(Modifier.padding(start = 34.dp)) {
             SegmentBar(total = target, filled = progress, modifier = Modifier.fillMaxWidth())
         }
+        if (picked != null) {
+            PickedItemCard(
+                context = context,
+                item = picked!!,
+                onChanged = onRefresh
+            )
+        }
+        if (notice != null) {
+            Text(
+                notice!!,
+                style = MaterialTheme.typography.bodySmall,
+                color = Dew.InkFaint,
+                modifier = Modifier.padding(start = 34.dp, top = 4.dp)
+            )
+        }
     }
 }
 
+private const val KIND_HABIT = 0
+private const val KIND_TASK = 1
+
+/** 抽到的那一条：kind 区分微习惯 / 任务，id 用来回查最新数据。 */
+private data class DrawnItem(val kind: Int, val id: Int, val title: String)
+
 /** 从今天的微习惯 / 任务里随机抽一个；连点会避开上一次抽到的那个。 */
-private fun drawOne(context: Context, source: String, previous: String?): String {
-    val pool: List<String> = if (source == "habit") {
-        val scheduled = Habits.todayScheduled(context).map { it.title }
-        if (scheduled.isNotEmpty()) scheduled else Habits.all(context).map { it.title }
+private fun drawOne(context: Context, source: String, previous: DrawnItem?): DrawnItem? {
+    val pool: List<DrawnItem> = if (source == "habit") {
+        val scheduled = Habits.todayScheduled(context)
+        val list = if (scheduled.isNotEmpty()) scheduled else Habits.all(context)
+        list.map { DrawnItem(KIND_HABIT, it.id, it.title) }
     } else {
-        val today = Tasks.today(context).map { it.title.ifBlank { "未命名任务" } }
-        if (today.isNotEmpty()) today else Tasks.all(context).map { it.title.ifBlank { "未命名任务" } }
+        val today = Tasks.today(context)
+        val list = if (today.isNotEmpty()) today else Tasks.all(context)
+        list.map { DrawnItem(KIND_TASK, it.id, it.title.ifBlank { "未命名任务" }) }
     }
-    if (pool.isEmpty()) return if (source == "habit") "今天没有微习惯" else "今天没有任务"
-    val choices = if (pool.size > 1 && previous != null) pool.filter { it != previous } else pool
+    if (pool.isEmpty()) return null
+    val choices = if (pool.size > 1 && previous != null) {
+        pool.filter { !(it.kind == previous.kind && it.id == previous.id) }
+    } else pool
     return choices.random()
+}
+
+/** 抽到后直接按任务页的样子铺开：主条目 + 子任务，勾选立即写回同一份进度。 */
+@Composable
+private fun PickedItemCard(context: Context, item: DrawnItem, onChanged: () -> Unit) {
+    val dayStart = GameProgress.dayStart(System.currentTimeMillis())
+    if (item.kind == KIND_HABIT) {
+        val habit = Habits.all(context).firstOrNull { it.id == item.id }
+        if (habit == null) {
+            MissingItem("这个微习惯已经删了")
+            return
+        }
+        val parentId = Habits.parentId(habit.id)
+        val subs = Subtasks.of(context, parentId)
+        InlineTaskCard(
+            title = habit.title,
+            done = Habits.isCompletedToday(context, habit.id, dayStart),
+            subs = subs.map { it to Subtasks.doneToday(context, parentId, it.title, dayStart) },
+            onToggleMain = {
+                Habits.toggleCompletion(context, habit.id, dayStart,
+                    !Habits.isCompletedToday(context, habit.id, dayStart))
+                onChanged()
+            },
+            onToggleSub = { sub, subDone ->
+                Subtasks.toggle(context, parentId, sub.title, !subDone, dayStart)
+                onChanged()
+            }
+        )
+    } else {
+        val task = ReminderSettings.ruleById(context, item.id)
+        if (task == null) {
+            MissingItem("这个任务已经删了")
+            return
+        }
+        val subs = Subtasks.of(context, task.id)
+        InlineTaskCard(
+            title = task.title.ifBlank { "未命名任务" },
+            done = ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
+                task.title, dayStart),
+            subs = subs.map { it to Subtasks.doneToday(context, task.id, it.title, dayStart) },
+            onToggleMain = {
+                TaskInlineToggle.setMainDone(context, task, dayStart,
+                    !ReminderRecord.completedOn(context, ReminderSettings.MODULE_TASK,
+                        task.title, dayStart))
+                onChanged()
+            },
+            onToggleSub = { sub, subDone ->
+                Subtasks.toggle(context, task.id, sub.title, !subDone, dayStart)
+                onChanged()
+            }
+        )
+    }
+}
+
+@Composable
+private fun MissingItem(message: String) {
+    Text(
+        message,
+        style = MaterialTheme.typography.bodySmall,
+        color = Dew.InkFaint,
+        modifier = Modifier.padding(start = 34.dp, top = 6.dp)
+    )
+}
+
+@Composable
+private fun InlineTaskCard(
+    title: String,
+    done: Boolean,
+    subs: List<Pair<ReminderSettings.Rule, Boolean>>,
+    onToggleMain: () -> Unit,
+    onToggleSub: (ReminderSettings.Rule, Boolean) -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 34.dp, top = 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFFF2FBF6))
+            .border(1.dp, Dew.Line, RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TaskCheck(done = done, onClick = onToggleMain)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (done) Dew.InkFaint else Dew.Ink,
+                textDecoration = if (done) TextDecoration.LineThrough else null,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (subs.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Dew.Surface.copy(alpha = 0.55f))
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                subs.forEachIndexed { index, pair ->
+                    val sub = pair.first
+                    val subDone = pair.second
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onToggleSub(sub, subDone) }
+                            .padding(horizontal = 3.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SubCheck(done = subDone)
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            sub.title,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (subDone) Dew.InkFaint else Dew.Ink,
+                            textDecoration = if (subDone) TextDecoration.LineThrough else null
+                        )
+                    }
+                    if (index != subs.lastIndex) {
+                        Text(
+                            "→",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Dew.InkFaint,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskCheck(done: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(if (done) Dew.Accent else Color.Transparent)
+            .border(2.dp, if (done) Color.Transparent else Dew.InkFaint, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (done) {
+            Canvas(Modifier.size(11.dp)) {
+                val w = size.width
+                val h = size.height
+                drawLine(Color.White, Offset(w * 0.12f, h * 0.55f),
+                    Offset(w * 0.42f, h * 0.85f), 1.8.dp.toPx(), StrokeCap.Round)
+                drawLine(Color.White, Offset(w * 0.42f, h * 0.85f),
+                    Offset(w * 0.9f, h * 0.2f), 1.8.dp.toPx(), StrokeCap.Round)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubCheck(done: Boolean) {
+    Box(
+        Modifier
+            .size(14.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(if (done) Dew.Accent else Color.Transparent)
+            .border(1.dp, if (done) Color.Transparent else Dew.InkFaint, RoundedCornerShape(3.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (done) {
+            Canvas(Modifier.size(7.dp)) {
+                val w = size.width
+                val h = size.height
+                drawLine(Color.White, Offset(0f, h * 0.55f), Offset(w * 0.4f, h * 0.9f),
+                    1.4.dp.toPx(), StrokeCap.Round)
+                drawLine(Color.White, Offset(w * 0.4f, h * 0.9f), Offset(w, h * 0.15f),
+                    1.4.dp.toPx(), StrokeCap.Round)
+            }
+        }
+    }
 }
 
 /** 行首圆形跳转按钮：浅绿底箭头，完成后实心绿勾。 */

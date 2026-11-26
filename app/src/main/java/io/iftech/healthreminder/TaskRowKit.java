@@ -22,19 +22,12 @@ final class TaskRowKit {
 
     /** 圆形勾选框：未完成是空心圈，完成是实心主色 + 对勾。 */
     static TextView circleCheck(Context context, boolean done, View.OnClickListener onClick) {
-        return circleCheck(context, done, onClick, false);
-    }
-
-    /** 圆形勾选框的松墨绿卡片版本：空心圈的描边和文字改成浅色。 */
-    static TextView circleCheck(Context context, boolean done, View.OnClickListener onClick,
-                               boolean onPine) {
         GradientDrawable shape = new GradientDrawable();
         shape.setShape(GradientDrawable.OVAL);
         shape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        int idle = onPine ? UiPalette.PINE_MUTED : UiPalette.DISABLED;
-        if (!done) shape.setStroke(FormKit.dp(context, 2), idle);
+        if (!done) shape.setStroke(FormKit.dp(context, 2), UiPalette.DISABLED);
         TextView box = FormKit.text(context, done ? "✓" : "", 12,
-                done ? Color.WHITE : idle, true);
+                done ? Color.WHITE : UiPalette.DISABLED, true);
         box.setGravity(Gravity.CENTER);
         box.setBackground(shape);
         box.setContentDescription(done ? "取消完成" : "标记完成");
@@ -44,31 +37,20 @@ final class TaskRowKit {
 
     /** 立刻把勾选框设成完成/未完成外观（用于点击后先显示打勾，延迟刷新）。 */
     static void applyCircleCheck(Context context, TextView box, boolean done) {
-        applyCircleCheck(context, box, done, false);
-    }
-
-    static void applyCircleCheck(Context context, TextView box, boolean done, boolean onPine) {
         GradientDrawable shape = new GradientDrawable();
         shape.setShape(GradientDrawable.OVAL);
         shape.setColor(done ? UiPalette.ACCENT : Color.TRANSPARENT);
-        int idle = onPine ? UiPalette.PINE_MUTED : UiPalette.DISABLED;
-        if (!done) shape.setStroke(FormKit.dp(context, 2), idle);
+        if (!done) shape.setStroke(FormKit.dp(context, 2), UiPalette.DISABLED);
         box.setText(done ? "\u2713" : "");
-        box.setTextColor(done ? Color.WHITE : idle);
+        box.setTextColor(done ? Color.WHITE : UiPalette.DISABLED);
         box.setBackground(shape);
         box.setContentDescription(done ? "\u53d6\u6d88\u5b8c\u6210" : "\u6807\u8bb0\u5b8c\u6210");
     }
 
     /** 任务标题：完成后变灰 + 删除线。 */
     static TextView title(Context context, String value, boolean done) {
-        return title(context, value, done, false);
-    }
-
-    static TextView title(Context context, String value, boolean done, boolean onPine) {
-        int color = onPine
-                ? (done ? UiPalette.PINE_MUTED : UiPalette.PINE_INK)
-                : (done ? UiPalette.MUTED : UiPalette.INK);
-        TextView view = FormKit.text(context, value, TITLE_SIZE, color, false);
+        TextView view = FormKit.text(context, value, TITLE_SIZE,
+                done ? UiPalette.MUTED : UiPalette.INK, false);
         view.setMaxLines(1);
         view.setEllipsize(TextUtils.TruncateAt.END);
         if (done) {
@@ -153,21 +135,11 @@ final class TaskRowKit {
 
     /** 白色分组卡片，圆角 16，细描边。 */
     static LinearLayout groupCard(Context context) {
-        return groupCard(context, false);
-    }
-
-    /** 分组卡片：onPine=true 时用松墨绿渐变底，给任务页的任务卡用。 */
-    static LinearLayout groupCard(Context context, boolean onPine) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(FormKit.dp(context, 16));
-        if (onPine) {
-            bg.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-            bg.setColors(new int[]{UiPalette.PINE, UiPalette.PINE_DEEP});
-        } else {
-            bg.setColor(UiPalette.SURFACE);
-        }
+        bg.setColor(UiPalette.SURFACE);
         card.setBackground(bg);
         card.setClipToOutline(true);
         card.setElevation(FormKit.dp(context, 2));
@@ -178,12 +150,8 @@ final class TaskRowKit {
     }
 
     static View divider(Context context) {
-        return divider(context, false);
-    }
-
-    static View divider(Context context, boolean onPine) {
         View line = new View(context);
-        line.setBackgroundColor(onPine ? UiPalette.PINE_LINE : UiPalette.hairline());
+        line.setBackgroundColor(UiPalette.hairline());
         line.setLayoutParams(new LinearLayout.LayoutParams(-1, FormKit.dp(context, 1)));
         return line;
     }
