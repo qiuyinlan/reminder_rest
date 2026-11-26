@@ -1,7 +1,7 @@
 {
-    "versionCode": 175,
-    "versionName": "0.3.0-beta159",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta159/rest-bean.apk",
-    "sha256": "c3bd09f2e4ebc02d771ad20992ce8fe61594eb6fa1f2b0ed405d8121a37337ec",
-    "notes": "任务卡片改松墨绿；每日任务右侧新增「抽一个」，点一下随机抽微习惯 / 任务，可连续抽；清空全部任务不再动微习惯和微习惯的子任务"
+    "versionCode": 176,
+    "versionName": "0.3.0-beta160",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta160/rest-bean.apk",
+    "sha256": "076a9e1bebad178b41a32b7bb7be8af1f6ab7db4d4e1e46b043093bd39f11aa0",
+    "notes": "完成后的每日任务也能继续点「抽一个」；任务卡片松墨绿、清空任务保留微习惯"
 }
