@@ -13,14 +13,19 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 白板：只属于今天的清单。
+ * 宝箱：收件箱。不按天清空，一直攒。
  *
- * 换一天就自动清空；不进任务表、不提醒、不统计 —— 纯给自己看的草稿纸。
+ * 两种条目：
+ * - TYPE_TASK：随手记的任务，有勾选，可以以后转成正式任务
+ * - TYPE_NOTE：纯文字备忘录，没有完成概念
  */
 final class BoardStore {
-    private static final String PREFS = "board_notes";
-    private static final String KEY_DAY = "day";
+    static final int TYPE_TASK = 0;
+    static final int TYPE_NOTE = 1;
+
+    private static final String PREFS = "box_store";
     private static final String KEY_ITEMS = "items";
+    private static final String KEY_LAST_TYPE = "last_type";
 
     static final class Sub {
         String title = "";
@@ -29,8 +34,10 @@ final class BoardStore {
 
     static final class Item {
         long id;
+        int type = TYPE_TASK;
         String title = "";
         boolean done;
+        long createdAt = System.currentTimeMillis();
         final List<Sub> subs = new ArrayList<>();
     }
 
@@ -48,14 +55,10 @@ final class BoardStore {
         return new SimpleDateFormat("M月d日 EEEE", Locale.CHINA).format(new Date());
     }
 
-    /** 读今天的内容；日期不是今天就直接当空的（顺手清掉旧数据）。 */
+    /** 永远返回全部条目；不再按天清空。 */
     static List<Item> load(Context context) {
         List<Item> items = new ArrayList<>();
         SharedPreferences prefs = prefs(context);
-        if (!todayKey().equals(prefs.getString(KEY_DAY, ""))) {
-            if (prefs.contains(KEY_ITEMS)) prefs.edit().clear().apply();
-            return items;
-        }
         try {
             JSONArray array = new JSONArray(prefs.getString(KEY_ITEMS, "[]"));
             for (int i = 0; i < array.length(); i++) {
@@ -63,8 +66,10 @@ final class BoardStore {
                 if (obj == null) continue;
                 Item item = new Item();
                 item.id = obj.optLong("id", 0L);
+                item.type = obj.optInt("type", TYPE_TASK);
                 item.title = obj.optString("title", "");
                 item.done = obj.optBoolean("done", false);
+                item.createdAt = obj.optLong("createdAt", System.currentTimeMillis());
                 JSONArray subs = obj.optJSONArray("subs");
                 if (subs != null) {
                     for (int j = 0; j < subs.length(); j++) {
@@ -88,8 +93,10 @@ final class BoardStore {
             for (Item item : items) {
                 JSONObject obj = new JSONObject();
                 obj.put("id", item.id);
+                obj.put("type", item.type);
                 obj.put("title", item.title);
                 obj.put("done", item.done);
+                obj.put("createdAt", item.createdAt);
                 JSONArray subs = new JSONArray();
                 for (Sub sub : item.subs) {
                     JSONObject subObj = new JSONObject();
@@ -101,14 +108,50 @@ final class BoardStore {
                 array.put(obj);
             }
         } catch (Exception ignored) { }
-        prefs(context).edit()
-                .putString(KEY_DAY, todayKey())
-                .putString(KEY_ITEMS, array.toString())
-                .apply();
+        prefs(context).edit().putString(KEY_ITEMS, array.toString()).apply();
+    }
+
+    static int lastType(Context context) {
+        return prefs(context).getInt(KEY_LAST_TYPE, TYPE_TASK);
+    }
+
+    static void setLastType(Context context, int type) {
+        prefs(context).edit().putInt(KEY_LAST_TYPE, type).apply();
     }
 
     static long nextId() {
         return System.currentTimeMillis();
+    }
+
+    static Item addText(Context context, int type, String title) {
+        List<Item> items = load(context);
+        Item item = new Item();
+        item.id = nextId();
+        item.type = type;
+        item.title = title;
+        item.createdAt = System.currentTimeMillis();
+        items.add(item);
+        save(context, items);
+        return item;
+    }
+
+    /** 从任务页移进来：保留标题和子任务，方便以后恢复成正式任务。 */
+    static void addFromTask(Context context, String title, List<ReminderSettings.Rule> subtasks) {
+        List<Item> items = load(context);
+        Item item = new Item();
+        item.id = nextId();
+        item.type = TYPE_TASK;
+        item.title = title;
+        item.createdAt = System.currentTimeMillis();
+        if (subtasks != null) {
+            for (ReminderSettings.Rule rule : subtasks) {
+                Sub sub = new Sub();
+                sub.title = rule.title;
+                item.subs.add(sub);
+            }
+        }
+        items.add(item);
+        save(context, items);
     }
 
     static void clear(Context context) {

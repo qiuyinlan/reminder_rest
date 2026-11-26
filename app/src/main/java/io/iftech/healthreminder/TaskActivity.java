@@ -43,6 +43,13 @@ public final class TaskActivity extends Activity {
     private boolean completedExpanded;
     private boolean habitExpanded = true;
     private boolean habitDoneExpanded;
+    /** 任务页多选：移入宝箱 / 删除。 */
+    private boolean selectMode;
+    private final java.util.Set<Integer> selectedIds = new java.util.HashSet<>();
+    private LinearLayout selectionBar;
+    private TextView selectionCount;
+    private TextView selectAllView;
+    private TextView addFabView;
     private boolean futureExpanded;
     private android.util.SparseIntArray subtaskScrollPositions = new android.util.SparseIntArray();
     /** 页面竖向滚动：换页/重画回来后停在上次的位置，不跳回第一个未完成。 */
@@ -104,13 +111,55 @@ public final class TaskActivity extends Activity {
         navParams.bottomMargin = dp(10);
         root.addView(nav, navParams);
 
-        TextView fab = FormKit.fab(this, this::quickAdd);
+        addFabView = FormKit.fab(this, this::quickAdd);
         android.widget.FrameLayout.LayoutParams fabParams =
                 new android.widget.FrameLayout.LayoutParams(dp(56), dp(56));
         fabParams.gravity = Gravity.BOTTOM | Gravity.END;
         fabParams.rightMargin = dp(20);
         fabParams.bottomMargin = dp(86);
-        shell.addView(fab, fabParams);
+        shell.addView(addFabView, fabParams);
+        shell.addView(buildSelectionBar(), selectionBarParams());
+    }
+
+    private LinearLayout buildSelectionBar() {
+        selectionBar = new LinearLayout(this);
+        selectionBar.setGravity(Gravity.CENTER_VERTICAL);
+        selectionBar.setPadding(dp(10), dp(8), dp(10), dp(8));
+        selectionBar.setBackground(FormKit.round(this, UiPalette.SURFACE, 16));
+        selectionBar.setElevation(dp(6));
+        selectAllView = text("全选", 12, UiPalette.ACCENT, true);
+        selectAllView.setPadding(dp(8), dp(6), dp(8), dp(6));
+        selectAllView.setOnClickListener(v -> toggleSelectAll());
+        selectionBar.addView(selectAllView);
+        selectionCount = text("0 条", 12, UiPalette.MUTED, false);
+        selectionCount.setPadding(dp(8), 0, 0, 0);
+        selectionBar.addView(selectionCount, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView move = text("移入宝箱", 12, Color.WHITE, true);
+        move.setGravity(Gravity.CENTER);
+        move.setPadding(dp(10), dp(6), dp(10), dp(6));
+        move.setBackground(FormKit.round(this, UiPalette.ACCENT, 12));
+        move.setOnClickListener(v -> moveSelectedToBox());
+        selectionBar.addView(move);
+        TextView del = text("删除", 12, UiPalette.WARN, true);
+        del.setGravity(Gravity.CENTER);
+        del.setPadding(dp(10), dp(6), dp(10), dp(6));
+        del.setBackground(FormKit.round(this, UiPalette.WARN_SOFT, 12));
+        LinearLayout.LayoutParams delParams = new LinearLayout.LayoutParams(-2, -2);
+        delParams.leftMargin = dp(6);
+        selectionBar.addView(del, delParams);
+        del.setOnClickListener(v -> confirmDeleteSelected());
+        selectionBar.setVisibility(View.GONE);
+        return selectionBar;
+    }
+
+    private android.widget.FrameLayout.LayoutParams selectionBarParams() {
+        android.widget.FrameLayout.LayoutParams params =
+                new android.widget.FrameLayout.LayoutParams(-1, -2);
+        params.gravity = Gravity.BOTTOM;
+        params.leftMargin = dp(14);
+        params.rightMargin = dp(14);
+        params.bottomMargin = dp(76);
+        return params;
     }
 
     /** 右下角加号：只问一句名字，其他拿默认值。 */
@@ -266,15 +315,15 @@ public final class TaskActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text(ReminderSettings.MODULE_BOARD.equals(module) ? "白板" : "任务", 26, UiPalette.INK, true);
+        TextView title = text(ReminderSettings.MODULE_BOARD.equals(module) ? "宝箱" : "任务", 26, UiPalette.INK, true);
         title.setLetterSpacing(0.01f);
         row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView board = text("白板", 13, UiPalette.MUTED, true);
+        TextView board = text("宝箱", 13, UiPalette.MUTED, true);
         board.setGravity(Gravity.CENTER);
         board.setPadding(dp(13), dp(7), dp(13), dp(7));
         board.setBackground(FormKit.round(this, UiPalette.PALE, 12));
-        board.setContentDescription("白板：今天的随手清单");
+        board.setContentDescription("宝箱：不紧急的先丢进来");
         board.setOnClickListener(v ->
                 startActivity(new Intent(this, BoardActivity.class)));
         LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(-2, -2);
@@ -290,6 +339,21 @@ public final class TaskActivity extends Activity {
         LinearLayout.LayoutParams nowParams = new LinearLayout.LayoutParams(-2, -2);
         nowParams.rightMargin = dp(4);
         row.addView(now, nowParams);
+
+        if (!ReminderSettings.MODULE_BOARD.equals(module)) {
+            TextView select = text(selectMode ? "取消" : "选择", 13, UiPalette.ACCENT, true);
+            select.setGravity(Gravity.CENTER);
+            select.setPadding(dp(11), dp(7), dp(11), dp(7));
+            select.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+            select.setOnClickListener(v -> {
+                selectMode = !selectMode;
+                selectedIds.clear();
+                reload();
+            });
+            LinearLayout.LayoutParams selectParams = new LinearLayout.LayoutParams(-2, -2);
+            selectParams.rightMargin = dp(6);
+            row.addView(select, selectParams);
+        }
 
         TextView more = text("⋯", 20, UiPalette.MUTED, true);
         more.setGravity(Gravity.CENTER);
@@ -342,6 +406,121 @@ public final class TaskActivity extends Activity {
         java.text.SimpleDateFormat format =
                 new java.text.SimpleDateFormat("M月d日 EEEE", Locale.CHINA);
         return format.format(new java.util.Date());
+    }
+
+    private List<ReminderSettings.Rule> selectableTasks() {
+        List<Integer> ideaIds = FocusStore.ideaRuleIds(this);
+        List<ReminderSettings.Rule> result = new ArrayList<>();
+        for (ReminderSettings.Rule task : tasksAll()) {
+            if (!ideaIds.contains(task.id)) result.add(task);
+        }
+        return result;
+    }
+
+    private void renderSelectList() {
+        if (addFabView != null) addFabView.setVisibility(View.GONE);
+        if (selectionBar != null) selectionBar.setVisibility(View.VISIBLE);
+        headerHost.removeAllViews();
+        headerHost.addView(buildHeader(0, 0));
+        listContainer.removeAllViews();
+        List<ReminderSettings.Rule> tasks = selectableTasks();
+        listContainer.addView(buildSectionHeader("选择任务", String.valueOf(tasks.size()),
+                "", null));
+        LinearLayout card = groupCard();
+        for (int i = 0; i < tasks.size(); i++) {
+            final ReminderSettings.Rule task = tasks.get(i);
+            if (i > 0) addDivider(card);
+            final boolean checked = selectedIds.contains(task.id);
+            LinearLayout row = TaskRowKit.mainRow(this);
+            TextView box = TaskRowKit.circleCheck(this, checked, null);
+            box.setOnClickListener(v -> toggleSelected(task.id));
+            row.addView(box, TaskRowKit.checkParams(this));
+            TextView title = TaskRowKit.title(this,
+                    task.title.isEmpty() ? "未命名任务" : task.title, false);
+            row.addView(title, TaskRowKit.titleParams(this));
+            TextView state = text(checked ? "已选" : "选择", 11,
+                    checked ? UiPalette.ACCENT : UiPalette.MUTED, true);
+            state.setPadding(dp(6), dp(2), dp(2), dp(2));
+            row.addView(state);
+            row.setOnClickListener(v -> toggleSelected(task.id));
+            card.addView(row);
+        }
+        if (tasks.isEmpty()) {
+            TextView empty = text("当前没有可选择的条目", 13, UiPalette.MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(dp(16), dp(24), dp(16), dp(24));
+            card.addView(empty);
+        }
+        listContainer.addView(card);
+        refreshSelectionBar();
+    }
+
+    private void toggleSelected(int id) {
+        if (selectedIds.contains(id)) selectedIds.remove(id);
+        else selectedIds.add(id);
+        renderSelectList();
+    }
+
+    private void toggleSelectAll() {
+        List<ReminderSettings.Rule> tasks = selectableTasks();
+        if (!tasks.isEmpty() && selectedIds.size() >= tasks.size()) {
+            selectedIds.clear();
+        } else {
+            selectedIds.clear();
+            for (ReminderSettings.Rule task : tasks) selectedIds.add(task.id);
+        }
+        renderSelectList();
+    }
+
+    private void refreshSelectionBar() {
+        if (selectionCount == null) return;
+        selectionCount.setText(selectedIds.size() + " 条");
+        List<ReminderSettings.Rule> tasks = selectableTasks();
+        boolean all = !tasks.isEmpty() && selectedIds.size() >= tasks.size();
+        if (selectAllView != null) selectAllView.setText(all ? "全不选" : "全选");
+    }
+
+    private void moveSelectedToBox() {
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "先选几条", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int count = 0;
+        for (ReminderSettings.Rule task : selectableTasks()) {
+            if (!selectedIds.contains(task.id)) continue;
+            BoardStore.addFromTask(this, task.title, Subtasks.of(this, task.id));
+            Subtasks.deleteForParent(this, task.id);
+            ReminderSettings.deleteRule(this, task.id);
+            count++;
+        }
+        selectedIds.clear();
+        selectMode = false;
+        reload();
+        Toast.makeText(this, "已移入宝箱 " + count + " 条", Toast.LENGTH_SHORT).show();
+    }
+
+    private void confirmDeleteSelected() {
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "先选几条", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final int count = selectedIds.size();
+        new AlertDialog.Builder(this)
+                .setTitle("删除选中任务")
+                .setMessage("删除 " + count + " 条任务？提醒和子任务会一起删除。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (d, w) -> {
+                    for (ReminderSettings.Rule task : selectableTasks()) {
+                        if (!selectedIds.contains(task.id)) continue;
+                        Subtasks.deleteForParent(this, task.id);
+                        ReminderSettings.deleteRule(this, task.id);
+                    }
+                    selectedIds.clear();
+                    selectMode = false;
+                    reload();
+                    Toast.makeText(this, "已删除 " + count + " 条", Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 
     private void showMoreMenu() {
@@ -457,6 +636,12 @@ public final class TaskActivity extends Activity {
     }
 
     private void reload() {
+        if (selectMode) {
+            renderSelectList();
+            return;
+        }
+        if (selectionBar != null) selectionBar.setVisibility(View.GONE);
+        if (addFabView != null) addFabView.setVisibility(View.VISIBLE);
         // 重画前先记住当前滚动位置，画完再滑回去
         final int restoreY = lastScrollY;
 
