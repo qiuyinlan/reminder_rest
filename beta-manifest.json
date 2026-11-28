@@ -1,7 +1,7 @@
 {
-    "versionCode": 191,
-    "versionName": "0.3.0-beta175",
-    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta175/rest-bean.apk",
-    "sha256": "291a325a861054126f1cb058943fa35deb85f3547eb82334c8477fa1b7636d46",
-    "notes": "所有弹窗和展开的输入框弹出即聚焦、直接弹键盘，不用再点第二下"
+    "versionCode": 192,
+    "versionName": "0.3.0-beta176",
+    "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta176/rest-bean.apk",
+    "sha256": "a7e8aa6ee2a24f9a0f4c8c34b398edf1cdef6b333c923991b71886fe0e9e34b9",
+    "notes": "复盘页加「常用的话」：可以自己存几句，点一下就填进输入框，长按删除；进复盘页直接就能写"
 }
