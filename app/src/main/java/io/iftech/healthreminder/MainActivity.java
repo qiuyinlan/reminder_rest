@@ -1528,7 +1528,7 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         afterTargetOptions.setOnCheckedChangeListener((group, checkedId) -> remindAfterTarget[0] = checkedId == 2);
         form.addView(afterTargetOptions);
         form.addView(enabledSwitch);
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
+        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
                 .setView(form)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("保存", (d, w) -> {
@@ -1548,13 +1548,14 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
                     else updated.add(saved);
                     saveRules(updated);
                 });
-        if (existing != null) dialog.setNeutralButton("删除", (d, w) -> {
+        if (existing != null) builder.setNeutralButton("删除", (d, w) -> {
             ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
             updated.removeIf(rule -> rule.id == id);
             saveRules(updated);
         });
+        AlertDialog dialog = builder.create();
         dialog.show();
-        FormKit.focusFirstInput(dialog);
+        styleDialog(dialog);
     }
 
     private void chooseCustomInterval(int[] interval, Button intervalButton) {
