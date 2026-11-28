@@ -761,6 +761,7 @@ public final class FocusActivity extends Activity {
         card.setOnClickListener(v -> {
             pickerOpen = true;
             render();
+            FormKit.focus(customInput);
         });
         return card;
     }

@@ -1626,6 +1626,7 @@ public final class ItemsActivity extends Activity {
             dialog.getListView().setDividerHeight(dp(1));
             dialog.getListView().setSelector(new ColorDrawable(MINT_LIGHT));
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private EditText styledInput(int inputType) {

@@ -354,6 +354,7 @@ public final class CompanionActivity extends Activity {
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? ACCENT : MUTED);
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

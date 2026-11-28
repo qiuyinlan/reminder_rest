@@ -1841,6 +1841,7 @@ public final class StatsActivity extends Activity {
             button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? MINT : MUTED);
         }
         if (dialog.getListView() != null) dialog.getListView().setBackgroundColor(UiPalette.SURFACE);
+        FormKit.focusFirstInput(dialog);
     }
 
     private boolean sameDay(long time, Calendar day) {

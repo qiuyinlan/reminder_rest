@@ -2020,6 +2020,8 @@ public final class FocusBubbleService extends Service {
         final android.view.View target = focused;
         if (imm != null && target != null) {
             target.post(() -> imm.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT));
+            // 窗口刚拿到焦点时第一次请求偶尔被系统丢掉，补一次
+            target.postDelayed(() -> imm.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT), 120);
         }
     }
 

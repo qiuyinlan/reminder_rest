@@ -246,6 +246,7 @@ public final class CompanionLandingActivity extends Activity {
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? ACCENT : MUTED);
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private int dp(int value) {

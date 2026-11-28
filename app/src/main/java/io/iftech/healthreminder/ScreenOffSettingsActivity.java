@@ -409,6 +409,7 @@ public final class ScreenOffSettingsActivity extends Activity {
             android.widget.Button button = dialog.getButton(id);
             if (button != null) button.setTextColor(id == AlertDialog.BUTTON_POSITIVE ? GREEN : MUTED);
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }

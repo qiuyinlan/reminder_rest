@@ -299,7 +299,7 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
             boolean show = expand.getVisibility() != View.VISIBLE;
             expand.setVisibility(show ? View.VISIBLE : View.GONE);
             toggle.setText(show ? "\u6536\u8d77 \u2304" : "\u8bb0\u4e00\u53e5 \u203a");
-            if (show) note.requestFocus();
+            if (show) FormKit.focus(note);
         };
         toggle.setOnClickListener(flip);
         head.setOnClickListener(flip);
@@ -1495,7 +1495,19 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
             input.setHintTextColor(MUTED);
             input.setPadding(dp(14), dp(10), dp(14), dp(10));
             input.setBackground(UiPalette.inputBackground(this, MINT_PALE, 10));
-            new AlertDialog.Builder(this).setTitle("每天想完成几次").setView(input).setNegativeButton("取消", null).setPositiveButton("确定", (d,w) -> { try { target[0] = Math.max(1, Integer.parseInt(input.getText().toString())); targetButtonHolder[0].setText("每日目标  " + target[0] + " 次"); } catch (Exception ignored) {} }).show();
+            AlertDialog targetDialog = new AlertDialog.Builder(this)
+                    .setTitle("每天想完成几次")
+                    .setView(input)
+                    .setNegativeButton("取消", null)
+                    .setPositiveButton("确定", (d, w) -> {
+                        try {
+                            target[0] = Math.max(1, Integer.parseInt(input.getText().toString()));
+                            targetButtonHolder[0].setText("每日目标  " + target[0] + " 次");
+                        } catch (Exception ignored) { }
+                    })
+                    .create();
+            targetDialog.show();
+            styleDialog(targetDialog);
         });
         targetButtonHolder[0] = targetButton;
         form.addView(targetButton);
@@ -1516,7 +1528,7 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
         afterTargetOptions.setOnCheckedChangeListener((group, checkedId) -> remindAfterTarget[0] = checkedId == 2);
         form.addView(afterTargetOptions);
         form.addView(enabledSwitch);
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
+        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(existing == null ? "添加提醒事项" : "编辑提醒事项")
                 .setView(form)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("保存", (d, w) -> {
@@ -1536,12 +1548,14 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
                     else updated.add(saved);
                     saveRules(updated);
                 });
-        if (existing != null) dialog.setNeutralButton("删除", (d, w) -> {
+        if (existing != null) builder.setNeutralButton("删除", (d, w) -> {
             ArrayList<ReminderSettings.Rule> updated = new ArrayList<>(ReminderSettings.rules(this));
             updated.removeIf(rule -> rule.id == id);
             saveRules(updated);
         });
+        AlertDialog dialog = builder.create();
         dialog.show();
+        styleDialog(dialog);
     }
 
     private void chooseCustomInterval(int[] interval, Button intervalButton) {
@@ -1857,6 +1871,7 @@ public final class MainActivity extends androidx.activity.ComponentActivity {
             action.setTextColor(buttonId == AlertDialog.BUTTON_POSITIVE ? INK : MUTED);
             action.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private LinearLayout.LayoutParams full() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
