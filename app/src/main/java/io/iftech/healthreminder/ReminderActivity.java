@@ -424,7 +424,7 @@ public final class ReminderActivity extends Activity {
             String value = reason.getText().toString().trim();
             if (value.isEmpty()) {
                 error.setVisibility(View.VISIBLE);
-                reason.requestFocus();
+                FormKit.focus(reason);
                 return;
             }
             ReminderRecord.finish(this, sessionId, action, ReminderRecord.KIND_MISSED,
@@ -447,6 +447,7 @@ public final class ReminderActivity extends Activity {
             dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(36), -2);
             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+        FormKit.focusFirstInput(dialog);
     }
 
     private void returnToOverlay() {

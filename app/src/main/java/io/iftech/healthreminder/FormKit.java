@@ -1,15 +1,20 @@
 package io.iftech.healthreminder;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.text.Editable;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -207,6 +212,7 @@ final class FormKit {
             window.setDimAmount(0.34f);
             window.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
         }
+        focusFirstInput(dialog);
         int titleId = context.getResources().getIdentifier("alertTitle", "id", "android");
         TextView title = titleId == 0 ? null : dialog.findViewById(titleId);
         if (title != null) {
@@ -233,6 +239,51 @@ final class FormKit {
             dialog.getListView().setDividerHeight(dp(context, 1));
             dialog.getListView().setSelector(new ColorDrawable(UiPalette.SOFT));
         }
+    }
+
+    /**
+     * 弹窗出来就把光标放进第一个输入框并拉起键盘，省掉再点一下。
+     * 没有输入框的弹窗（选项列表、滚轮）会自己跳过。
+     */
+    static void focusFirstInput(final Dialog dialog) {
+        if (dialog == null) return;
+        final Window window = dialog.getWindow();
+        if (window == null) return;
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        window.getDecorView().post(() -> {
+            // 有的弹窗在 show 之后又改过一次 softInputMode，这里再兜一次
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                    | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            EditText input = firstInput(window.getDecorView());
+            if (input != null) focus(input);
+        });
+    }
+
+    /** 直接给输入框光标并拉起键盘：展开的输入框、清空后接着输入都用它。 */
+    static void focus(EditText input) {
+        if (input == null) return;
+        input.setFocusableInTouchMode(true);
+        input.requestFocus();
+        Editable text = input.getText();
+        if (text != null) input.setSelection(text.length());
+        InputMethodManager imm = (InputMethodManager)
+                input.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
+    }
+
+    private static EditText firstInput(View view) {
+        if (view instanceof EditText) {
+            return view.getVisibility() == View.VISIBLE ? (EditText) view : null;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                EditText found = firstInput(group.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     static EditText textInput(Context context, String hint, String value) {

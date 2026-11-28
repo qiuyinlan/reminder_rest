@@ -209,7 +209,7 @@ public final class ReviewReminderActivity extends Activity {
         // 不退出页面：上面多一条，下面清空接着写下一条
         reloadEntries();
         input.setText("");
-        input.requestFocus();
+        FormKit.focus(input);
         refreshButton();
         Toast.makeText(this, "已记下", Toast.LENGTH_SHORT).show();
     }

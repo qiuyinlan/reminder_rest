@@ -581,7 +581,7 @@ public final class BoardActivity extends Activity {
             composerType = type;
             BoardStore.setLastType(this, type);
             updateTypeChips(taskChipView, noteChipView);
-            if (composerInput != null) composerInput.requestFocus();
+            FormKit.focus(composerInput);
         });
         return chip;
     }
@@ -611,7 +611,7 @@ public final class BoardActivity extends Activity {
         persist();
         composerInput.setText("");
         render();
-        if (composerInput != null) composerInput.requestFocus();
+        FormKit.focus(composerInput);
     }
 
     // ------------------------------------------------------------ 工具
