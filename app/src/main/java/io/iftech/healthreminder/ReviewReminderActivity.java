@@ -1,6 +1,7 @@
 package io.iftech.healthreminder;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -29,6 +30,7 @@ public final class ReviewReminderActivity extends Activity {
     private TextView headerTitle;
     private TextView headerHint;
     private LinearLayout notesBox;
+    private LinearLayout phraseRow;
     private List<ReviewStore.Entry> entries = new ArrayList<>();
 
     @Override
@@ -37,6 +39,8 @@ public final class ReviewReminderActivity extends Activity {
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         UiPalette.applyWindow(getWindow());
+        getWindow().setSoftInputMode(
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         ruleId = getIntent().getIntExtra("rule_id", -1);
 
         LinearLayout page = new LinearLayout(this);
@@ -94,6 +98,17 @@ public final class ReviewReminderActivity extends Activity {
         body.addView(notesBox, notesParams);
         renderEntries();
 
+        // 常用的话：点一下就填进输入框，长按删掉
+        phraseRow = new LinearLayout(this);
+        phraseRow.setGravity(Gravity.CENTER_VERTICAL);
+        android.widget.HorizontalScrollView phraseScroll = new android.widget.HorizontalScrollView(this);
+        phraseScroll.setHorizontalScrollBarEnabled(false);
+        phraseScroll.addView(phraseRow);
+        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(-1, -2);
+        phraseParams.bottomMargin = dp(10);
+        body.addView(phraseScroll, phraseParams);
+        renderPhrases();
+
         input = new EditText(this);
         input.setTextSize(16);
         input.setTextColor(UiPalette.INK);
@@ -129,6 +144,9 @@ public final class ReviewReminderActivity extends Activity {
 
         scroll.addView(body, new ScrollView.LayoutParams(-1, -2));
         page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        // 进来就能写：光标已经在输入框里
+        input.post(() -> FormKit.focus(input));
     }
 
     /** 把今天记过的一条条画出来；长按某条单独改。 */
@@ -187,6 +205,88 @@ public final class ReviewReminderActivity extends Activity {
         continueButton.setEnabled(ready);
         continueButton.setBackground(FormKit.round(this,
                 ready ? UiPalette.ACCENT : UiPalette.DISABLED, 14));
+    }
+
+    /** 常用的话：点一下就插到光标处，长按删。 */
+    private void renderPhrases() {
+        if (phraseRow == null) return;
+        phraseRow.removeAllViews();
+        List<String> phrases = ReviewStore.phrases(this);
+        for (final String phrase : phrases) {
+            TextView chip = FormKit.text(this, phrase, 13, UiPalette.INK, false);
+            chip.setSingleLine(true);
+            chip.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            chip.setMaxWidth(dp(220));
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(12), dp(7), dp(12), dp(7));
+            chip.setBackground(FormKit.round(this, UiPalette.SOFT, 12));
+            chip.setOnClickListener(v -> insertPhrase(phrase));
+            chip.setOnLongClickListener(v -> {
+                FormKit.options(this, phrase, new String[]{"删掉这句"}, 0, index -> {
+                    ReviewStore.removePhrase(this, phrase);
+                    renderPhrases();
+                });
+                return true;
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
+            params.rightMargin = dp(8);
+            phraseRow.addView(chip, params);
+        }
+        TextView add = FormKit.text(this, phrases.isEmpty() ? "＋ 常用" : "＋", 13,
+                UiPalette.ACCENT, true);
+        add.setGravity(Gravity.CENTER);
+        add.setPadding(dp(12), dp(7), dp(12), dp(7));
+        add.setBackground(FormKit.round(this, UiPalette.PALE, 12));
+        add.setContentDescription("新增一句常用");
+        add.setOnClickListener(v -> addPhrase());
+        phraseRow.addView(add, new LinearLayout.LayoutParams(-2, -2));
+    }
+
+    private void insertPhrase(String phrase) {
+        if (input == null || phrase == null || phrase.isEmpty()) return;
+        Editable text = input.getText();
+        if (text == null) return;
+        int start = input.getSelectionStart();
+        int end = input.getSelectionEnd();
+        if (start < 0 || end < 0) {
+            start = text.length();
+            end = start;
+        }
+        if (start > end) {
+            int flip = start;
+            start = end;
+            end = flip;
+        }
+        text.replace(start, end, phrase);
+        input.setSelection(start + phrase.length());
+        // 继续敲键盘接着写
+        FormKit.focus(input);
+    }
+
+    /** 新增一句常用的话。 */
+    private void addPhrase() {
+        final EditText field = FormKit.textInput(this, "比如：今天有点累", "");
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(20), dp(6), dp(20), 0);
+        box.addView(field, new LinearLayout.LayoutParams(-1, -2));
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("新增常用")
+                .setView(box)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("保存", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String text = field.getText() == null ? "" : field.getText().toString().trim();
+                    if (text.isEmpty()) {
+                        Toast.makeText(this, "写一句再保存", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ReviewStore.addPhrase(this, text);
+                    renderPhrases();
+                    dialog.dismiss();
+                }));
+        FormKit.showStyled(this, dialog);
     }
 
     private void submit() {

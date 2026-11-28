@@ -37,6 +37,9 @@ final class ReviewStore {
         }
     }
 
+    /** 复盘里常用的几句，点一下直接填进输入框。 */
+    private static final String KEY_PHRASES = "phrases";
+
     private ReviewStore() { }
 
     static String dayKey() {
@@ -161,6 +164,42 @@ final class ReviewStore {
             sb.append(entry.getKey()).append('\n').append(entry.getValue());
         }
         return sb.toString();
+    }
+
+    /** 常用的话：复盘时点一下直接填进输入框。 */
+    static List<String> phrases(Context context) {
+        List<String> result = new ArrayList<>();
+        String raw = prefs(context).getString(KEY_PHRASES, null);
+        if (raw == null || raw.trim().isEmpty()) return result;
+        try {
+            JSONArray array = new JSONArray(raw);
+            for (int i = 0; i < array.length(); i++) {
+                String text = array.optString(i, "").trim();
+                if (!text.isEmpty()) result.add(text);
+            }
+        } catch (Exception ignored) { }
+        return result;
+    }
+
+    static void addPhrase(Context context, String text) {
+        String value = text == null ? "" : text.trim();
+        if (value.isEmpty()) return;
+        List<String> list = new ArrayList<>(phrases(context));
+        if (list.contains(value)) return;
+        list.add(value);
+        savePhrases(context, list);
+    }
+
+    static void removePhrase(Context context, String text) {
+        List<String> list = new ArrayList<>(phrases(context));
+        if (!list.remove(text)) return;
+        savePhrases(context, list);
+    }
+
+    private static void savePhrases(Context context, List<String> list) {
+        JSONArray array = new JSONArray();
+        for (String text : list) array.put(text);
+        prefs(context).edit().putString(KEY_PHRASES, array.toString()).apply();
     }
 
     private static void write(Context context, String key, List<Entry> list) {
