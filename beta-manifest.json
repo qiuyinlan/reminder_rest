@@ -3,5 +3,5 @@
     "versionName": "0.3.0-beta175",
     "apkUrl": "https://github.com/qiuyinlan/reminder_rest/releases/download/v0.3.0-beta175/rest-bean.apk",
     "sha256": "291a325a861054126f1cb058943fa35deb85f3547eb82334c8477fa1b7636d46",
-    "notes": "版本 0.3.0-beta175 更新。"
+    "notes": "所有弹窗和展开的输入框弹出即聚焦、直接弹键盘，不用再点第二下"
 }
